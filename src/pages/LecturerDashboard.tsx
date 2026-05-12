@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,18 +17,30 @@ import ExportReport from '@/components/ExportReport';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import LecturerStudentEvaluationPanel from '@/components/feature-groups/LecturerStudentEvaluationPanel';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 
 const LecturerDashboard = () => {
   const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { profile, loading: authLoading, signOut } = useAuth();
   const { language } = useLanguage();
+
   const [editedScores, setEditedScores] = useState<Record<string, number>>({});
   const [unsaved, setUnsaved] = useState<Set<string>>(new Set());
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+
+  useEffect(() => {
+    if (isDemoSession()) return;
+    if (authLoading || !profile) return;
+    if (profile.role === "student") {
+      navigate("/dashboard-student", { replace: true });
+    }
+  }, [profile, authLoading, navigate]);
 
   const group = groups[currentGroupIndex];
   const baseScore = 10;
@@ -104,7 +116,10 @@ const LecturerDashboard = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, 'lecturer')}
-          onExit={() => navigate('/')}
+          onExit={() => {
+            void signOut();
+            navigate("/login");
+          }}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />

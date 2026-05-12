@@ -1,7 +1,7 @@
 See [index.md](index.md) for the docs routing map.
 
 ## Student workspace feature map
-Primary entry: [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx)
+Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx) when Supabase is configured; see [state_and_data.md](state_and_data.md)).
 - Task work and status flow
   - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, evidence uploads.
 - Calendar and timeline

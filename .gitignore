@@ -237,3 +237,5 @@ mempalace.yaml
 entities.json
 
 .cursor
+.cursorrules
+supabase

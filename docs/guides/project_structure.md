@@ -13,43 +13,49 @@ This document is a map of the codebase and the main files you will likely touch 
 - `npm run test` - Vitest run once
 - `npm run test:watch` - Vitest watch
 
+For environment variables, Supabase migrations, and Google OAuth console values, see [how_to_run.md](how_to_run.md).
+
 ## Entry points and routing
-- [index.html](index.html) - root HTML, mounts `#root` and loads the main bundle.
-- [src/main.tsx](src/main.tsx) - React root with `createRoot`.
-- [src/App.tsx](src/App.tsx) - app providers + routing.
-- [src/pages/Index.tsx](src/pages/Index.tsx) - redirect to `/` (utility page).
+- [index.html](../../index.html) - root HTML, mounts `#root` and loads the main bundle.
+- [src/main.tsx](../../src/main.tsx) - React root with `createRoot`.
+- [src/App.tsx](../../src/App.tsx) - app providers + routing.
 
-Routes defined in [src/App.tsx](src/App.tsx):
-- `/` -> [src/pages/Landing.tsx](src/pages/Landing.tsx)
-- `/start` -> [src/pages/RoleSelection.tsx](src/pages/RoleSelection.tsx)
-- `/login` -> [src/pages/Login.tsx](src/pages/Login.tsx)
-- `/dashboard-student` -> [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx)
-- `/dashboard-lecturer` -> [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx)
-- `*` -> [src/pages/NotFound.tsx](src/pages/NotFound.tsx)
+Provider order and protected routes are documented in [entry_points_routing.md](entry_points_routing.md).
 
-## State, data, and i18n (in-memory demo)
-- [src/context/TeamContext.tsx](src/context/TeamContext.tsx) - in-memory demo data for groups, tasks, members, activity log, reports, materials, lecturer reviews, and verified badges. All core mutations live here.
-- [src/context/LanguageContext.tsx](src/context/LanguageContext.tsx) - language toggle (`vi` / `en`).
-- [src/lib/i18n.ts](src/lib/i18n.ts) - dictionary and helpers `t()` / `tr()`.
-- [src/hooks/use-toast.ts](src/hooks/use-toast.ts) - toast store and `useToast()`.
-- [src/hooks/use-mobile.tsx](src/hooks/use-mobile.tsx) - breakpoint helper used by the sidebar system.
+Routes (summary):
+- `/` -> [src/pages/Landing.tsx](../../src/pages/Landing.tsx)
+- `/start` -> [src/pages/RoleSelection.tsx](../../src/pages/RoleSelection.tsx)
+- `/login` -> [src/pages/Login.tsx](../../src/pages/Login.tsx)
+- `/dashboard-student` -> [src/components/ProtectedRoute.tsx](../../src/components/ProtectedRoute.tsx) -> [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx)
+- `/dashboard-lecturer` -> [src/components/ProtectedRoute.tsx](../../src/components/ProtectedRoute.tsx) -> [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx)
+- `*` -> [src/pages/NotFound.tsx](../../src/pages/NotFound.tsx)
 
-Notes:
-- There is no backend integration yet; data is stored in React context and reset on refresh.
-- AI behaviors are simulated with timers (see student and lecturer dashboards, plus the AI chat widget).
+## State, data, auth, and i18n
+See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Supabase client, demo session, and database RLS notes.
+
+## Backend (Supabase)
+- [supabase/migrations](../../supabase/migrations/) - Postgres schema, triggers on `auth.users`, RLS policies, RPC `set_signup_role`.
+- [.env.example](../../.env.example) - `VITE_SUPABASE_*` and Google / Supabase URL configuration notes.
 
 ## Pages (top-level views)
 - [src/pages/Landing.tsx](src/pages/Landing.tsx) - marketing/hero landing page with language switcher.
 - [src/pages/RoleSelection.tsx](src/pages/RoleSelection.tsx) - select student vs lecturer.
-- [src/pages/Login.tsx](src/pages/Login.tsx) - demo login and role-based redirect.
+- [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), demo shortcuts, role-based redirect when authenticated.
 - [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx) - student workspace with tasks, calendar, evaluation, materials, badges, and activity log.
 - [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx) - lecturer workspace with group overview, reports, rubric, evaluations, exports, materials, and activity log.
 - [src/pages/NotFound.tsx](src/pages/NotFound.tsx) - 404 view.
 
+## Auth and session gating
+- [src/context/AuthContext.tsx](src/context/AuthContext.tsx) - Supabase session and `public.users` profile row (`refreshProfile`, `signOut`).
+- [src/lib/supabaseClient.ts](src/lib/supabaseClient.ts) - `createClient` and `isSupabaseConfigured`.
+- [src/lib/demoSession.ts](src/lib/demoSession.ts) - demo dashboard access flag in `sessionStorage`.
+- [src/lib/dashboardPath.ts](src/lib/dashboardPath.ts) - maps `public.users.role` to student vs lecturer dashboard paths.
+- [src/components/ProtectedRoute.tsx](src/components/ProtectedRoute.tsx) - wraps dashboards; enforces session or demo mode when Supabase env is present.
+
 ## Core layout and navigation
 - [src/components/DashboardShell.tsx](src/components/DashboardShell.tsx) - shared layout with sidebar rail + header + content area.
 - [src/components/DashboardSidebar.tsx](src/components/DashboardSidebar.tsx) - left nav, groups items into primary/secondary, handles mobile collapse.
-- [src/components/DashboardHeader.tsx](src/components/DashboardHeader.tsx) - top bar, role switcher, language switcher, exit action.
+- [src/components/DashboardHeader.tsx](src/components/DashboardHeader.tsx) - top bar, role switcher, language switcher, exit action (signs out Supabase session and clears demo session when used from dashboards).
 - [src/components/DashboardTabs.tsx](src/components/DashboardTabs.tsx) - tab switcher used for local section navigation.
 
 ## Student workspace feature map
@@ -96,7 +102,7 @@ Primary entry: [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx
 - [src/App.css](src/App.css) - Vite starter styles (currently not imported by default).
 
 ## Tooling and configuration
-- [package.json](package.json) - scripts and dependencies.
+- [package.json](package.json) - scripts and dependencies (includes `@supabase/supabase-js` for auth and API).
 - [vite.config.ts](vite.config.ts) - Vite config, React SWC plugin, path alias `@` -> `src`, dev server port 8080.
 - [eslint.config.js](eslint.config.js) - ESLint setup for TS/React.
 - [tsconfig.json](tsconfig.json) - base TS config and path aliases.

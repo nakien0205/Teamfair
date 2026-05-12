@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTeam, Task, MemberStat } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,8 @@ import KanbanBoard from '@/components/KanbanBoard';
 import ProjectCalendar from '@/components/ProjectCalendar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 import AIChatWidget from '@/components/feature-groups/AIChatWidget';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
@@ -38,12 +40,14 @@ const StudentDashboard = () => {
   const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { profile, loading: authLoading, signOut } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [peerEvaluations, setPeerEvaluations] = useState<PeerEvaluation[]>([]);
   const { language } = useLanguage();
+
   const [evalTarget, setEvalTarget] = useState('');
   const [evalRating, setEvalRating] = useState(0);
   const [evalComment, setEvalComment] = useState('');
@@ -51,6 +55,14 @@ const StudentDashboard = () => {
   const [reportTarget, setReportTarget] = useState<MemberStat | null>(null);
   const [activeSection, setActiveSection] = useState('work');
   const anonymousFrom = t(language, 'anonymousFrom');
+
+  useEffect(() => {
+    if (isDemoSession()) return;
+    if (authLoading || !profile) return;
+    if (profile.role === "lecturer" || profile.role === "admin") {
+      navigate("/dashboard-lecturer", { replace: true });
+    }
+  }, [profile, authLoading, navigate]);
 
   const isLeader = studentRole === 'Leader';
   const currentUserName = isLeader ? members[0]?.name : CURRENT_USER_MEMBER;
@@ -215,7 +227,10 @@ const StudentDashboard = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, 'student')}
-          onExit={() => navigate('/')}
+          onExit={() => {
+            void signOut();
+            navigate("/login");
+          }}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />

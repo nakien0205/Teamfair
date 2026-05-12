@@ -1,7 +1,7 @@
 See [index.md](index.md) for the docs routing map.
 
 ## Lecturer workspace feature map
-Primary entry: [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx)
+Primary entry: [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx) when Supabase is configured; see [state_and_data.md](state_and_data.md)).
 - Group overview and analytics
   - [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx)
 - Reports and rubric
