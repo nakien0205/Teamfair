@@ -22,7 +22,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
-import AIChatWidget from '@/components/feature-groups/AIChatWidget';
+import StudentAgentSidebar from '@/components/feature-groups/StudentAgentSidebar';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
@@ -394,7 +394,7 @@ const StudentDashboard = () => {
               </section>
             </div>
 
-            <AIChatWidget />
+            <StudentAgentSidebar />
 
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <h2 className="font-display text-lg font-semibold mb-4">

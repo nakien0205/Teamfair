@@ -9,7 +9,7 @@ Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard
 - Contribution and fairness
   - [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx) - charts, score card, warnings.
   - [src/components/StudentReportModal.tsx](src/components/StudentReportModal.tsx) - report a member to lecturer.
-  - [src/components/feature-groups/AIChatWidget.tsx](src/components/feature-groups/AIChatWidget.tsx) - guided help and summaries.
+  - [src/components/feature-groups/StudentAgentSidebar.tsx](src/components/feature-groups/StudentAgentSidebar.tsx) - floating assistant (OpenRouter agent server); see [student_workspace_agent.md](student_workspace_agent.md).
 - Materials
   - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload and list materials (student view).
 - Verified badges
