@@ -74,14 +74,14 @@ const RubricManager = () => {
       </h2>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input type="file" ref={fileRef} accept=".pdf" className="hidden" />
+        <input type="file" ref={fileRef} accept=".pdf" className="hidden" onChange={handleUploadRubric} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={loading}>
           <Upload className="h-4 w-4 mr-1" /> Upload Rubric PDF
         </Button>
         {loading && <span className="text-sm text-muted-foreground animate-pulse">AI đang xử lý rubric...</span>}
       </div>
 
-      {(rubricLoaded || true) && (
+      {rubricLoaded && (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
