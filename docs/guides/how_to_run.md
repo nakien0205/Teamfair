@@ -47,5 +47,14 @@ Order matters; examples in this repo:
 1. `20260512120000_teamfair_core.sql` - enums, `public.users` (extends `auth.users`), groups, members, tasks, logs, AI evaluations, auth sync triggers, RLS enabled, grants.
 2. `20260515100000_teamfair_rls.sql` - RLS policies (lecturer / student / admin scoping).
 3. `20260516100000_users_profile_completed_and_signup_role.sql` - `profile_completed`, updated `handle_new_user`, `set_signup_role` RPC for Google sign-up role selection.
+4. `20260517120000_persist_dashboard_state.sql` - persisted dashboard metadata and UI tables for task approval/deadline/priority/evidence, activity logs, student reports, materials, lecturer scores, lecturer-student reviews, and verified badges.
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
+
+### Simple deploy checklist
+1. Run every SQL migration above in Supabase, in order, if the database does not already have them.
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel project environment variables.
+3. Push the code to GitHub.
+4. Let Vercel redeploy from GitHub.
+
+If the SQL migration is skipped, Vercel can still render the app, but real logged-in dashboard data may fail to load/save because the database tables/columns are missing.

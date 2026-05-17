@@ -1,9 +1,27 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { isDemoSession } from '@/lib/demoSession';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import {
+  approvePersistedTask,
+  deletePersistedMaterial,
+  deletePersistedTask,
+  insertLecturerStudentEvaluation,
+  insertMaterial,
+  insertStudentReport,
+  insertTask,
+  loadPersistedTeamSnapshot,
+  markStudentReportReviewed,
+  updatePersistedTask,
+  updatePersistedTaskStatus,
+  upsertLecturerScore,
+} from '@/lib/teamPersistence';
 
 export interface Task {
   id: string;
   name: string;
   assignedTo: string;
+  assigneeId?: string;
   status: 'Todo' | 'In Progress' | 'Done';
   contributionPercent: number;
   approved: boolean;
@@ -14,6 +32,7 @@ export interface Task {
 }
 
 export interface MemberStat {
+  id?: string;
   name: string;
   role: string;
   completedTasks: number;
@@ -118,6 +137,11 @@ const initialLog: ActivityLogEntry[] = [
   { timestamp: new Date(Date.now() - 3600000), description: 'Task "Thiết kế giao diện" được giao cho Trần Thị B' },
 ];
 
+const initialMaterials: MaterialFile[] = [
+  { id: 'demo-1', fileName: 'ProjectGuidelines.pdf', size: 245760, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 86400000) },
+  { id: 'demo-2', fileName: 'TeamworkRubric.docx', size: 102400, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 43200000) },
+];
+
 const makeGroups = (): Group[] => [
   {
     id: 'g1', name: 'Nhóm 1 - Dự án Web',
@@ -163,21 +187,96 @@ export const useTeam = () => {
 };
 
 export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<Group[]>(makeGroups);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [studentRole, setStudentRole] = useState<'Leader' | 'Member'>('Leader');
   const [reports, setReports] = useState<StudentReport[]>([]);
-  const [materials, setMaterials] = useState<MaterialFile[]>([
-    { id: 'demo-1', fileName: 'ProjectGuidelines.pdf', size: 245760, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 86400000) },
-    { id: 'demo-2', fileName: 'TeamworkRubric.docx', size: 102400, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 43200000) },
-  ]);
+  const [materialsByGroupId, setMaterialsByGroupId] = useState<Record<string, MaterialFile[]>>({ g1: initialMaterials });
   const [lecturerStudentReviews, setLecturerStudentReviews] = useState<LecturerStudentReview[]>([]);
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
+  const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('demo');
 
   const group = groups[currentGroupIndex] || groups[0];
   const tasks = group.tasks;
   const members = group.members;
   const activityLog = group.activityLog;
+  const materials = useMemo(() => materialsByGroupId[group.id] ?? [], [group.id, materialsByGroupId]);
+
+  const resetDemoState = useCallback(() => {
+    setGroups(makeGroups());
+    setReports([]);
+    setMaterialsByGroupId({ g1: initialMaterials });
+    setLecturerStudentReviews([]);
+    setStudentBadges([]);
+    setCurrentGroupIndex(0);
+    setDataSource('demo');
+  }, []);
+
+  const loadPersistedState = useCallback(async () => {
+    const snapshot = await loadPersistedTeamSnapshot();
+    if (snapshot.groups.length === 0) {
+      resetDemoState();
+      return;
+    }
+    setGroups(snapshot.groups);
+    setReports(snapshot.reports);
+    setMaterialsByGroupId(snapshot.materialsByGroupId);
+    setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+    setStudentBadges(snapshot.studentBadges);
+    setCurrentGroupIndex(0);
+    setDataSource('supabase');
+  }, [resetDemoState]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || isDemoSession()) {
+      resetDemoState();
+      return;
+    }
+
+    if (authLoading) return;
+
+    if (!user?.id) {
+      resetDemoState();
+      return;
+    }
+
+    let cancelled = false;
+    loadPersistedTeamSnapshot()
+      .then(snapshot => {
+        if (cancelled) return;
+        if (snapshot.groups.length === 0) {
+          resetDemoState();
+          return;
+        }
+        setGroups(snapshot.groups);
+        setReports(snapshot.reports);
+        setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+        setStudentBadges(snapshot.studentBadges);
+        setCurrentGroupIndex(0);
+        setDataSource('supabase');
+      })
+      .catch(error => {
+        console.warn('Falling back to demo team data after Supabase load failed:', error);
+        if (!cancelled) resetDemoState();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, resetDemoState, user?.id]);
+
+  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id) && !isDemoSession();
+
+  const persist = useCallback((operation: () => Promise<void>) => {
+    if (!canPersist) return;
+    void operation()
+      .then(loadPersistedState)
+      .catch(error => {
+        console.warn('Supabase team data persistence failed:', error);
+      });
+  }, [canPersist, loadPersistedState]);
 
   const updateGroup = useCallback((idx: number, updater: (g: Group) => Group) => {
     setGroups(prev => prev.map((g, i) => i === idx ? updater({ ...g }) : g));
@@ -207,14 +306,18 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'approved'>) => {
     const id = Date.now().toString();
+    const currentGroup = groups[currentGroupIndex];
     updateGroup(currentGroupIndex, g => ({
       ...g,
       tasks: [...g.tasks, { ...task, id, status: 'Todo', approved: false }],
       activityLog: [{ timestamp: new Date(), description: `Task "${task.name}" được tạo và giao cho ${task.assignedTo}` }, ...g.activityLog],
     }));
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => insertTask(currentGroup, task));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const deleteTask = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const newG = {
@@ -224,9 +327,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       return recalcContributions(newG);
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => deletePersistedTask(currentGroup.id, persistedTask));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateTaskStatus = useCallback((id: string, status: Task['status'], actor: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const statusLabel = status === 'In Progress' ? 'bắt đầu' : 'hoàn thành';
@@ -236,9 +342,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activityLog: [{ timestamp: new Date(), description: `${actor} đã ${statusLabel} task "${task?.name}"` }, ...g.activityLog],
       };
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => updatePersistedTaskStatus(currentGroup.id, persistedTask, status, actor));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const approveTask = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const newG = {
@@ -248,40 +357,61 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       return recalcContributions(newG);
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => approvePersistedTask(currentGroup.id, persistedTask));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    const currentGroup = groups[currentGroupIndex];
     updateGroup(currentGroupIndex, g => ({
       ...g,
       tasks: g.tasks.map(t => t.id === id ? { ...t, ...updates } : t),
     }));
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => updatePersistedTask(id, updates, currentGroup.members));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateLecturerScore = useCallback((memberName: string, score: number, groupIdx: number) => {
+    const targetGroup = groups[groupIdx];
     updateGroup(groupIdx, g => ({
       ...g,
       members: g.members.map(m => m.name === memberName ? { ...m, lecturerScore: score } : m),
     }));
-  }, [updateGroup]);
+    if (targetGroup) persist(() => upsertLecturerScore(targetGroup.id, memberName, score));
+  }, [groups, persist, updateGroup]);
 
   const addReport = useCallback((report: Omit<StudentReport, 'id' | 'timestamp' | 'reviewed'>) => {
+    const currentGroup = groups[currentGroupIndex];
     setReports(prev => [...prev, { ...report, id: Date.now().toString(), timestamp: new Date(), reviewed: false }]);
-  }, []);
+    if (currentGroup) persist(() => insertStudentReport(currentGroup.id, report));
+  }, [currentGroupIndex, groups, persist]);
 
   const markReportReviewed = useCallback((id: string) => {
     setReports(prev => prev.map(r => r.id === id ? { ...r, reviewed: true } : r));
-  }, []);
+    persist(() => markStudentReportReviewed(id));
+  }, [persist]);
 
   const addMaterial = useCallback((file: Omit<MaterialFile, 'id' | 'uploadTime'>) => {
-    setMaterials(prev => [...prev, { ...file, id: Date.now().toString(), uploadTime: new Date() }]);
-  }, []);
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setMaterialsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: [...(prev[currentGroup.id] ?? []), { ...file, id: Date.now().toString(), uploadTime: new Date() }],
+    }));
+    persist(() => insertMaterial(currentGroup.id, file));
+  }, [currentGroupIndex, groups, persist]);
 
   const deleteMaterial = useCallback((id: string) => {
-    setMaterials(prev => prev.filter(m => m.id !== id));
-  }, []);
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setMaterialsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).filter(m => m.id !== id),
+    }));
+    persist(() => deletePersistedMaterial(id));
+  }, [currentGroupIndex, groups, persist]);
 
   const addLecturerStudentEvaluation = useCallback(
     (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => {
+      const currentGroup = groups[currentGroupIndex];
       const timestamp = new Date();
       setLecturerStudentReviews(prev => [
         ...prev,
@@ -306,8 +436,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         ]);
       }
+      if (currentGroup) persist(() => insertLecturerStudentEvaluation(currentGroup.id, input));
     },
-    [],
+    [currentGroupIndex, groups, persist],
   );
 
   const value = useMemo(

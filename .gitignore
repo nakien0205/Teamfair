@@ -241,3 +241,13 @@ entities.json
 .cursor
 .cursorrules
 supabase
+!supabase/
+supabase/*
+!supabase/migrations/
+!supabase/migrations/**
+.agents
+skills
+.codex
+AGENTS.md
+
+
