@@ -31,6 +31,7 @@ const EVENT_COLORS: Record<EventType, { bg: string; text: string; dot: string }>
 
 interface Props {
   isLeader: boolean;
+  locked?: boolean;
 }
 
 const DEMO_EVENTS: CalendarEvent[] = [
@@ -39,7 +40,7 @@ const DEMO_EVENTS: CalendarEvent[] = [
   { id: 'demo-3', title: 'Sprint Review', type: 'Meeting', date: '2026-03-12', time: '14:00', description: 'Review sprint deliverables', createdBy: 'Leader' },
 ];
 
-const ProjectCalendar = ({ isLeader }: Props) => {
+const ProjectCalendar = ({ isLeader, locked }: Props) => {
   const { tasks } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
@@ -286,7 +287,15 @@ const ProjectCalendar = ({ isLeader }: Props) => {
   };
 
   return (
-    <section className="bg-card rounded-xl p-6 shadow-card border border-border">
+    <section className="bg-card rounded-xl p-6 shadow-card border border-border relative">
+      {locked && (
+        <div className="absolute inset-0 z-10 rounded-xl bg-background/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-auto">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/90 px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg animate-pulse">
+            {tr(language, 'AI đang làm việc…', 'AI working…')}
+          </span>
+        </div>
+      )}
+      <div className={locked ? 'pointer-events-none opacity-60' : ''}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <h2 className="font-display text-lg font-semibold flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-primary" />
@@ -461,6 +470,7 @@ const ProjectCalendar = ({ isLeader }: Props) => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </section>
   );
 };

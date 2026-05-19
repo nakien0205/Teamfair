@@ -16,6 +16,8 @@ import {
   updatePersistedTaskStatus,
   upsertLecturerScore,
 } from '@/lib/teamPersistence';
+import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
+import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
 
 export interface Task {
   id: string;
@@ -117,6 +119,7 @@ interface TeamContextType {
   lecturerStudentReviews: LecturerStudentReview[];
   studentBadges: VerifiedBadge[];
   addLecturerStudentEvaluation: (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => void;
+  applyAgentSnapshot: (snapshot: WorkspaceSnapshotJson) => void;
 }
 
 const initialMembers: MemberStat[] = [
@@ -441,6 +444,23 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [currentGroupIndex, groups, persist],
   );
 
+  const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
+    const state = deserializeSnapshotToTeamState(snapshot);
+    setGroups(state.groups);
+    setReports(state.reports);
+    // Materials in the snapshot are flat; assign them to the current group
+    const currentGroup = state.groups[currentGroupIndex] ?? state.groups[0];
+    if (currentGroup) {
+      setMaterialsByGroupId(prev => ({ ...prev, [currentGroup.id]: state.materials }));
+    }
+    setLecturerStudentReviews(state.lecturerStudentReviews);
+    setStudentBadges(state.studentBadges);
+    // Re-persist if in supabase mode
+    if (canPersist) {
+      void loadPersistedState().catch(() => { /* best effort */ });
+    }
+  }, [canPersist, currentGroupIndex, loadPersistedState]);
+
   const value = useMemo(
     () => ({
       groups,
@@ -467,6 +487,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,
+      applyAgentSnapshot,
     }),
     [
       groups,
@@ -493,6 +514,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,
+      applyAgentSnapshot,
     ],
   );
 

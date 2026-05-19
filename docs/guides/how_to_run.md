@@ -48,6 +48,7 @@ Order matters; examples in this repo:
 2. `20260515100000_teamfair_rls.sql` - RLS policies (lecturer / student / admin scoping).
 3. `20260516100000_users_profile_completed_and_signup_role.sql` - `profile_completed`, updated `handle_new_user`, `set_signup_role` RPC for Google sign-up role selection.
 4. `20260517120000_persist_dashboard_state.sql` - persisted dashboard metadata and UI tables for task approval/deadline/priority/evidence, activity logs, student reports, materials, lecturer scores, lecturer-student reviews, and verified badges.
+5. `20260519120000_chat_messages.sql` - chat history table for the AI assistant sidebar, scoped by `(user_id, group_id)` with RLS so users only read/write their own messages.
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
 

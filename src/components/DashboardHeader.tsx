@@ -42,8 +42,8 @@ const DashboardHeader = ({ roleLabel, onExit, leftSlot, rightSlot, roleValue, on
               </SelectContent>
             </Select>
           ) : null}
-          <LanguageSwitcherButton />
           {rightSlot}
+          <LanguageSwitcherButton />
           <Button variant="ghost" size="sm" onClick={onExit}>
             <LogOut className="h-4 w-4 mr-1" /> {t(language, "dashboardExit")}
           </Button>

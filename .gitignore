@@ -249,5 +249,4 @@ supabase/*
 skills
 .codex
 AGENTS.md
-
-
+run.ps1

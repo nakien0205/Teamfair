@@ -9,7 +9,7 @@ Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard
 - Contribution and fairness
   - [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx) - charts, score card, warnings.
   - [src/components/StudentReportModal.tsx](src/components/StudentReportModal.tsx) - report a member to lecturer.
-  - [src/components/feature-groups/StudentAgentSidebar.tsx](src/components/feature-groups/StudentAgentSidebar.tsx) - floating assistant (OpenRouter agent server); see [student_workspace_agent.md](student_workspace_agent.md).
+  - [src/components/feature-groups/StudentAgentSidebar.tsx](src/components/feature-groups/StudentAgentSidebar.tsx) - AI assistant sidebar (OpenRouter agent server); triggered from the dashboard header Sparkles/AI button (global, visible on all tabs). Chat history persists via Supabase `chat_messages` table (scoped per group). After agent calls, a diff panel shows added/removed/modified tasks with Apply/Discard buttons. An auto-apply toggle (localStorage `agentAutoApply`) skips the panel. While the agent works, the touched section (KanbanBoard or ProjectCalendar) is locked via a `locked` prop with an overlay badge. See [student_workspace_agent.md](student_workspace_agent.md) and [state_and_data.md](state_and_data.md).
 - Materials
   - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload and list materials (student view).
 - Verified badges

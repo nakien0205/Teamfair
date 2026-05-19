@@ -161,3 +161,62 @@ export function buildWorkspaceSnapshotFromTeam(input: {
     calendar_events: [],
   };
 }
+
+/* ---------- Deserialization (agent snapshot → TeamContext state) ---------- */
+
+function toDate(v: unknown): Date {
+  if (v instanceof Date) return v;
+  if (typeof v === "string" && v) return new Date(v);
+  return new Date();
+}
+
+function deserializeTask(s: SerializedTask): Task {
+  return {
+    ...s,
+    evidence: s.evidence?.map(e => ({ fileName: e.fileName, uploadTime: toDate(e.uploadTime) })),
+  };
+}
+
+function deserializeGroup(s: SerializedGroup): Group {
+  return {
+    id: s.id,
+    name: s.name,
+    members: s.members,
+    tasks: s.tasks.map(deserializeTask),
+    activityLog: s.activityLog.map(e => ({ timestamp: toDate(e.timestamp), description: e.description })),
+  };
+}
+
+function deserializeReport(s: SerializedStudentReport): StudentReport {
+  return { ...s, timestamp: toDate(s.timestamp) };
+}
+
+function deserializeMaterial(s: SerializedMaterialFile): MaterialFile {
+  return { ...s, uploadTime: toDate(s.uploadTime) };
+}
+
+function deserializeReview(s: SerializedLecturerReview): LecturerStudentReview {
+  return { ...s, lecturer: s.lecturer as "lecturer", timestamp: toDate(s.timestamp) };
+}
+
+function deserializeBadge(s: SerializedVerifiedBadge): VerifiedBadge {
+  return { ...s, awardedAt: toDate(s.awardedAt) };
+}
+
+export interface DeserializedTeamState {
+  groups: Group[];
+  reports: StudentReport[];
+  materials: MaterialFile[];
+  lecturerStudentReviews: LecturerStudentReview[];
+  studentBadges: VerifiedBadge[];
+}
+
+export function deserializeSnapshotToTeamState(snap: WorkspaceSnapshotJson): DeserializedTeamState {
+  return {
+    groups: snap.groups.map(deserializeGroup),
+    reports: snap.reports.map(deserializeReport),
+    materials: snap.materials.map(deserializeMaterial),
+    lecturerStudentReviews: snap.lecturer_student_reviews.map(deserializeReview),
+    studentBadges: snap.student_badges.map(deserializeBadge),
+  };
+}

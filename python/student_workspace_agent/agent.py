@@ -58,6 +58,7 @@ class AgentRunResult:
     tool_trace: list[dict[str, Any]] = field(default_factory=list)
     reasoning: str | None = None
     used_heavy_synthesis: bool = False
+    workspace: dict[str, Any] | None = None
 
     def to_json_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +66,7 @@ class AgentRunResult:
             "tool_trace": self.tool_trace,
             "reasoning": self.reasoning,
             "used_heavy_synthesis": self.used_heavy_synthesis,
+            "workspace": self.workspace,
         }
 
 
@@ -157,6 +159,7 @@ def run_agent_detailed(
             tool_trace=tool_trace,
             reasoning=merged,
             used_heavy_synthesis=used_heavy,
+            workspace=store.snapshot.model_dump(mode="json", by_alias=True),
         )
 
     used_heavy = False
@@ -171,6 +174,7 @@ def run_agent_detailed(
         tool_trace=tool_trace,
         reasoning=merged,
         used_heavy_synthesis=used_heavy,
+        workspace=store.snapshot.model_dump(mode="json", by_alias=True),
     )
 
 

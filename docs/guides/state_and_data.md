@@ -12,10 +12,18 @@ See [index.md](index.md) for the docs routing map.
 
 Persisted dashboard coverage includes groups, members, tasks, task approval/deadlines/priority/evidence metadata, activity logs, student reports, materials, lecturer scores, lecturer-student reviews, and verified badges. Derived member stats such as completed task counts and contribution percentages are recalculated in the frontend from approved tasks.
 
+The `applyAgentSnapshot(snapshot)` method on `TeamContext` replaces all dashboard state from a `WorkspaceSnapshotJson` returned by the Python agent. ISO date strings are deserialized back to `Date` objects via `deserializeSnapshotToTeamState` in [src/lib/workspaceSnapshot.ts](../../src/lib/workspaceSnapshot.ts). In Supabase mode, `loadPersistedState` is called afterward to re-sync.
+
 In plain terms:
 - Demo/local mode still uses seeded in-memory data so the dashboards are easy to open while developing.
 - Real logged-in Supabase sessions try to read/write dashboard data from Supabase.
 - If Supabase is configured but the dashboard persistence migration has not been run, the app falls back to demo data and logs a warning in the browser console.
+
+### AI chat history
+- [src/lib/chatHistory.ts](../../src/lib/chatHistory.ts) - thin wrapper (`loadChatHistory`, `insertChatMessage`, `clearChatHistory`) for the `public.chat_messages` Supabase table.
+- Chat messages are scoped by `(user_id, group_id)`. Switching groups shows only that group's conversation. RLS ensures users only see their own messages.
+- In demo mode or when Supabase is unconfigured, all chat functions are no-ops and chat works in-memory only (messages are lost on sidebar close).
+- The "Clear history" button in the sidebar header deletes all rows for the current user + group.
 
 ### Supabase Auth and `public.users` profile
 - [src/lib/supabaseClient.ts](../../src/lib/supabaseClient.ts) - `createClient` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; `isSupabaseConfigured` guard.

@@ -100,7 +100,9 @@ python -m uvicorn student_workspace_agent.server:app --host 127.0.0.1 --port 801
 
 **`POST /chat` JSON body:** `{ "message": string, "workspace": WorkspaceSnapshot, "use_heavy"?: boolean, "max_tool_rounds"?: number }`
 
-**Response:** `{ "answer": string, "tool_trace": [...], "reasoning": string | null, "used_heavy_synthesis": boolean }`
+**Response:** `{ "answer": string, "tool_trace": [...], "reasoning": string | null, "used_heavy_synthesis": boolean, "workspace": WorkspaceSnapshot | null }`
+
+The `workspace` field contains the full mutated snapshot after all tool calls. The React UI uses this to show a diff panel and optionally apply changes back into `TeamContext`.
 
 The React app builds `workspace` from `TeamContext` via [src/lib/workspaceSnapshot.ts](../../src/lib/workspaceSnapshot.ts). Calendar tab state is still **not** in that snapshot (empty `calendar_events` until shared state exists).
 
@@ -122,9 +124,17 @@ The CLI tries to reconfigure **stdout to UTF-8** so Vietnamese strings in tool J
 
 ### What to build next (not implemented here)
 
-- Write agent tool results **back** into `TeamContext` from the UI (requires careful UX and validation).
 - Lift **calendar** state into shared context so snapshots match the calendar tab.
 - Automated tests for tools/agent (intentionally deferred earlier; another pass can add them).
+
+### Recent UI changes (2026-05-19)
+
+- **Chat history persistence**: conversations are saved per-user per-group in Supabase `public.chat_messages` (migration `20260519120000_chat_messages.sql`). Managed via [src/lib/chatHistory.ts](../../src/lib/chatHistory.ts). Skipped in demo mode.
+- **Global AI button**: the sidebar is no longer a floating FAB inside the fairness tab. It's triggered by a Sparkles button in `DashboardHeader`'s `rightSlot`, available on every tab.
+- **Quick prompts collapse**: prompt chips and the heavy-task description card hide after the first message. The heavy toggle compresses to a small label+switch next to the Send button.
+- **Agent → UI bridge**: the Python server now returns the mutated `workspace` snapshot in the `/chat` response. The sidebar shows a diff panel (green = added, red = removed, yellow = modified tasks) with **Apply / Discard** buttons. An auto-apply toggle (`localStorage` key `agentAutoApply`) skips the confirmation. While the agent runs, the affected dashboard section (KanbanBoard or ProjectCalendar) displays a locked overlay.
+- **`applyAgentSnapshot`**: new method on `TeamContext` that replaces groups, reports, materials, reviews, and badges from the agent's snapshot. In Supabase mode it re-loads persisted state afterward.
+- **Section locking**: `StudentDashboard` passes a `locked` prop (derived from agent tool trace) to `KanbanBoard` and `ProjectCalendar`, disabling interaction and showing an "AI working…" badge.
 
 ### Related docs
 
