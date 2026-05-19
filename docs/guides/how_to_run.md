@@ -1,7 +1,8 @@
 See [index.md](index.md) for the docs routing map.
 
 ## How to run (from package.json)
-- `npm run dev` - start Vite dev server (**port 8080**; see [vite.config.ts](../../vite.config.ts))
+- `npm run dev` - start Vite dev server (**port 8080**; see [vite.config.ts](../../vite.config.ts)). The script invokes Vite via `node ./node_modules/vite/bin/vite.js` so Windows shells that do not resolve `node_modules/.bin` still work.
+- If you use **pnpm** (see `packageManager` in [package.json](../../package.json)), prefer `pnpm dev` — pnpm wires local binaries reliably.
 - `npm run build` - production build
 - `npm run build:dev` - development build mode
 - `npm run preview` - preview production build
@@ -16,6 +17,7 @@ The app reads Supabase from **Vite** env vars (must be prefixed with `VITE_` to 
 |----------|---------|
 | `VITE_SUPABASE_URL` | Project URL, e.g. `https://<project-ref>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Supabase **anon** public key (Dashboard → Settings → API) |
+| `VITE_STUDENT_AGENT_URL` | Optional. Base URL of the **Python FastAPI** student agent (no trailing slash). Leave unset in local dev to use the Vite proxy to `127.0.0.1:8010`. **Required for production** on Vercel if the sidebar should call a hosted agent (see [student_workspace_agent.md](student_workspace_agent.md)). |
 
 Copy [.env.example](../../.env.example) to `.env` and fill in the values. If these are missing, auth UI shows a configuration message and dashboards still work via **demo mode** (see [state_and_data.md](state_and_data.md)).
 
@@ -28,6 +30,7 @@ Use these when creating or editing the OAuth 2.0 **Web application** client that
 - `http://localhost:8080`
 - `http://127.0.0.1:8080`
 - `https://<your-production-domain>` (when deployed)
+- `https://teamfair.vercel.app` (current production site)
 
 **Authorized redirect URIs** (OAuth code returns to **Supabase**, not your app origin):
 - `https://<project-ref>.supabase.co/auth/v1/callback`  
@@ -44,5 +47,15 @@ Order matters; examples in this repo:
 1. `20260512120000_teamfair_core.sql` - enums, `public.users` (extends `auth.users`), groups, members, tasks, logs, AI evaluations, auth sync triggers, RLS enabled, grants.
 2. `20260515100000_teamfair_rls.sql` - RLS policies (lecturer / student / admin scoping).
 3. `20260516100000_users_profile_completed_and_signup_role.sql` - `profile_completed`, updated `handle_new_user`, `set_signup_role` RPC for Google sign-up role selection.
+4. `20260517120000_persist_dashboard_state.sql` - persisted dashboard metadata and UI tables for task approval/deadline/priority/evidence, activity logs, student reports, materials, lecturer scores, lecturer-student reviews, and verified badges.
+5. `20260519120000_chat_messages.sql` - chat history table for the AI assistant sidebar, scoped by `(user_id, group_id)` with RLS so users only read/write their own messages.
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
+
+### Simple deploy checklist
+1. Run every SQL migration above in Supabase, in order, if the database does not already have them.
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel project environment variables.
+3. Push the code to GitHub.
+4. Let Vercel redeploy from GitHub.
+
+If the SQL migration is skipped, Vercel can still render the app, but real logged-in dashboard data may fail to load/save because the database tables/columns are missing.

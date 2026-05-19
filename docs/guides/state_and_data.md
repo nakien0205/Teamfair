@@ -2,12 +2,28 @@ See [index.md](index.md) for the docs routing map.
 
 ## State, data, auth, and i18n
 
-### In-memory demo (dashboard UI)
-- [src/context/TeamContext.tsx](../../src/context/TeamContext.tsx) - in-memory demo data for groups, tasks, members, activity log, reports, materials, lecturer reviews, and verified badges. All core mutations for the current UI still live here.
+### Team dashboard data
+- [src/context/TeamContext.tsx](../../src/context/TeamContext.tsx) - owns the dashboard-facing shape for groups, tasks, members, activity log, reports, materials, lecturer reviews, and verified badges. It still provides seeded demo data when Supabase is unconfigured, demo mode is active, or a configured database has no groups for the current user.
+- [src/lib/teamPersistence.ts](../../src/lib/teamPersistence.ts) - maps between `TeamContext` objects and Supabase rows. For authenticated, non-demo sessions with Supabase configured, `TeamProvider` loads persisted team data and writes mutations back to Supabase after optimistic UI updates.
 - [src/context/LanguageContext.tsx](../../src/context/LanguageContext.tsx) - language toggle (`vi` / `en`).
 - [src/lib/i18n.ts](../../src/lib/i18n.ts) - dictionary and helpers `t()` / `tr()`.
 - [src/hooks/use-toast.ts](../../src/hooks/use-toast.ts) - toast store and `useToast()`.
 - [src/hooks/use-mobile.tsx](../../src/hooks/use-mobile.tsx) - breakpoint helper used by the sidebar system.
+
+Persisted dashboard coverage includes groups, members, tasks, task approval/deadlines/priority/evidence metadata, activity logs, student reports, materials, lecturer scores, lecturer-student reviews, and verified badges. Derived member stats such as completed task counts and contribution percentages are recalculated in the frontend from approved tasks.
+
+The `applyAgentSnapshot(snapshot)` method on `TeamContext` replaces all dashboard state from a `WorkspaceSnapshotJson` returned by the Python agent. ISO date strings are deserialized back to `Date` objects via `deserializeSnapshotToTeamState` in [src/lib/workspaceSnapshot.ts](../../src/lib/workspaceSnapshot.ts). In Supabase mode, `loadPersistedState` is called afterward to re-sync.
+
+In plain terms:
+- Demo/local mode still uses seeded in-memory data so the dashboards are easy to open while developing.
+- Real logged-in Supabase sessions try to read/write dashboard data from Supabase.
+- If Supabase is configured but the dashboard persistence migration has not been run, the app falls back to demo data and logs a warning in the browser console.
+
+### AI chat history
+- [src/lib/chatHistory.ts](../../src/lib/chatHistory.ts) - thin wrapper (`loadChatHistory`, `insertChatMessage`, `clearChatHistory`) for the `public.chat_messages` Supabase table.
+- Chat messages are scoped by `(user_id, group_id)`. Switching groups shows only that group's conversation. RLS ensures users only see their own messages.
+- In demo mode or when Supabase is unconfigured, all chat functions are no-ops and chat works in-memory only (messages are lost on sidebar close).
+- The "Clear history" button in the sidebar header deletes all rows for the current user + group.
 
 ### Supabase Auth and `public.users` profile
 - [src/lib/supabaseClient.ts](../../src/lib/supabaseClient.ts) - `createClient` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; `isSupabaseConfigured` guard.
@@ -21,8 +37,8 @@ See [index.md](index.md) for the docs routing map.
 - [src/components/ProtectedRoute.tsx](../../src/components/ProtectedRoute.tsx) - if Supabase env is missing, dashboards render without login. If Supabase is configured, routes require either a valid session **or** demo session; otherwise redirect to `/login`.
 
 ### Row-level security (database)
-Policies are defined in SQL migrations under [supabase/migrations](../../supabase/migrations/). Lecturers are scoped to groups they own; students have read access to tasks/logs in their groups and can insert/update their own `contribution_logs` rows. Admins retain broad access where defined in SQL.
+Policies are defined in SQL migrations under [supabase/migrations](../../supabase/migrations/). Lecturers are scoped to groups they own; students have read access to dashboard data in their groups and can insert/update their own `contribution_logs` rows. Student reports are visible to lecturers/admins, not group peers. Admins retain broad access where defined in SQL.
 
 ### Notes
-- Dashboard business data (tasks, groups, etc.) is still **in-memory** in `TeamContext`; wiring CRUD to Supabase tables is future work.
+- Demo-mode behavior is intentionally preserved. Do not remove the local seeded fallback unless the login/demo flow is redesigned.
 - AI behaviors in the UI remain simulated with timers (student and lecturer dashboards, AI chat widget).

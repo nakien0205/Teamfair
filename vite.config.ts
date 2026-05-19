@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      "/api/student-agent": {
+        target: "http://127.0.0.1:8010",
+        changeOrigin: true,
+        rewrite: pathStr => pathStr.replace(/^\/api\/student-agent/, "") || "/",
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

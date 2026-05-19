@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -22,7 +22,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
-import AIChatWidget from '@/components/feature-groups/AIChatWidget';
+import StudentAgentSidebar, { type LockedSection } from '@/components/feature-groups/StudentAgentSidebar';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
@@ -54,6 +54,8 @@ const StudentDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<MemberStat | null>(null);
   const [activeSection, setActiveSection] = useState('work');
+  const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
+  const [lockedSection, setLockedSection] = useState<LockedSection>(null);
   const anonymousFrom = t(language, 'anonymousFrom');
 
   useEffect(() => {
@@ -232,6 +234,18 @@ const StudentDashboard = () => {
             navigate("/login");
           }}
           leftSlot={<SidebarTrigger />}
+          rightSlot={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAiSidebarOpen(true)}
+              aria-label={tr(language, 'Mở trợ lý AI workspace', 'Open workspace AI assistant')}
+              className="gap-1.5"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs">AI</span>
+            </Button>
+          }
           showRoleSelect={false}
         />
       }
@@ -254,7 +268,7 @@ const StudentDashboard = () => {
 
         {activeSection === 'work' ? (
           <div className="space-y-6">
-            <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} />
+            <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} locked={lockedSection === 'work'} />
 
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <div className="flex items-center justify-between mb-4">
@@ -345,7 +359,7 @@ const StudentDashboard = () => {
 
         {activeSection === 'calendar' ? (
           <div className="space-y-6">
-            <ProjectCalendar isLeader={isLeader} />
+            <ProjectCalendar isLeader={isLeader} locked={lockedSection === 'calendar'} />
           </div>
         ) : null}
 
@@ -394,7 +408,7 @@ const StudentDashboard = () => {
               </section>
             </div>
 
-            <AIChatWidget />
+
 
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <h2 className="font-display text-lg font-semibold mb-4">
@@ -526,6 +540,8 @@ const StudentDashboard = () => {
             </section>
           </div>
         ) : null}
+
+        <StudentAgentSidebar open={aiSidebarOpen} onOpenChange={setAiSidebarOpen} onLockedSectionChange={setLockedSection} />
 
         <StudentReportModal
           open={reportOpen}

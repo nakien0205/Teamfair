@@ -1,0 +1,2 @@
+Start-Process powershell -ArgumentList "-NoExit -Command npm run dev"
+Start-Process powershell -WorkingDirectory "$PSScriptRoot\python" -ArgumentList "-NoExit -Command python -m uvicorn student_workspace_agent.server:app --host 127.0.0.1 --port 8010"

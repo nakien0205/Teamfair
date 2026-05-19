@@ -26,9 +26,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 interface Props {
   isLeader: boolean;
   currentUser: string;
+  locked?: boolean;
 }
 
-const KanbanBoard = ({ isLeader, currentUser }: Props) => {
+const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
   const { tasks, members, addTask, updateTaskStatus, updateTask } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
@@ -96,7 +97,15 @@ const KanbanBoard = ({ isLeader, currentUser }: Props) => {
   const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === currentUser);
 
   return (
-    <section className="bg-card rounded-xl p-6 shadow-card border border-border">
+    <section className="bg-card rounded-xl p-6 shadow-card border border-border relative">
+      {locked && (
+        <div className="absolute inset-0 z-10 rounded-xl bg-background/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-auto">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/90 px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg animate-pulse">
+            {tr(language, 'AI đang làm việc…', 'AI working…')}
+          </span>
+        </div>
+      )}
+      <div className={locked ? 'pointer-events-none opacity-60' : ''}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg font-semibold">{tr(language, 'Bảng Task (Kanban)', 'Task Board (Kanban)')}</h2>
         {isLeader && (
@@ -220,6 +229,7 @@ const KanbanBoard = ({ isLeader, currentUser }: Props) => {
             </div>
           </button>
         ))}
+      </div>
       </div>
     </section>
   );
