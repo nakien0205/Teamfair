@@ -24,6 +24,8 @@ import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 import StudentAgentSidebar, { type LockedSection } from '@/components/feature-groups/StudentAgentSidebar';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
+import { useNotifications } from '@/context/NotificationContext';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
 
@@ -39,10 +41,12 @@ interface PeerEvaluation {
 const StudentDashboard = () => {
   const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName } = useTeam();
   const { toast } = useToast();
+  const { sendNotification } = useNotifications();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
+  const [notifyTeam, setNotifyTeam] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [peerEvaluations, setPeerEvaluations] = useState<PeerEvaluation[]>([]);
@@ -97,7 +101,23 @@ const StudentDashboard = () => {
   const handleCreateTask = () => {
     if (!newTask.name || !newTask.assignedTo) return;
     addTask(newTask);
+    if (notifyTeam) {
+      members
+        .filter(m => m.name !== currentUserName)
+        .forEach(member => {
+          void sendNotification(
+            member.id || member.name,
+            currentUserName,
+            tr(
+              language,
+              `Đã giao task mới: "${newTask.name}"`,
+              `Assigned a new task: "${newTask.name}"`
+            )
+          );
+        });
+    }
     setNewTask({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
+    setNotifyTeam(false);
     setModalOpen(false);
     toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: tr(language, `"${newTask.name}" giao cho ${newTask.assignedTo}`, `"${newTask.name}" assigned to ${newTask.assignedTo}`) });
   };
@@ -210,7 +230,7 @@ const StudentDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Sinh viên", "Student")}
-          subtitle={tr(language, "Student workspace", "Student workspace")}
+          subtitle={isDemoSession() ? tr(language, "Student workspace", "Student workspace") : currentUserName}
           items={[
             { key: 'work', label: tr(language, 'Công việc', 'Work'), icon: <LayoutGrid /> },
             { key: 'calendar', label: tr(language, 'Lịch', 'Calendar'), icon: <CalendarDays /> },
@@ -250,20 +270,22 @@ const StudentDashboard = () => {
       }
     >
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
-        <div className="bg-card rounded-xl p-4 shadow-card border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">{tr(language, 'Vai trò hiện tại', 'Current role')}</p>
-            <p className="font-display font-semibold text-lg">{studentRole}</p>
+        {isDemoSession() && (
+          <div className="bg-card rounded-xl p-4 shadow-card border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">{tr(language, 'Vai trò hiện tại', 'Current role')}</p>
+              <p className="font-display font-semibold text-lg">{studentRole}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => {
+              const next = isLeader ? 'Member' : 'Leader';
+              setStudentRole(next);
+              toast({ title: tr(language, 'Đã chuyển vai trò', 'Role changed'), description: tr(language, `Bạn giờ là ${next}`, `You are now ${next}`) });
+            }}>
+              <ArrowLeftRight className="h-4 w-4 mr-1" />
+              {tr(language, `Chuyển sang ${isLeader ? 'Member' : 'Leader'} (Demo)`, `Switch to ${isLeader ? 'Member' : 'Leader'} (Demo)`) }
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => {
-            const next = isLeader ? 'Member' : 'Leader';
-            setStudentRole(next);
-            toast({ title: tr(language, 'Đã chuyển vai trò', 'Role changed'), description: tr(language, `Bạn giờ là ${next}`, `You are now ${next}`) });
-          }}>
-            <ArrowLeftRight className="h-4 w-4 mr-1" />
-            {tr(language, `Chuyển sang ${isLeader ? 'Member' : 'Leader'} (Demo)`, `Switch to ${isLeader ? 'Member' : 'Leader'} (Demo)`) }
-          </Button>
-        </div>
+        )}
 
         {activeSection === 'work' ? (
           <div className="space-y-6">
@@ -300,6 +322,16 @@ const StudentDashboard = () => {
                         <div className="space-y-1">
                           <Label>{tr(language, 'Deadline', 'Deadline')}</Label>
                           <Input type="date" value={newTask.deadline} onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))} />
+                        </div>
+                        <div className="flex items-center space-x-2 py-2">
+                          <Checkbox
+                            id="notifyTeam"
+                            checked={notifyTeam}
+                            onCheckedChange={(checked) => setNotifyTeam(!!checked)}
+                          />
+                          <Label htmlFor="notifyTeam" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
+                            {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
+                          </Label>
                         </div>
                         <Button className="w-full" onClick={handleCreateTask}>{tr(language, 'Tạo Task', 'Create task')}</Button>
                       </div>

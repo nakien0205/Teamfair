@@ -22,7 +22,7 @@ import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 
 const LecturerDashboard = () => {
-  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore } = useTeam();
+  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, currentUserName } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
@@ -97,7 +97,7 @@ const LecturerDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Giảng viên", "Lecturer")}
-          subtitle={tr(language, "Lecturer workspace", "Lecturer workspace")}
+          subtitle={isDemoSession() ? tr(language, "Lecturer workspace", "Lecturer workspace") : currentUserName}
           items={[
             { key: 'overview', label: tr(language, 'Tổng quan', 'Overview'), icon: <LayoutDashboard /> },
             { key: 'reports', label: tr(language, 'Báo cáo', 'Reports'), icon: <AlertTriangle /> },
