@@ -26,10 +26,13 @@ In plain terms:
 - The "Clear history" button in the sidebar header deletes all rows for the current user + group.
 
 ### Supabase Auth and `public.users` profile
-- [src/lib/supabaseClient.ts](../../src/lib/supabaseClient.ts) - `createClient` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; `isSupabaseConfigured` guard.
+- [src/lib/supabaseClient.ts](../../src/lib/supabaseClient.ts) - `createClient` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; `isSupabaseConfigured` guard. Note: In Vercel deployments, official Supabase Marketplace variables (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) are automatically mapped to Vite's prefixes during build time in `vite.config.ts`.
 - [src/context/AuthContext.tsx](../../src/context/AuthContext.tsx) - session (`supabase.auth`), optional row from `public.users` (`id`, `email`, `role`, `full_name`, `profile_completed`), `refreshProfile`, `signOut` (also clears demo session flag).
+  - **Stuck-on-Reload Resilience & Deduplication**: To prevent hanging database queries from locking the application (e.g. on invalid keys or network dropouts), a **5-second timeout** (`Promise.race`) fallback is wrapped around `loadProfile()`. Multiple concurrent profile requests (e.g. during double mounts or simultaneous listener firings) are deduplicated using a `loadingProfileUserId` ref. Crucially, the timeout is cleared immediately upon successful loading, preventing lingering timer rejections and console errors.
+  - **Missing Profile Fallback**: If a user has a valid active Supabase Auth session but no matching row in `public.users`, a fallback profile is automatically generated using session metadata to keep the app functional.
 - **Email login** - [src/pages/Login.tsx](../../src/pages/Login.tsx) uses `signInWithPassword` / `signUp`. Passwords are stored only in **Supabase Auth** (`auth.users`), not in `public.users`.
 - **Google login** - `signInWithOAuth({ provider: 'google' })` with `redirectTo` back to `/login?role=...`. Before redirect, the chosen role is stored in `sessionStorage`; after return, the app calls RPC `set_signup_role` when `profile_completed` is still false (see migration `20260516100000_users_profile_completed_and_signup_role.sql`).
+  - **Google Auth Error Handling**: Re-routes and parses technical redirect errors (e.g. account exists with other provider, unconfigured provider) from `window.location.hash` / `window.location.search`, presenting beautiful translated toast notifications. Parameters are automatically wiped from history using `window.history.replaceState` to prevent toast display loops on page reload.
 - **Email sign-up role** - `signUp` passes `app_role` and `full_name` in `options.data`; trigger `handle_new_user` on `auth.users` inserts into `public.users` with that role when valid (`student` | `lecturer`).
 
 ### Demo mode vs real auth

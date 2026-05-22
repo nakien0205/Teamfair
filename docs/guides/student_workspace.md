@@ -4,8 +4,10 @@ See [index.md](index.md) for the docs routing map.
 Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx) when Supabase is configured; see [state_and_data.md](state_and_data.md)).
 - Task work and status flow
   - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, evidence uploads.
+  - **Dynamic Identity & Role Mapping**: The dashboard dynamically maps the student's name and role based on their active session. `currentUserName` is bound to the logged-in profile's `full_name` (falling back to demo mocks like `'Trần Thị B'` only when unauthenticated). The active student's role (`Leader` vs `Member`) is fetched directly from their row in the `group_members` table in Supabase.
 - Calendar and timeline
   - [src/components/ProjectCalendar.tsx](src/components/ProjectCalendar.tsx) - month/week views, event creation, task deadline sync.
+  - **Calendar Persistence**: Calendar events created by students (such as Meetings or Milestones) are persisted in real-time to the `public.calendar_events` database table in Supabase. These manual events merge seamlessly on the calendar view with automatically-generated task deadline events derived from the group's tasks. Access and mutation rights are secured via PostgreSQL Row-Level Security (RLS) policies.
 - Contribution and fairness
   - [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx) - charts, score card, warnings.
   - [src/components/StudentReportModal.tsx](src/components/StudentReportModal.tsx) - report a member to lecturer.

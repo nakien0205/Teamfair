@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { clearDemoSession } from "@/lib/demoSession";
@@ -45,6 +45,7 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AppUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingProfileUserId = useRef<string | null>(null);
 
   const loadProfile = useCallback(async (userId: string, userObject?: User | null) => {
     if (!isSupabaseConfigured) {
@@ -89,6 +90,32 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
+    const loadProfileWithTimeout = async (uid: string, u: User) => {
+      if (loadingProfileUserId.current === uid) return;
+      loadingProfileUserId.current = uid;
+
+      let timer: NodeJS.Timeout | null = null;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("Timeout loading profile"));
+        }, 5000);
+      });
+
+      try {
+        await Promise.race([
+          loadProfile(uid, u),
+          timeoutPromise
+        ]);
+      } finally {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        if (loadingProfileUserId.current === uid) {
+          loadingProfileUserId.current = null;
+        }
+      }
+    };
+
     const init = async () => {
       try {
         const { data: { session: s } } = await supabase.auth.getSession();
@@ -96,10 +123,7 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
         setSession(s);
         setUser(s?.user ?? null);
         if (s?.user?.id) {
-          await Promise.race([
-            loadProfile(s.user.id, s.user),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout loading profile")), 5000))
-          ]);
+          await loadProfileWithTimeout(s.user.id, s.user);
         }
       } catch (error) {
         console.error("Error during auth session initialization:", error);
@@ -118,10 +142,7 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
       setUser(s?.user ?? null);
       try {
         if (s?.user?.id) {
-          await Promise.race([
-            loadProfile(s.user.id, s.user),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout loading profile")), 5000))
-          ]);
+          await loadProfileWithTimeout(s.user.id, s.user);
         } else {
           setProfile(null);
         }
