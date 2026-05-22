@@ -11,22 +11,12 @@ import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Clock } fr
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 
-export type EventType = 'Meeting' | 'Task Deadline' | 'Milestone';
+export type { EventType, CalendarEvent } from '@/context/TeamContext';
 
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  type: EventType;
-  date: string; // YYYY-MM-DD
-  time: string;
-  description: string;
-  createdBy: 'Leader' | 'Member';
-}
-
-const EVENT_COLORS: Record<EventType, { bg: string; text: string; dot: string }> = {
-  'Meeting': { bg: 'bg-blue-500/15', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
-  'Task Deadline': { bg: 'bg-red-500/15', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
-  'Milestone': { bg: 'bg-green-500/15', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500' },
+const EVENT_COLORS: Record<EventType, { bg: string; text: string; dot: string; border: string }> = {
+  'Meeting': { bg: 'bg-blue-500/10 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500', border: 'border-l-2 border-blue-500' },
+  'Task Deadline': { bg: 'bg-red-500/10 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500', border: 'border-l-2 border-red-500' },
+  'Milestone': { bg: 'bg-emerald-500/10 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500', border: 'border-l-2 border-emerald-500' },
 };
 
 interface Props {
@@ -34,18 +24,11 @@ interface Props {
   locked?: boolean;
 }
 
-const DEMO_EVENTS: CalendarEvent[] = [
-  { id: 'demo-1', title: 'Team Meeting', type: 'Meeting', date: '2026-03-18', time: '19:00', description: 'Weekly progress review', createdBy: 'Leader' },
-  { id: 'demo-2', title: 'Milestone 1 – Proposal Submission', type: 'Milestone', date: '2026-03-25', time: '', description: 'Submit project proposal to lecturer', createdBy: 'Leader' },
-  { id: 'demo-3', title: 'Sprint Review', type: 'Meeting', date: '2026-03-12', time: '14:00', description: 'Review sprint deliverables', createdBy: 'Leader' },
-];
-
 const ProjectCalendar = ({ isLeader, locked }: Props) => {
-  const { tasks } = useTeam();
+  const { tasks, calendarEvents, addCalendarEvent, updateCalendarEvent, deleteCalendarEvent } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
 
-  const [events, setEvents] = useState<CalendarEvent[]>(DEMO_EVENTS);
   const [currentDate, setCurrentDate] = useState(new Date(2026, 2, 1)); // March 2026
   const [view, setView] = useState<'month' | 'week'>('month');
   const [addOpen, setAddOpen] = useState(false);
@@ -74,12 +57,12 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
         language === "vi"
           ? `Được giao cho: ${t.assignedTo} · Trạng thái: ${t.status}`
           : `Assigned to: ${t.assignedTo} · Status: ${t.status}`,
-      createdBy: 'Leader' as const,
+      createdBy: 'Leader',
     })),
-    [tasks]
+    [tasks, language]
   );
 
-  const allEvents = useMemo(() => [...events, ...taskDeadlineEvents], [events, taskDeadlineEvents]);
+  const allEvents = useMemo(() => [...calendarEvents, ...taskDeadlineEvents], [calendarEvents, taskDeadlineEvents]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -124,10 +107,13 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
       return;
     }
     if (editMode && detailEvent) {
-      setEvents(prev => prev.map(e => e.id === detailEvent.id
-        ? { ...e, title: formData.title, type: formData.type, date: formData.date, time: formData.time, description: formData.description }
-        : e
-      ));
+      updateCalendarEvent(detailEvent.id, {
+        title: formData.title,
+        type: formData.type,
+        date: formData.date,
+        time: formData.time,
+        description: formData.description,
+      });
       toast({
         title: tr(language, 'Đã cập nhật', 'Updated'),
         description: language === 'vi' ? `Sự kiện "${formData.title}" đã được sửa` : `Event "${formData.title}" has been updated`,
@@ -135,12 +121,13 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
       setEditMode(false);
       setDetailEvent(null);
     } else {
-      const newEvent: CalendarEvent = {
-        id: Date.now().toString(),
-        ...formData,
-        createdBy: isLeader ? 'Leader' : 'Member',
-      };
-      setEvents(prev => [...prev, newEvent]);
+      addCalendarEvent({
+        title: formData.title,
+        type: formData.type,
+        date: formData.date,
+        time: formData.time,
+        description: formData.description,
+      });
       toast({
         title: tr(language, 'Đã tạo sự kiện', 'Event created'),
         description: language === 'vi' ? `"${formData.title}" đã được thêm vào lịch` : `"${formData.title}" has been added to the calendar`,
@@ -151,7 +138,7 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
   };
 
   const handleDeleteEvent = (ev: CalendarEvent) => {
-    setEvents(prev => prev.filter(e => e.id !== ev.id));
+    deleteCalendarEvent(ev.id);
     toast({
       title: tr(language, 'Đã xóa', 'Deleted'),
       description: language === 'vi' ? `Sự kiện "${ev.title}" đã bị xóa` : `Event "${ev.title}" has been deleted`,
@@ -206,7 +193,7 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
     }
 
     for (let i = 0; i < firstDayOfWeek; i++) {
-      cells.push(<div key={`empty-${i}`} className="min-h-[80px] bg-muted/20 rounded-md" />);
+      cells.push(<div key={`empty-${i}`} className="min-h-[90px] bg-muted/10 rounded-md opacity-40 border border-transparent" />);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -217,12 +204,14 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
       cells.push(
         <div
           key={day}
-          className={`min-h-[80px] rounded-md border p-1 transition-colors hover:bg-muted/40 ${isToday ? 'border-primary bg-primary/5' : 'border-border'}`}
+          className={`min-h-[90px] rounded-md border p-1.5 transition-all duration-300 hover:bg-muted/40 hover:shadow-sm ${isToday ? 'border-primary bg-primary/5 shadow-inner' : 'border-border'}`}
         >
-          <div className={`text-xs font-medium mb-0.5 px-1 ${isToday ? 'text-primary font-bold' : 'text-foreground'}`}>
-            {day}
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${isToday ? 'bg-primary text-primary-foreground font-bold' : 'text-foreground'}`}>
+              {day}
+            </span>
           </div>
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {dayEvents.slice(0, 3).map(ev => {
               const c = EVENT_COLORS[ev.type];
               return (
@@ -230,7 +219,7 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
                   key={ev.id}
                   data-event-id={ev.id}
                   onClick={handleEventClick}
-                  className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate ${c.bg} ${c.text} hover:opacity-80 transition-opacity`}
+                  className={`w-full text-left text-[10px] px-2 py-0.5 rounded truncate shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95 ${c.bg} ${c.text} ${c.border} hover:opacity-90`}
                 >
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot} mr-1`} />
                   {ev.title}
@@ -238,31 +227,31 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
               );
             })}
             {dayEvents.length > 3 && (
-              <p className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</p>
+              <p className="text-[9px] font-semibold text-muted-foreground px-1 text-right">+{dayEvents.length - 3} more</p>
             )}
           </div>
         </div>
       );
     }
 
-    return <div className="grid grid-cols-7 gap-1">{cells}</div>;
+    return <div className="grid grid-cols-7 gap-1.5 animate-in fade-in zoom-in-95 duration-200">{cells}</div>;
   };
 
   const renderWeekView = () => {
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     return (
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5 animate-in fade-in zoom-in-95 duration-200">
         {weekDays.map(d => {
           const dateStr = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
           const dayEvents = getEventsForDate(dateStr);
           const isToday = dateStr === todayStr;
           return (
-            <div key={d.getTime()} className={`min-h-[160px] rounded-md border p-2 ${isToday ? 'border-primary bg-primary/5' : 'border-border'}`}>
-              <div className="text-center mb-2">
-                <div className="text-[10px] text-muted-foreground">{dayNames[d.getDay()]}</div>
-                <div className={`text-sm font-semibold ${isToday ? 'text-primary' : ''}`}>{d.getDate()}</div>
+            <div key={d.getTime()} className={`min-h-[160px] rounded-md border p-2.5 transition-all duration-300 hover:bg-muted/40 hover:shadow-sm ${isToday ? 'border-primary bg-primary/5 shadow-inner' : 'border-border'}`}>
+              <div className="text-center mb-3">
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{dayNames[d.getDay()]}</div>
+                <div className={`mt-0.5 inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full ${isToday ? 'bg-primary text-primary-foreground font-bold' : 'text-foreground'}`}>{d.getDate()}</div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {dayEvents.map(ev => {
                   const c = EVENT_COLORS[ev.type];
                   return (
@@ -270,11 +259,13 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
                       key={ev.id}
                       data-event-id={ev.id}
                       onClick={handleEventClick}
-                      className={`w-full text-left text-[10px] px-1.5 py-1 rounded ${c.bg} ${c.text} hover:opacity-80 transition-opacity`}
+                      className={`w-full text-left text-[10px] px-2 py-1 rounded shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-95 ${c.bg} ${c.text} ${c.border} hover:opacity-90`}
                     >
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot} mr-1`} />
-                      <span className="truncate block">{ev.title}</span>
-                      {ev.time && <span className="text-[9px] opacity-70">{ev.time}</span>}
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot}`} />
+                        <span className="truncate font-semibold block flex-1">{ev.title}</span>
+                      </div>
+                      {ev.time && <span className="text-[9px] opacity-75 font-mono mt-0.5 block">{ev.time}</span>}
                     </button>
                   );
                 })}

@@ -16,9 +16,24 @@ import {
   updatePersistedTaskStatus,
   upsertLecturerScore,
   writeBackAgentSnapshot,
+  insertCalendarEvent,
+  updatePersistedCalendarEvent,
+  deletePersistedCalendarEvent,
 } from '@/lib/teamPersistence';
 import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
 import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
+
+export type EventType = 'Meeting' | 'Task Deadline' | 'Milestone';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: EventType;
+  date: string; // YYYY-MM-DD
+  time: string;
+  description: string;
+  createdBy: string;
+}
 
 export interface Task {
   id: string;
@@ -121,6 +136,11 @@ interface TeamContextType {
   studentBadges: VerifiedBadge[];
   addLecturerStudentEvaluation: (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => void;
   applyAgentSnapshot: (snapshot: WorkspaceSnapshotJson) => void;
+  calendarEvents: CalendarEvent[];
+  addCalendarEvent: (event: Omit<CalendarEvent, 'id' | 'createdBy'>) => void;
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
+  deleteCalendarEvent: (id: string) => void;
+  currentUserName: string;
 }
 
 const initialMembers: MemberStat[] = [
@@ -144,6 +164,12 @@ const initialLog: ActivityLogEntry[] = [
 const initialMaterials: MaterialFile[] = [
   { id: 'demo-1', fileName: 'ProjectGuidelines.pdf', size: 245760, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 86400000) },
   { id: 'demo-2', fileName: 'TeamworkRubric.docx', size: 102400, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 43200000) },
+];
+
+export const DEMO_EVENTS: CalendarEvent[] = [
+  { id: 'demo-1', title: 'Team Meeting', type: 'Meeting', date: '2026-03-18', time: '19:00', description: 'Weekly progress review', createdBy: 'Leader' },
+  { id: 'demo-2', title: 'Milestone 1 – Proposal Submission', type: 'Milestone', date: '2026-03-25', time: '', description: 'Submit project proposal to lecturer', createdBy: 'Leader' },
+  { id: 'demo-3', title: 'Sprint Review', type: 'Meeting', date: '2026-03-12', time: '14:00', description: 'Review sprint deliverables', createdBy: 'Leader' },
 ];
 
 const makeGroups = (): Group[] => [
@@ -191,12 +217,13 @@ export const useTeam = () => {
 };
 
 export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<Group[]>(makeGroups);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [studentRole, setStudentRole] = useState<'Leader' | 'Member'>('Leader');
   const [reports, setReports] = useState<StudentReport[]>([]);
   const [materialsByGroupId, setMaterialsByGroupId] = useState<Record<string, MaterialFile[]>>({ g1: initialMaterials });
+  const [calendarEventsByGroupId, setCalendarEventsByGroupId] = useState<Record<string, CalendarEvent[]>>({ g1: DEMO_EVENTS });
   const [lecturerStudentReviews, setLecturerStudentReviews] = useState<LecturerStudentReview[]>([]);
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
   const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('demo');
@@ -206,11 +233,33 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const members = group.members;
   const activityLog = group.activityLog;
   const materials = useMemo(() => materialsByGroupId[group.id] ?? [], [group.id, materialsByGroupId]);
+  const calendarEvents = useMemo(() => calendarEventsByGroupId[group.id] ?? [], [group.id, calendarEventsByGroupId]);
+
+  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id) && !isDemoSession();
+
+  const resolvedStudentRole = useMemo(() => {
+    if (canPersist && user?.id) {
+      const currentUserMember = members.find(m => m.id === user.id);
+      if (currentUserMember?.role) {
+        return (currentUserMember.role === 'Leader' ? 'Leader' : 'Member') as 'Leader' | 'Member';
+      }
+    }
+    return studentRole;
+  }, [canPersist, user?.id, members, studentRole]);
+
+  const currentUserName = useMemo(() => {
+    if (isSupabaseConfigured && !isDemoSession() && profile?.full_name) {
+      return profile.full_name;
+    }
+    const isLeader = resolvedStudentRole === 'Leader';
+    return isLeader ? (members[0]?.name || 'Nguyễn Văn A') : 'Trần Thị B';
+  }, [profile, resolvedStudentRole, members]);
 
   const resetDemoState = useCallback(() => {
     setGroups(makeGroups());
     setReports([]);
     setMaterialsByGroupId({ g1: initialMaterials });
+    setCalendarEventsByGroupId({ g1: DEMO_EVENTS });
     setLecturerStudentReviews([]);
     setStudentBadges([]);
     setCurrentGroupIndex(0);
@@ -226,6 +275,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGroups(snapshot.groups);
     setReports(snapshot.reports);
     setMaterialsByGroupId(snapshot.materialsByGroupId);
+    setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
     setLecturerStudentReviews(snapshot.lecturerStudentReviews);
     setStudentBadges(snapshot.studentBadges);
     setCurrentGroupIndex(0);
@@ -256,6 +306,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setGroups(snapshot.groups);
         setReports(snapshot.reports);
         setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
         setLecturerStudentReviews(snapshot.lecturerStudentReviews);
         setStudentBadges(snapshot.studentBadges);
         setCurrentGroupIndex(0);
@@ -270,8 +321,6 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cancelled = true;
     };
   }, [authLoading, resetDemoState, user?.id]);
-
-  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id) && !isDemoSession();
 
   const persist = useCallback((operation: () => Promise<void>) => {
     if (!canPersist) return;
@@ -445,6 +494,41 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [currentGroupIndex, groups, persist],
   );
 
+  const addCalendarEvent = useCallback((event: Omit<CalendarEvent, 'id' | 'createdBy'>) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    const newEvent: CalendarEvent = {
+      ...event,
+      id: Date.now().toString(),
+      createdBy: resolvedStudentRole === 'Leader' ? 'Leader' : 'Member',
+    };
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: [...(prev[currentGroup.id] ?? []), newEvent],
+    }));
+    persist(() => insertCalendarEvent(currentGroup.id, newEvent));
+  }, [currentGroupIndex, groups, persist, resolvedStudentRole]);
+
+  const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEvent>) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).map(e => e.id === id ? { ...e, ...updates } : e),
+    }));
+    persist(() => updatePersistedCalendarEvent(id, updates));
+  }, [currentGroupIndex, groups, persist]);
+
+  const deleteCalendarEvent = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).filter(e => e.id !== id),
+    }));
+    persist(() => deletePersistedCalendarEvent(id));
+  }, [currentGroupIndex, groups, persist]);
+
   const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
     const state = deserializeSnapshotToTeamState(snapshot);
     setGroups(state.groups);
@@ -464,6 +548,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         materialsByGroupId,
         lecturerStudentReviews,
         studentBadges,
+        calendarEventsByGroupId,
       };
       void writeBackAgentSnapshot(state, currentState)
         .then(() => loadPersistedState())
@@ -479,6 +564,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     materialsByGroupId,
     lecturerStudentReviews,
     studentBadges,
+    calendarEventsByGroupId,
     loadPersistedState,
   ]);
 
@@ -497,7 +583,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addLog,
       updateTask,
       updateLecturerScore,
-      studentRole,
+      studentRole: resolvedStudentRole,
       setStudentRole,
       reports,
       addReport,
@@ -509,6 +595,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       studentBadges,
       addLecturerStudentEvaluation,
       applyAgentSnapshot,
+      calendarEvents,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      currentUserName,
     }),
     [
       groups,
@@ -524,7 +615,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addLog,
       updateTask,
       updateLecturerScore,
-      studentRole,
+      resolvedStudentRole,
       setStudentRole,
       reports,
       addReport,
@@ -536,6 +627,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       studentBadges,
       addLecturerStudentEvaluation,
       applyAgentSnapshot,
+      calendarEvents,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      currentUserName,
     ],
   );
 

@@ -7,6 +7,8 @@ import type {
   StudentReport,
   Task,
   VerifiedBadge,
+  CalendarEvent,
+  EventType,
 } from "@/context/TeamContext";
 import type { DeserializedTeamState } from "./workspaceSnapshot";
 
@@ -20,6 +22,7 @@ type DbGroup = {
 type DbMember = {
   group_id: string;
   student_id: string;
+  role?: string;
   users?: { id: string; full_name: string; role?: string } | { id: string; full_name: string; role?: string }[] | null;
 };
 
@@ -91,6 +94,18 @@ type DbLecturerScore = {
   score: number;
 };
 
+export type DbCalendarEvent = {
+  id: string;
+  group_id: string;
+  title: string;
+  type: EventType;
+  event_date: string;
+  event_time: string | null;
+  description: string | null;
+  created_by_name: string;
+  created_at?: string;
+};
+
 export type TeamRows = {
   groups: DbGroup[];
   members: DbMember[];
@@ -101,6 +116,7 @@ export type TeamRows = {
   lecturerStudentReviews: DbLecturerStudentReview[];
   verifiedBadges: DbVerifiedBadge[];
   lecturerScores?: DbLecturerScore[];
+  calendarEvents?: DbCalendarEvent[];
 };
 
 export type PersistedTeamSnapshot = {
@@ -109,6 +125,7 @@ export type PersistedTeamSnapshot = {
   materialsByGroupId: Record<string, MaterialFile[]>;
   lecturerStudentReviews: LecturerStudentReview[];
   studentBadges: VerifiedBadge[];
+  calendarEventsByGroupId: Record<string, CalendarEvent[]>;
 };
 
 export function taskStatusToDb(status: Task["status"]): DbTaskStatus {
@@ -219,7 +236,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       return {
         id: member.student_id,
         name,
-        role: "Member",
+        role: member.role || "Member",
         completedTasks: memberApprovedTasks.length,
         contributionPercent: totalApprovedPercent > 0
           ? Math.round((memberApprovedPercent / totalApprovedPercent) * 100)
@@ -301,7 +318,23 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
     link: badge.link,
   }));
 
-  return { groups, reports, materialsByGroupId, lecturerStudentReviews, studentBadges };
+  const calendarEventsByGroupId = (rows.calendarEvents ?? []).reduce<Record<string, CalendarEvent[]>>((acc, event) => ({
+    ...acc,
+    [event.group_id]: [
+      ...(acc[event.group_id] ?? []),
+      {
+        id: event.id,
+        title: event.title,
+        type: event.type,
+        date: event.event_date,
+        time: event.event_time || "",
+        description: event.description || "",
+        createdBy: event.created_by_name,
+      },
+    ],
+  }), {});
+
+  return { groups, reports, materialsByGroupId, lecturerStudentReviews, studentBadges, calendarEventsByGroupId };
 }
 
 async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
@@ -315,7 +348,7 @@ export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot
     supabase.from("groups").select("id,project_name").order("created_at", { ascending: true }),
   );
   const members = await selectOrThrow<DbMember[]>(
-    supabase.from("group_members").select("group_id,student_id,users:student_id(id,full_name,role)"),
+    supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
   );
   const tasks = await selectOrThrow<DbTask[]>(
     supabase
@@ -352,6 +385,12 @@ export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot
   const lecturerScores = await selectOrThrow<DbLecturerScore[]>(
     supabase.from("lecturer_scores").select("group_id,student_name,score"),
   );
+  const calendarEvents = await selectOrThrow<DbCalendarEvent[]>(
+    supabase
+      .from("calendar_events")
+      .select("id,group_id,title,type,event_date,event_time,description,created_by_name,created_at")
+      .order("event_date", { ascending: true }),
+  );
 
   return mapTeamRowsToSnapshot({
     groups,
@@ -363,6 +402,7 @@ export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot
     lecturerStudentReviews,
     verifiedBadges,
     lecturerScores,
+    calendarEvents,
   });
 }
 
@@ -654,5 +694,37 @@ export async function writeBackAgentSnapshot(
       }
     }
   }
+}
+
+export async function insertCalendarEvent(groupId: string, event: Omit<CalendarEvent, "id">): Promise<void> {
+  const { error } = await supabase.from("calendar_events").insert({
+    group_id: groupId,
+    title: event.title,
+    type: event.type,
+    event_date: event.date,
+    event_time: event.time || null,
+    description: event.description || null,
+    created_by_name: event.createdBy,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function updatePersistedCalendarEvent(id: string, updates: Partial<CalendarEvent>): Promise<void> {
+  const payload: Record<string, any> = {};
+  if (updates.title !== undefined) payload.title = updates.title;
+  if (updates.type !== undefined) payload.type = updates.type;
+  if (updates.date !== undefined) payload.event_date = updates.date;
+  if (updates.time !== undefined) payload.event_time = updates.time || null;
+  if (updates.description !== undefined) payload.description = updates.description || null;
+  if (updates.createdBy !== undefined) payload.created_by_name = updates.createdBy;
+
+  if (Object.keys(payload).length === 0) return;
+  const { error } = await supabase.from("calendar_events").update(payload).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deletePersistedCalendarEvent(id: string): Promise<void> {
+  const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 

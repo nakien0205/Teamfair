@@ -37,7 +37,7 @@ interface PeerEvaluation {
 }
 
 const StudentDashboard = () => {
-  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole } = useTeam();
+  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
@@ -67,9 +67,8 @@ const StudentDashboard = () => {
   }, [profile, authLoading, navigate]);
 
   const isLeader = studentRole === 'Leader';
-  const currentUserName = isLeader ? members[0]?.name : CURRENT_USER_MEMBER;
-  const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === CURRENT_USER_MEMBER);
-  const kanbanUser = isLeader ? (members[0]?.name || CURRENT_USER_MEMBER) : CURRENT_USER_MEMBER;
+  const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === currentUserName);
+  const kanbanUser = isLeader ? (members[0]?.name || currentUserName) : currentUserName;
 
   const handleSubmitEval = () => {
     if (!evalTarget || evalRating === 0) {
@@ -109,7 +108,7 @@ const StudentDashboard = () => {
   };
 
   const handleStatusChange = (t: Task, status: Task['status']) => {
-    updateTaskStatus(t.id, status, isLeader ? 'Leader' : CURRENT_USER_MEMBER);
+    updateTaskStatus(t.id, status, isLeader ? 'Leader' : currentUserName);
     toast({
       title: tr(language, 'Cập nhật', 'Updated'),
       description: tr(language, `"${t.name}" → ${status}`, `"${t.name}" → ${status}`),
