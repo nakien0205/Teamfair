@@ -90,12 +90,24 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const init = async () => {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user?.id) await loadProfile(s.user.id, s.user);
-      setLoading(false);
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (cancelled) return;
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s?.user?.id) {
+          await Promise.race([
+            loadProfile(s.user.id, s.user),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout loading profile")), 5000))
+          ]);
+        }
+      } catch (error) {
+        console.error("Error during auth session initialization:", error);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     };
 
     void init();
@@ -104,8 +116,18 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user?.id) await loadProfile(s.user.id, s.user);
-      else setProfile(null);
+      try {
+        if (s?.user?.id) {
+          await Promise.race([
+            loadProfile(s.user.id, s.user),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout loading profile")), 5000))
+          ]);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Error during auth state change:", error);
+      }
     });
 
     return () => {
