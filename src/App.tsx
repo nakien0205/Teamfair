@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TeamProvider } from "@/context/TeamContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import Landing from "./pages/Landing";
 import RoleSelection from "./pages/RoleSelection";
 import Login from "./pages/Login";
@@ -22,7 +23,8 @@ const App = () => (
       <LanguageProvider>
         <AuthProvider>
           <TeamProvider>
-            <Toaster />
+            <NotificationProvider>
+              <Toaster />
             <Sonner />
             <BrowserRouter>
               <Routes>
@@ -48,7 +50,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </TeamProvider>
+          </NotificationProvider>
+        </TeamProvider>
         </AuthProvider>
       </LanguageProvider>
     </TooltipProvider>

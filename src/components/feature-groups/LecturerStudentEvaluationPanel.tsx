@@ -9,11 +9,13 @@ import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
 import { Star } from "lucide-react";
+import { useNotifications } from "@/context/NotificationContext";
 
 const LecturerStudentEvaluationPanel = () => {
   const { groups, currentGroupIndex, addLecturerStudentEvaluation } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
+  const { sendNotification } = useNotifications();
   const group = useMemo(() => groups[currentGroupIndex] || groups[0], [groups, currentGroupIndex]);
 
   const [studentName, setStudentName] = useState("");
@@ -56,6 +58,14 @@ const LecturerStudentEvaluationPanel = () => {
     }
 
     addLecturerStudentEvaluation({ studentName, rating, comment, awardBadge });
+
+    const targetStudent = group.members.find(m => m.name === studentName);
+    const targetStudentId = targetStudent?.id || studentName;
+    const msg = language === "vi"
+      ? `Giảng viên đã đánh giá hiệu suất của bạn: ${rating} sao. ${awardBadge ? "Bạn nhận được badge Verified!" : ""}`
+      : `Lecturer published your performance review: ${rating} stars. ${awardBadge ? "You received a Verified badge!" : ""}`;
+    void sendNotification(targetStudentId, "Lecturer", msg);
+
     toast({
       title: language === "vi" ? "Đã lưu" : "Saved",
       description: getSavedToastDescription(),
@@ -138,4 +148,3 @@ const LecturerStudentEvaluationPanel = () => {
 };
 
 export default LecturerStudentEvaluationPanel;
-

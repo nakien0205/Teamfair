@@ -1,10 +1,13 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Trash2, FileText, Download } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { t, tr } from '@/lib/i18n';
+import { useNotifications } from '@/context/NotificationContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface Props {
   role: 'student' | 'lecturer';
@@ -12,10 +15,12 @@ interface Props {
 }
 
 const MaterialsSection = ({ role, uploaderName }: Props) => {
-  const { materials, addMaterial, deleteMaterial } = useTeam();
+  const { members, materials, addMaterial, deleteMaterial } = useTeam();
   const { toast } = useToast();
+  const { sendNotification } = useNotifications();
   const fileRef = useRef<HTMLInputElement>(null);
   const { language } = useLanguage();
+  const [notifyTeam, setNotifyTeam] = useState(false);
 
   const handleChooseFile = () => {
     fileRef.current?.click();
@@ -46,7 +51,25 @@ const MaterialsSection = ({ role, uploaderName }: Props) => {
       cleanName = base.substring(0, 95 - (ext ? ext.length + 1 : 0)) + (ext ? '.' + ext : '');
     }
     addMaterial({ fileName: cleanName, size: file.size, uploadedBy: uploaderName });
+
+    if (notifyTeam) {
+      members
+        .filter(m => m.name !== uploaderName)
+        .forEach(member => {
+          void sendNotification(
+            member.id || member.name,
+            uploaderName,
+            tr(
+              language,
+              `Đã tải lên tài liệu mới: "${cleanName}"`,
+              `Uploaded a new document: "${cleanName}"`
+            )
+          );
+        });
+    }
+
     toast({ title: tr(language, 'Đã upload', 'Uploaded'), description: `"${cleanName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
+    setNotifyTeam(false);
     e.target.value = '';
   };
 
@@ -61,7 +84,7 @@ const MaterialsSection = ({ role, uploaderName }: Props) => {
         {tr(language, 'Tài liệu / Tài liệu học phần', 'Materials / Course Documents')}
       </h2>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
         <input
           type="file"
           ref={fileRef}
@@ -72,6 +95,16 @@ const MaterialsSection = ({ role, uploaderName }: Props) => {
         <Button size="sm" onClick={handleChooseFile}>
           <Upload className="h-4 w-4 mr-1" /> {t(language, 'uploadMaterial')}
         </Button>
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="materialNotifyTeam"
+            checked={notifyTeam}
+            onCheckedChange={(checked) => setNotifyTeam(!!checked)}
+          />
+          <Label htmlFor="materialNotifyTeam" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
+            {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
+          </Label>
+        </div>
       </div>
 
       {materials.length > 0 ? (
