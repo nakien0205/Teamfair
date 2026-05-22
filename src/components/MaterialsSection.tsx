@@ -27,8 +27,26 @@ const MaterialsSection = ({ role, uploaderName }: Props) => {
       toast({ title: tr(language, 'Lỗi', 'Error'), description: tr(language, 'Vui lòng chọn file', 'Please choose a file'), variant: 'destructive' });
       return;
     }
-    addMaterial({ fileName: file.name, size: file.size, uploadedBy: uploaderName });
-    toast({ title: tr(language, 'Đã upload', 'Uploaded'), description: `"${file.name}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
+    // Limit file size to 50 MB
+    if (file.size > 50 * 1024 * 1024) {
+      toast({
+        title: tr(language, 'Lỗi kích thước', 'Size Error'),
+        description: tr(language, 'Dung lượng file tối đa là 50MB', 'Max file size is 50MB'),
+        variant: 'destructive',
+      });
+      e.target.value = '';
+      return;
+    }
+    // Sanitize filename to prevent directory traversal and handle weird characters safely
+    let cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    if (cleanName.length > 100) {
+      const parts = cleanName.split('.');
+      const ext = parts.length > 1 ? parts.pop() : '';
+      const base = parts.join('.');
+      cleanName = base.substring(0, 95 - (ext ? ext.length + 1 : 0)) + (ext ? '.' + ext : '');
+    }
+    addMaterial({ fileName: cleanName, size: file.size, uploadedBy: uploaderName });
+    toast({ title: tr(language, 'Đã upload', 'Uploaded'), description: `"${cleanName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
     e.target.value = '';
   };
 

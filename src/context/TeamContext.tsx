@@ -15,6 +15,7 @@ import {
   updatePersistedTask,
   updatePersistedTaskStatus,
   upsertLecturerScore,
+  writeBackAgentSnapshot,
 } from '@/lib/teamPersistence';
 import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
 import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
@@ -457,9 +458,29 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStudentBadges(state.studentBadges);
     // Re-persist if in supabase mode
     if (canPersist) {
-      void loadPersistedState().catch(() => { /* best effort */ });
+      const currentState = {
+        groups,
+        reports,
+        materialsByGroupId,
+        lecturerStudentReviews,
+        studentBadges,
+      };
+      void writeBackAgentSnapshot(state, currentState)
+        .then(() => loadPersistedState())
+        .catch(err => {
+          console.error("Failed to write back snapshot:", err);
+        });
     }
-  }, [canPersist, currentGroupIndex, loadPersistedState]);
+  }, [
+    canPersist,
+    currentGroupIndex,
+    groups,
+    reports,
+    materialsByGroupId,
+    lecturerStudentReviews,
+    studentBadges,
+    loadPersistedState,
+  ]);
 
   const value = useMemo(
     () => ({

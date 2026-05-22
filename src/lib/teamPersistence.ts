@@ -8,6 +8,7 @@ import type {
   Task,
   VerifiedBadge,
 } from "@/context/TeamContext";
+import type { DeserializedTeamState } from "./workspaceSnapshot";
 
 type DbTaskStatus = "todo" | "in_progress" | "done";
 
@@ -477,3 +478,181 @@ export async function insertLecturerStudentEvaluation(
   });
   if (badgeError) throw new Error(badgeError.message);
 }
+
+export async function writeBackAgentSnapshot(
+  snapshotState: DeserializedTeamState,
+  currentState: PersistedTeamSnapshot,
+): Promise<void> {
+  // Sync tasks for each group
+  for (const snapGroup of snapshotState.groups) {
+    const currentGroup = currentState.groups.find(g => g.id === snapGroup.id);
+    const currentTasks = currentGroup ? currentGroup.tasks : [];
+
+    // Find deleted tasks: tasks that exist in currentTasks but not in snapGroup.tasks
+    const deletedTasks = currentTasks.filter(ct => !snapGroup.tasks.some(st => st.id === ct.id));
+    for (const task of deletedTasks) {
+      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+      if (error) console.warn("Failed to delete snapshot-removed task:", error.message);
+    }
+
+    // Find added or updated tasks
+    for (const snapTask of snapGroup.tasks) {
+      const currentTask = currentTasks.find(ct => ct.id === snapTask.id);
+      
+      const assigneeId = snapGroup.members.find(m => m.name === snapTask.assignedTo)?.id || snapTask.assigneeId || null;
+
+      const dbTaskPayload = {
+        group_id: snapGroup.id,
+        title: snapTask.name,
+        description: snapTask.description || null,
+        assignee_id: assigneeId,
+        status: taskStatusToDb(snapTask.status),
+        weight: weightFromContributionPercent(snapTask.contributionPercent),
+        contribution_percent: snapTask.contributionPercent,
+        approved: snapTask.approved,
+        deadline: snapTask.deadline || null,
+        priority: snapTask.priority ?? null,
+        evidence: serializeEvidence(snapTask.evidence),
+      };
+
+      if (!currentTask) {
+        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapTask.id)
+          ? { id: snapTask.id, ...dbTaskPayload }
+          : dbTaskPayload;
+        
+        const { error } = await supabase.from("tasks").insert(insertPayload);
+        if (error) console.warn("Failed to insert snapshot task:", error.message);
+      } else {
+        const { error } = await supabase.from("tasks").update(dbTaskPayload).eq("id", snapTask.id);
+        if (error) console.warn("Failed to update snapshot task:", error.message);
+      }
+    }
+  }
+
+  // Sync materials
+  const currentMaterials = Object.values(currentState.materialsByGroupId).flat();
+  const deletedMaterials = currentMaterials.filter(cm => !snapshotState.materials.some(sm => sm.id === cm.id));
+  for (const mat of deletedMaterials) {
+    const { error } = await supabase.from("materials").delete().eq("id", mat.id);
+    if (error) console.warn("Failed to delete snapshot-removed material:", error.message);
+  }
+  for (const snapMat of snapshotState.materials) {
+    const exists = currentMaterials.some(cm => cm.id === snapMat.id);
+    if (!exists) {
+      const groupId = snapshotState.groups[0]?.id;
+      if (groupId) {
+        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapMat.id)
+          ? {
+              id: snapMat.id,
+              group_id: groupId,
+              file_name: snapMat.fileName,
+              file_size: snapMat.size,
+              uploaded_by_name: snapMat.uploadedBy,
+              created_at: snapMat.uploadTime.toISOString(),
+            }
+          : {
+              group_id: groupId,
+              file_name: snapMat.fileName,
+              file_size: snapMat.size,
+              uploaded_by_name: snapMat.uploadedBy,
+              created_at: snapMat.uploadTime.toISOString(),
+            };
+        const { error } = await supabase.from("materials").insert(insertPayload);
+        if (error) console.warn("Failed to insert snapshot material:", error.message);
+      }
+    }
+  }
+
+  // Sync student reports
+  for (const snapReport of snapshotState.reports) {
+    const exists = currentState.reports.some(cr => cr.id === snapReport.id);
+    if (!exists) {
+      const groupId = snapshotState.groups[0]?.id;
+      if (groupId) {
+        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReport.id)
+          ? {
+              id: snapReport.id,
+              group_id: groupId,
+              from_name: snapReport.from,
+              to_name: snapReport.to,
+              reason: snapReport.reason,
+              notes: snapReport.notes || null,
+              reviewed: snapReport.reviewed,
+              created_at: snapReport.timestamp.toISOString(),
+            }
+          : {
+              group_id: groupId,
+              from_name: snapReport.from,
+              to_name: snapReport.to,
+              reason: snapReport.reason,
+              notes: snapReport.notes || null,
+              reviewed: snapReport.reviewed,
+              created_at: snapReport.timestamp.toISOString(),
+            };
+        const { error } = await supabase.from("student_reports").insert(insertPayload);
+        if (error) console.warn("Failed to insert snapshot report:", error.message);
+      }
+    }
+  }
+
+  // Sync lecturer student reviews
+  for (const snapReview of snapshotState.lecturerStudentReviews) {
+    const exists = currentState.lecturerStudentReviews.some(cr => cr.id === snapReview.id);
+    if (!exists) {
+      const groupId = snapshotState.groups[0]?.id;
+      if (groupId) {
+        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReview.id)
+          ? {
+              id: snapReview.id,
+              group_id: groupId,
+              student_name: snapReview.studentName,
+              rating: snapReview.rating,
+              comment: snapReview.comment || null,
+              award_badge: snapReview.awardBadge,
+              created_at: snapReview.timestamp.toISOString(),
+            }
+          : {
+              group_id: groupId,
+              student_name: snapReview.studentName,
+              rating: snapReview.rating,
+              comment: snapReview.comment || null,
+              award_badge: snapReview.awardBadge,
+              created_at: snapReview.timestamp.toISOString(),
+            };
+        const { error } = await supabase.from("lecturer_student_reviews").insert(insertPayload);
+        if (error) console.warn("Failed to insert snapshot review:", error.message);
+      }
+    }
+  }
+
+  // Sync verified badges
+  for (const snapBadge of snapshotState.studentBadges) {
+    const exists = currentState.studentBadges.some(cb => cb.id === snapBadge.id);
+    if (!exists) {
+      const groupId = snapshotState.groups[0]?.id;
+      if (groupId) {
+        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapBadge.id)
+          ? {
+              id: snapBadge.id,
+              group_id: groupId,
+              student_name: snapBadge.studentName,
+              rating: snapBadge.rating,
+              comment: snapBadge.comment || null,
+              awarded_at: snapBadge.awardedAt.toISOString(),
+              link: snapBadge.link,
+            }
+          : {
+              group_id: groupId,
+              student_name: snapBadge.studentName,
+              rating: snapBadge.rating,
+              comment: snapBadge.comment || null,
+              awarded_at: snapBadge.awardedAt.toISOString(),
+              link: snapBadge.link,
+            };
+        const { error } = await supabase.from("verified_badges").insert(insertPayload);
+        if (error) console.warn("Failed to insert snapshot badge:", error.message);
+      }
+    }
+  }
+}
+
