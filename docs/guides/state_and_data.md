@@ -25,6 +25,13 @@ In plain terms:
 - In demo mode or when Supabase is unconfigured, all chat functions are no-ops and chat works in-memory only (messages are lost on sidebar close).
 - The "Clear history" button in the sidebar header deletes all rows for the current user + group.
 
+### Mail notifications
+- [src/context/NotificationContext.tsx](../../src/context/NotificationContext.tsx) - manages notification states (`notifications`, `unreadCount`) and exposes operations: `sendNotification`, `markAsRead`, `markAllAsRead`.
+- **Demo Mode integration:** Seeded with 2 mock notifications (Lecturer performance evaluation, Trần Thị B material upload) which run in-memory and update locally.
+- **Supabase Persistence:** Reads and writes to the `public.notifications` table, ensuring users see, update, and manage their own alerts using active RLS policies.
+- **Toast alerts:** Integrated with shadcn `useToast` to trigger temporary toast alerts on screen when a new notification is dispatched.
+
+
 ### Supabase Auth and `public.users` profile
 - [src/lib/supabaseClient.ts](../../src/lib/supabaseClient.ts) - `createClient` from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; `isSupabaseConfigured` guard. Note: In Vercel deployments, official Supabase Marketplace variables (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) are automatically mapped to Vite's prefixes during build time in `vite.config.ts`.
 - [src/context/AuthContext.tsx](../../src/context/AuthContext.tsx) - session (`supabase.auth`), optional row from `public.users` (`id`, `email`, `role`, `full_name`, `profile_completed`), `refreshProfile`, `signOut` (also clears demo session flag).
