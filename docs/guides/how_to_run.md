@@ -52,6 +52,8 @@ Order matters; examples in this repo:
 6. `20260520120000_security_hardening.sql` - database trigger and check constraints to reinforce role validation.
 7. `20260522120000_persistent_calendar.sql` - calendar_events table to persist student calendar scheduling.
 8. `20260522130000_notifications_schema.sql` - notifications table with RLS to support the custom Mail notification system.
+9. `20260523120000_project_management_rls.sql` - relaxed RLS policies for groups insertion/selection/modification and joining project groups.
+10. `20260525120000_security_rls_fixes.sql` - security hardening RLS migration containing fixes for calendar access, notifications forge vulnerabilities, and lecturer project view/escalation bugs.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.

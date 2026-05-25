@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity, Sparkles } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity, Sparkles, Folder } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -238,9 +238,16 @@ const StudentDashboard = () => {
             { key: 'materials', label: tr(language, 'Tài liệu', 'Materials'), icon: <FileText /> },
             { key: 'verifiedBadges', label: t(language, 'verifiedBadgesTitle'), icon: <CheckCircle className="h-4 w-4 text-primary" /> },
             { key: 'activity', label: tr(language, 'Hoạt động', 'Activity'), icon: <Activity /> },
+            { key: 'switch-projects', label: tr(language, 'Đổi dự án', 'Switch Projects'), icon: <Folder className="h-4 w-4" /> },
           ]}
           activeKey={activeSection}
-          onSelect={setActiveSection}
+          onSelect={(key) => {
+            if (key === 'switch-projects') {
+              navigate('/projects');
+            } else {
+              setActiveSection(key);
+            }
+          }}
           roleValue="student"
           onRoleChange={r => navigate(r === 'student' ? '/dashboard-student' : '/dashboard-lecturer')}
         />

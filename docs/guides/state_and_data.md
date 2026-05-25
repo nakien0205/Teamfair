@@ -52,3 +52,10 @@ Policies are defined in SQL migrations under [supabase/migrations](../../supabas
 ### Notes
 - Demo-mode behavior is intentionally preserved. Do not remove the local seeded fallback unless the login/demo flow is redesigned.
 - AI behaviors in the UI remain simulated with timers (student and lecturer dashboards, AI chat widget).
+
+### Task Logs
+- **Project Creation & Join Support (2026-05-23):** Implemented `createProject` and `joinProject` methods on `TeamContext` with integrated real Supabase database insertion (`createPersistedGroup`, `joinPersistedGroup` in `teamPersistence.ts`) and mock in-memory fallback behavior for the dashboard demo mode.
+- **Production Project Management & Dynamic Redirection (2026-05-23):** Integrated sandbox layouts into the new `ProjectManagement.tsx` production page. Connected it to the real `useTeam`, `useAuth`, and `useLanguage` contexts to support creating and joining actual project groups and launching workspaces with dynamic student vs lecturer redirects. Added a "Switch Projects" item to both `StudentDashboard` and `LecturerDashboard` sidebars to support switching back to the project list easily. Deleted the sandbox page and cleaned up references.
+- **Security Audit & RLS Hardening (2026-05-25):** Audited persistent calendar, notifications schema, and project management RLS migrations. Fixed a critical vulnerability in `notifications` INSERT policy that allowed fake notification spoofing/spamming. Patched `group_members` INSERT policy to prevent unauthorized role escalation to `'Leader'`. Redefined `is_lecturer_of_group` and updated `groups` RLS policies to solve the structural bug where student-created projects (which assign student ID as `lecturer_id`) were invisible and ungradeable by real lecturers.
+
+

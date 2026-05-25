@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, Clock, Save, LayoutDashboard, AlertTriangle, FileText, Activity, Download, ClipboardList, Star } from 'lucide-react';
+import { Brain, Clock, Save, LayoutDashboard, AlertTriangle, FileText, Activity, Download, ClipboardList, Star, Folder } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -106,9 +106,16 @@ const LecturerDashboard = () => {
             { key: 'export', label: tr(language, 'Xuất báo cáo', 'Export report'), icon: <Download /> },
             { key: 'materials', label: tr(language, 'Tài liệu', 'Materials'), icon: <FileText /> },
             { key: 'activity', label: tr(language, 'Hoạt động', 'Activity'), icon: <Activity /> },
+            { key: 'switch-projects', label: tr(language, 'Đổi dự án', 'Switch Projects'), icon: <Folder className="h-4 w-4" /> },
           ]}
           activeKey={activeSection}
-          onSelect={setActiveSection}
+          onSelect={(key) => {
+            if (key === 'switch-projects') {
+              navigate('/projects');
+            } else {
+              setActiveSection(key);
+            }
+          }}
           roleValue="lecturer"
           onRoleChange={r => navigate(r === 'student' ? '/dashboard-student' : '/dashboard-lecturer')}
         />

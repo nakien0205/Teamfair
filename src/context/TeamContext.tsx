@@ -19,6 +19,8 @@ import {
   insertCalendarEvent,
   updatePersistedCalendarEvent,
   deletePersistedCalendarEvent,
+  createPersistedGroup,
+  joinPersistedGroup,
 } from '@/lib/teamPersistence';
 import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
 import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
@@ -140,6 +142,8 @@ interface TeamContextType {
   addCalendarEvent: (event: Omit<CalendarEvent, 'id' | 'createdBy'>) => void;
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   deleteCalendarEvent: (id: string) => void;
+  createProject: (projectName: string) => Promise<string>;
+  joinProject: (projectId: string) => Promise<void>;
   currentUserName: string;
 }
 
@@ -529,6 +533,66 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     persist(() => deletePersistedCalendarEvent(id));
   }, [currentGroupIndex, groups, persist]);
 
+  const createProject = useCallback(async (projectName: string) => {
+    if (canPersist && user?.id) {
+      const newId = await createPersistedGroup(projectName, user.id);
+      await loadPersistedState();
+      return newId;
+    } else {
+      const mockId = `mock-${Date.now()}`;
+      const mockG: Group = {
+        id: mockId,
+        name: projectName,
+        members: [
+          {
+            id: 'demo-user-id',
+            name: currentUserName || 'Nguyễn Văn A',
+            role: 'Leader',
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+        tasks: [],
+        activityLog: [
+          { timestamp: new Date(), description: 'Nhóm được tạo' },
+        ],
+      };
+      setGroups(prev => [...prev, mockG]);
+      return mockId;
+    }
+  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+
+  const joinProject = useCallback(async (projectId: string) => {
+    if (canPersist && user?.id) {
+      await joinPersistedGroup(projectId, user.id);
+      await loadPersistedState();
+    } else {
+      const mockG: Group = {
+        id: projectId,
+        name: `Dự án Joined - ${projectId}`,
+        members: [
+          {
+            id: 'demo-user-id',
+            name: currentUserName || 'Nguyễn Văn A',
+            role: 'Member',
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+        tasks: [],
+        activityLog: [
+          { timestamp: new Date(), description: 'Bạn đã tham gia dự án' },
+        ],
+      };
+      setGroups(prev => {
+        if (prev.some(g => g.id === projectId)) return prev;
+        return [...prev, mockG];
+      });
+    }
+  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+
   const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
     const state = deserializeSnapshotToTeamState(snapshot);
     setGroups(state.groups);
@@ -599,6 +663,8 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      createProject,
+      joinProject,
       currentUserName,
     }),
     [
@@ -631,6 +697,8 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      createProject,
+      joinProject,
       currentUserName,
     ],
   );

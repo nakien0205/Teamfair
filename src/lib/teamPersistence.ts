@@ -728,3 +728,28 @@ export async function deletePersistedCalendarEvent(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function createPersistedGroup(projectName: string, userId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("groups")
+    .insert({ project_name: projectName, lecturer_id: userId })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Failed to create group");
+
+  const { error: memberError } = await supabase
+    .from("group_members")
+    .insert({ group_id: data.id, student_id: userId, role: "Leader" });
+  if (memberError) throw new Error(memberError.message);
+
+  return data.id;
+}
+
+export async function joinPersistedGroup(groupId: string, userId: string, role?: string): Promise<void> {
+  const { error } = await supabase
+    .from("group_members")
+    .insert({ group_id: groupId, student_id: userId, role: role || "Member" });
+  if (error) throw new Error(error.message);
+}
+
+

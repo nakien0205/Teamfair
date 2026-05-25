@@ -6,4 +6,5 @@ See [index.md](index.md) for the docs routing map.
 - [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), demo shortcuts, role-based redirect when authenticated.
 - [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx) - student workspace with tasks, calendar, evaluation, materials, badges, and activity log.
 - [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx) - lecturer workspace with group overview, reports, rubric, evaluations, exports, materials, and activity log.
+- [src/pages/ProjectManagement.tsx](src/pages/ProjectManagement.tsx) - Project dashboard allowing users to list, select, create, and join project workspaces.
 - [src/pages/NotFound.tsx](src/pages/NotFound.tsx) - 404 view.
