@@ -182,7 +182,6 @@ const Login = () => {
           options: {
             data: {
               full_name: fullName.trim() || email.split("@")[0] || "User",
-              app_role: role === "lecturer" ? "lecturer" : "student",
             },
           },
         });
