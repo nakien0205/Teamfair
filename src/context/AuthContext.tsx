@@ -20,6 +20,7 @@ type AuthContextValue = {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfileName: (newName: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -166,6 +167,16 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  const updateProfileName = useCallback(async (newName: string) => {
+    if (!isSupabaseConfigured || !user?.id) return;
+    const { error } = await supabase
+      .from("users")
+      .update({ full_name: newName, profile_completed: true })
+      .eq("id", user.id);
+    if (error) throw error;
+    await refreshProfile();
+  }, [user?.id, refreshProfile]);
+
   const value = useMemo(
     () => ({
       session,
@@ -174,8 +185,9 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
       loading,
       refreshProfile,
       signOut,
+      updateProfileName,
     }),
-    [session, user, profile, loading, refreshProfile, signOut],
+    [session, user, profile, loading, refreshProfile, signOut, updateProfileName],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

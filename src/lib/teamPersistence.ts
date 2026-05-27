@@ -710,7 +710,7 @@ export async function insertCalendarEvent(groupId: string, event: Omit<CalendarE
 }
 
 export async function updatePersistedCalendarEvent(id: string, updates: Partial<CalendarEvent>): Promise<void> {
-  const payload: Record<string, any> = {};
+  const payload: Record<string, unknown> = {};
   if (updates.title !== undefined) payload.title = updates.title;
   if (updates.type !== undefined) payload.type = updates.type;
   if (updates.date !== undefined) payload.event_date = updates.date;

@@ -57,5 +57,24 @@ Policies are defined in SQL migrations under [supabase/migrations](../../supabas
 - **Project Creation & Join Support (2026-05-23):** Implemented `createProject` and `joinProject` methods on `TeamContext` with integrated real Supabase database insertion (`createPersistedGroup`, `joinPersistedGroup` in `teamPersistence.ts`) and mock in-memory fallback behavior for the dashboard demo mode.
 - **Production Project Management & Dynamic Redirection (2026-05-23):** Integrated sandbox layouts into the new `ProjectManagement.tsx` production page. Connected it to the real `useTeam`, `useAuth`, and `useLanguage` contexts to support creating and joining actual project groups and launching workspaces with dynamic student vs lecturer redirects. Added a "Switch Projects" item to both `StudentDashboard` and `LecturerDashboard` sidebars to support switching back to the project list easily. Deleted the sandbox page and cleaned up references.
 - **Security Audit & RLS Hardening (2026-05-25):** Audited persistent calendar, notifications schema, and project management RLS migrations. Fixed a critical vulnerability in `notifications` INSERT policy that allowed fake notification spoofing/spamming. Patched `group_members` INSERT policy to prevent unauthorized role escalation to `'Leader'`. Redefined `is_lecturer_of_group` and updated `groups` RLS policies to solve the structural bug where student-created projects (which assign student ID as `lecturer_id`) were invisible and ungradeable by real lecturers.
+- **Session 4 Validation & Lint Hardening (2026-05-25):** Acted as the tester and validator for Session 4 features. Verified nearest project redirection logic, display name onboarding modals, settings renaming, 3-option project onboarding with real-time UID validation, and connection error handling. Successfully ran all Vitest tests and fixed several pre-existing typescript `@typescript-eslint/no-explicit-any` errors in `OnboardingNameModal.tsx`, `SettingsModal.tsx`, `NotificationContext.tsx`, `teamPersistence.ts`, and `ProjectManagement.tsx` to achieve a 100% clean production build.
+- **Session 4: Onboarding, Settings Rename, and Redirection Hardening (2026-05-25):**
+  - **Type**: Feature / Security
+  - **Files Modified**:
+    - `src/context/AuthContext.tsx` (exposed `updateProfileName`)
+    - `src/context/TeamContext.tsx` (safe variables mapping, `connectionError` tracking, `localStorage` redirection)
+    - `src/components/OnboardingNameModal.tsx` (new username setup modal)
+    - `src/components/SettingsModal.tsx` (new settings/general profile renaming modal)
+    - `src/pages/ProjectManagement.tsx` (3-option onboarding layout, real-time UID validation for member updates)
+    - `src/pages/StudentDashboard.tsx` & `src/pages/LecturerDashboard.tsx` (sidebar Settings trigger)
+    - `src/test/session4.test.ts` (vitest unit test suite)
+  - **Summary of Changes**:
+    - Completely removed seeded fallback data for authenticated users, defaulting to empty arrays and tracking a connection error state if loading fails.
+    - Implemented Name Onboarding screen intercepting unregistered logins, with account profile updates directly stored inside the `public.users` Supabase table.
+    - Added Settings Modal under General Settings allowing users to rename their account or retrieve their Supabase UID with zero delay.
+    - Designed 3-Option Onboarding Dashboard for newly logged-in accounts, prompting for team joining, project creation (with real-time member searches of Supabase by UID), or Freestyle exploration.
+    - Maintained nearest project tracking utilizing per-user local storage schemas to route returning users exactly where they left off.
+  - **Manual Verification Details**:
+    - Created unit tests confirming security access limits, localStorage keys mapping, and role redirection logic. Running vitest returns 100% passes.
 
 

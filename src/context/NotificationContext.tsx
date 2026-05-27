@@ -43,7 +43,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           if (error) throw error;
 
-          const mapped: Notification[] = (data || []).map((row: any) => ({
+          interface DbNotificationRow {
+            id: string;
+            recipient_id: string;
+            sender_name: string;
+            content: string;
+            is_read: boolean;
+            created_at: string;
+          }
+
+          const mapped: Notification[] = (data || []).map((row: DbNotificationRow) => ({
             id: row.id,
             recipientId: row.recipient_id,
             senderName: row.sender_name,

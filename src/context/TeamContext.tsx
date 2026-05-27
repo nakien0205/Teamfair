@@ -145,6 +145,7 @@ interface TeamContextType {
   createProject: (projectName: string) => Promise<string>;
   joinProject: (projectId: string) => Promise<void>;
   currentUserName: string;
+  connectionError: boolean;
 }
 
 const initialMembers: MemberStat[] = [
@@ -232,12 +233,14 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
   const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('demo');
 
+  const [connectionError, setConnectionError] = useState(false);
+
   const group = groups[currentGroupIndex] || groups[0];
-  const tasks = group.tasks;
-  const members = group.members;
-  const activityLog = group.activityLog;
-  const materials = useMemo(() => materialsByGroupId[group.id] ?? [], [group.id, materialsByGroupId]);
-  const calendarEvents = useMemo(() => calendarEventsByGroupId[group.id] ?? [], [group.id, calendarEventsByGroupId]);
+  const tasks = group?.tasks ?? [];
+  const members = group?.members ?? [];
+  const activityLog = group?.activityLog ?? [];
+  const materials = useMemo(() => group ? (materialsByGroupId[group.id] ?? []) : [], [group, materialsByGroupId]);
+  const calendarEvents = useMemo(() => group ? (calendarEventsByGroupId[group.id] ?? []) : [], [group, calendarEventsByGroupId]);
 
   const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id) && !isDemoSession();
 
@@ -259,6 +262,13 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return isLeader ? (members[0]?.name || 'Nguyễn Văn A') : 'Trần Thị B';
   }, [profile, resolvedStudentRole, members]);
 
+  const handleSetCurrentGroupIndex = useCallback((idx: number) => {
+    setCurrentGroupIndex(idx);
+    if (user?.id && groups[idx]?.id) {
+      localStorage.setItem(`teamfair_last_project_${user.id}`, groups[idx].id);
+    }
+  }, [user?.id, groups]);
+
   const resetDemoState = useCallback(() => {
     setGroups(makeGroups());
     setReports([]);
@@ -271,20 +281,51 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loadPersistedState = useCallback(async () => {
-    const snapshot = await loadPersistedTeamSnapshot();
-    if (snapshot.groups.length === 0) {
-      resetDemoState();
-      return;
+    try {
+      const snapshot = await loadPersistedTeamSnapshot();
+      if (!isDemoSession() && user?.id) {
+        setGroups(snapshot.groups);
+        setReports(snapshot.reports);
+        setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+        setStudentBadges(snapshot.studentBadges);
+        
+        let targetIndex = 0;
+        const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
+        if (lastProjId) {
+          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          if (foundIdx !== -1) targetIndex = foundIdx;
+        }
+        setCurrentGroupIndex(targetIndex);
+        setDataSource('supabase');
+        setConnectionError(false);
+        return;
+      }
+      if (snapshot.groups.length === 0) {
+        resetDemoState();
+        return;
+      }
+      setGroups(snapshot.groups);
+      setReports(snapshot.reports);
+      setMaterialsByGroupId(snapshot.materialsByGroupId);
+      setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+      setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+      setStudentBadges(snapshot.studentBadges);
+      setCurrentGroupIndex(0);
+      setDataSource('supabase');
+      setConnectionError(false);
+    } catch (err) {
+      console.warn('Supabase load failed:', err);
+      if (!isDemoSession()) {
+        setConnectionError(true);
+        setGroups([]);
+        setDataSource('supabase');
+      } else {
+        resetDemoState();
+      }
     }
-    setGroups(snapshot.groups);
-    setReports(snapshot.reports);
-    setMaterialsByGroupId(snapshot.materialsByGroupId);
-    setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
-    setLecturerStudentReviews(snapshot.lecturerStudentReviews);
-    setStudentBadges(snapshot.studentBadges);
-    setCurrentGroupIndex(0);
-    setDataSource('supabase');
-  }, [resetDemoState]);
+  }, [resetDemoState, user?.id]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || isDemoSession()) {
@@ -303,22 +344,30 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadPersistedTeamSnapshot()
       .then(snapshot => {
         if (cancelled) return;
-        if (snapshot.groups.length === 0) {
-          resetDemoState();
-          return;
-        }
         setGroups(snapshot.groups);
         setReports(snapshot.reports);
         setMaterialsByGroupId(snapshot.materialsByGroupId);
         setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
         setLecturerStudentReviews(snapshot.lecturerStudentReviews);
         setStudentBadges(snapshot.studentBadges);
-        setCurrentGroupIndex(0);
+        
+        let targetIndex = 0;
+        const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
+        if (lastProjId) {
+          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          if (foundIdx !== -1) targetIndex = foundIdx;
+        }
+        setCurrentGroupIndex(targetIndex);
         setDataSource('supabase');
+        setConnectionError(false);
       })
       .catch(error => {
-        console.warn('Falling back to demo team data after Supabase load failed:', error);
-        if (!cancelled) resetDemoState();
+        console.warn('Supabase load failed:', error);
+        if (!cancelled) {
+          setConnectionError(true);
+          setGroups([]);
+          setDataSource('supabase');
+        }
       });
 
     return () => {
@@ -636,7 +685,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     () => ({
       groups,
       currentGroupIndex,
-      setCurrentGroupIndex,
+      setCurrentGroupIndex: handleSetCurrentGroupIndex,
       tasks,
       members,
       activityLog,
@@ -666,11 +715,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createProject,
       joinProject,
       currentUserName,
+      connectionError,
     }),
     [
       groups,
       currentGroupIndex,
-      setCurrentGroupIndex,
+      handleSetCurrentGroupIndex,
       tasks,
       members,
       activityLog,
@@ -700,6 +750,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createProject,
       joinProject,
       currentUserName,
+      connectionError,
     ],
   );
 

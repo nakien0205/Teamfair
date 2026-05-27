@@ -6,10 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useTeam } from "@/context/TeamContext";
+import { useTeam, type Group, type MemberStat } from "@/context/TeamContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { tr } from "@/lib/i18n";
+import { OnboardingNameModal } from "@/components/OnboardingNameModal";
+import { SettingsModal } from "@/components/SettingsModal";
+import { isDemoSession } from "@/lib/demoSession";
+import { supabase } from "@/lib/supabaseClient";
 
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
@@ -29,6 +33,28 @@ const ProjectManagement: React.FC = () => {
   const [projectIdInput, setProjectIdInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [dismissedFreestyle, setDismissedFreestyle] = useState<boolean>(false);
+
+  // UID search & membership additions state
+  const [isUidAddOpen, setIsUidAddOpen] = useState<boolean>(false);
+  const [newCreatedGroupId, setNewCreatedGroupId] = useState<string | null>(null);
+  const [uidInput, setUidInput] = useState<string>("");
+  interface SearchedUser {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+  }
+
+  interface AddedMember extends SearchedUser {
+    projectRole: string;
+  }
+
+  const [searchedUser, setSearchedUser] = useState<SearchedUser | null>(null);
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [addedMembers, setAddedMembers] = useState<AddedMember[]>([]);
+
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id);
     toast({
@@ -39,6 +65,101 @@ const ProjectManagement: React.FC = () => {
         "You can now share this ID with others to join."
       ),
     });
+  };
+
+  const handleSearchUid = async () => {
+    const trimmed = uidInput.trim();
+    if (!trimmed) return;
+    setSearchLoading(true);
+    setSearchedUser(null);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, full_name, role")
+        .eq("id", trimmed)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setSearchedUser(data);
+      } else {
+        toast({
+          title: tr(language, "Không tìm thấy", "User Not Found"),
+          description: tr(language, "Không có người dùng nào khớp với UID này.", "No active user matches this UID."),
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast({
+        title: tr(language, "Lỗi tìm kiếm", "Search Error"),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleAddMemberByUid = async () => {
+    if (!searchedUser || !newCreatedGroupId) return;
+    setSearchLoading(true);
+    try {
+      const projectRole = searchedUser.role === "lecturer" ? "Lecturer" : "Member";
+      const { error } = await supabase
+        .from("group_members")
+        .insert({
+          group_id: newCreatedGroupId,
+          student_id: searchedUser.id,
+          role: projectRole
+        });
+      if (error) throw error;
+
+      toast({
+        title: tr(language, "Đã thêm thành viên!", "Member Added!"),
+        description: `${searchedUser.full_name} has been added to the project.`,
+      });
+
+      setAddedMembers(prev => [...prev, { ...searchedUser, projectRole }]);
+      setSearchedUser(null);
+      setUidInput("");
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast({
+        title: tr(language, "Không thể thêm", "Could Not Add Member"),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!newCreatedGroupId) return;
+    try {
+      const { error } = await supabase
+        .from("group_members")
+        .delete()
+        .eq("group_id", newCreatedGroupId)
+        .eq("student_id", memberId);
+      if (error) throw error;
+
+      toast({
+        title: tr(language, "Đã xóa thành viên", "Member Removed"),
+        description: "The user was removed from the project group.",
+      });
+      setAddedMembers(prev => prev.filter(m => m.id !== memberId));
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast({
+        title: tr(language, "Lỗi xóa thành viên", "Error Removing Member"),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateProject = () => {
@@ -56,7 +177,7 @@ const ProjectManagement: React.FC = () => {
     // Simulate loading for 1.2s then create
     setTimeout(async () => {
       try {
-        await createProject(name);
+        const newId = await createProject(name);
         setIsLoading(false);
         setIsCreateOpen(false);
         setProjectName("");
@@ -70,6 +191,13 @@ const ProjectManagement: React.FC = () => {
             `Project "${name}" is now ready.`
           ),
         });
+
+        // Set up membership editing step
+        setNewCreatedGroupId(newId);
+        setAddedMembers([]);
+        setSearchedUser(null);
+        setUidInput("");
+        setIsUidAddOpen(true);
       } catch (err) {
         setIsLoading(false);
         toast({
@@ -121,20 +249,20 @@ const ProjectManagement: React.FC = () => {
     }, 1200);
   };
 
-  const determineUserRole = (group: any, index: number) => {
+  const determineUserRole = (group: Group & { lecturer_id?: string }, index: number) => {
     const isDemo = sessionStorage.getItem("demo_session") || !user?.id;
     if (isDemo) {
       if (group.id === "g1") return "Owner";
       if (group.id === "g2") return "Member";
       if (group.id === "g3") return "Member";
       // Fallback for demo groups created dynamically
-      const isLeader = group.members?.some((m: any) => m.name === currentUserName && m.role === "Leader");
+      const isLeader = group.members?.some((m) => m.name === currentUserName && m.role === "Leader");
       return isLeader ? "Owner" : "Member";
     }
 
     // Real Supabase Auth mapping
     const member = group.members?.find(
-      (m: any) => m.id === user?.id || (profile?.full_name && m.name === profile.full_name)
+      (m) => m.id === user?.id || (profile?.full_name && m.name === profile.full_name)
     );
 
     if (member) {
@@ -190,8 +318,366 @@ const ProjectManagement: React.FC = () => {
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },
   ];
 
+  const isDemo = sessionStorage.getItem("demo_session") || !user?.id;
+  const isNewUserOnboarding = !isDemo && groups.length === 0 && !dismissedFreestyle;
+
+  if (isNewUserOnboarding) {
+    return (
+      <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white relative">
+        <OnboardingNameModal />
+        <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        
+        {/* BACKGROUND DECORATIONS */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
+          <div className="absolute top-[40%] right-[-10%] w-[40%] h-[50%] rounded-full bg-violet-600/10 blur-[120px]" />
+        </div>
+
+        <main className="flex-1 max-w-4xl mx-auto px-6 py-20 flex flex-col justify-center items-center z-10 relative">
+          <div className="text-center mb-12 animate-in fade-in slide-in-from-top duration-500">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="p-3 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/20">
+                <Compass className="h-8 w-8 text-white" />
+              </div>
+              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-white via-indigo-100 to-violet-200 bg-clip-text text-transparent">
+                Teamfair Onboarding
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-3">
+              {tr(language, "Chào mừng đến với Teamfair!", "Welcome to Teamfair!")}
+            </h1>
+            <p className="text-slate-400 text-sm max-w-lg mx-auto">
+              {tr(
+                language,
+                "Hãy chọn một trong ba phương thức sau đây để bắt đầu cộng tác và làm việc nhóm hiệu quả.",
+                "Choose one of the three options below to start collaborating and managing teamwork effectively."
+              )}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-12 animate-in fade-in zoom-in-95 duration-500 delay-150">
+            {/* Option 1: Already have a team */}
+            <button
+              onClick={() => setIsJoinOpen(true)}
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-emerald-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+            >
+              <div className="space-y-4">
+                <div className="p-4 w-fit rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-100 group-hover:text-emerald-300 transition-colors">
+                  {tr(language, "Đã có nhóm dự án", "Already have a team")}
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {tr(
+                    language,
+                    "Nhập mã Project ID do trưởng nhóm hoặc giảng viên của bạn cung cấp để tham gia ngay.",
+                    "Enter a Project ID shared by your team leader or lecturer to join their workspace immediately."
+                  )}
+                </p>
+              </div>
+              <span className="block mt-6 text-xs font-bold text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                {tr(language, "Nhập ID Dự án", "Enter Project ID")} &rarr;
+              </span>
+            </button>
+
+            {/* Option 2: Create a new project */}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+            >
+              <div className="space-y-4">
+                <div className="p-4 w-fit rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform duration-300">
+                  <Laptop className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  {tr(language, "Tạo dự án mới", "Create a new project")}
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {tr(
+                    language,
+                    "Tạo một không gian làm việc hoàn toàn mới và thêm các thành viên khác bằng UID của họ.",
+                    "Start a brand new workspace as the owner, and add other members by their Supabase UIDs."
+                  )}
+                </p>
+              </div>
+              <span className="block mt-6 text-xs font-bold text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                {tr(language, "Tạo Không gian", "Create Workspace")} &rarr;
+              </span>
+            </button>
+
+            {/* Option 3: Freestyle */}
+            <button
+              onClick={() => setDismissedFreestyle(true)}
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+            >
+              <div className="space-y-4">
+                <div className="p-4 w-fit rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform duration-300">
+                  <Compass className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-100 group-hover:text-amber-300 transition-colors">
+                  {tr(language, "Tự do khám phá", "Freestyle Mode")}
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {tr(
+                    language,
+                    "Bỏ qua hướng dẫn thiết lập nhanh và truy cập trực tiếp trang danh sách quản lý dự án mẫu.",
+                    "Skip quick setup instructions and enter directly to standard workspace dashboard controls."
+                  )}
+                </p>
+              </div>
+              <span className="block mt-6 text-xs font-bold text-amber-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                {tr(language, "Khám phá ngay", "Explore Dashboards")} &rarr;
+              </span>
+            </button>
+          </div>
+
+          <Button
+            onClick={() => signOut().then(() => navigate("/login"))}
+            variant="ghost"
+            className="text-slate-500 hover:text-slate-300 gap-2 hover:bg-slate-900/30 rounded-xl"
+          >
+            <LogOut className="h-4.5 w-4.5" />
+            {tr(language, "Đăng xuất", "Log Out")}
+          </Button>
+
+          {/* Dialog modals embedded */}
+          {/* CREATE MODAL */}
+          <Dialog open={isCreateOpen} onOpenChange={(open) => !isLoading && setIsCreateOpen(open)}>
+            <DialogContent className="sm:max-w-[425px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 z-[9999]">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
+                  <Laptop className="h-5 w-5 text-indigo-400" />
+                  {tr(language, "Tạo dự án mới", "Create a new project")}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  {tr(
+                    language,
+                    "Nhập tên cho không gian làm việc dự án mới của bạn. Bạn sẽ tự động được chỉ định làm Chủ sở hữu dự án.",
+                    "Enter a name for your new project workspace. You will be automatically assigned as the project Owner."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-2">
+                <label className="text-xs font-bold text-indigo-400 uppercase tracking-widest block">
+                  {tr(language, "Tên dự án", "Project Name")}
+                </label>
+                <Input
+                  id="new-project-name"
+                  placeholder="e.g. NextGen Web App"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  disabled={isLoading}
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all py-5 font-medium"
+                />
+              </div>
+              <DialogFooter className="flex items-center gap-2 sm:justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsCreateOpen(false)}
+                  disabled={isLoading}
+                  className="text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800/50"
+                >
+                  {tr(language, "Hủy bỏ", "Cancel")}
+                </Button>
+                <Button
+                  onClick={handleCreateProject}
+                  disabled={isLoading}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/10"
+                  id="submit-create-project-btn"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                      {tr(language, "Đang tạo...", "Creating...")}
+                    </>
+                  ) : (
+                    tr(language, "Tạo dự án", "Create Project")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* JOIN MODAL */}
+          <Dialog open={isJoinOpen} onOpenChange={(open) => !isLoading && setIsJoinOpen(open)}>
+            <DialogContent className="sm:max-w-[425px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 z-[9999]">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
+                  <Users className="h-5 w-5 text-emerald-400" />
+                  {tr(language, "Tham gia dự án", "Join a project")}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  {tr(
+                    language,
+                    "Dán mã Project ID (UUID) do chủ sở hữu dự án cung cấp để tham gia vào không gian làm việc của họ.",
+                    "Paste the Project ID (UUID) provided by the project owner to join their active workspace."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-2">
+                <label className="text-xs font-bold text-emerald-400 uppercase tracking-widest block">
+                  {tr(language, "Project ID (UUID)", "Project ID (UUID)")}
+                </label>
+                <Input
+                  id="join-project-id"
+                  placeholder="e.g. f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+                  value={projectIdInput}
+                  onChange={(e) => setProjectIdInput(e.target.value)}
+                  disabled={isLoading}
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-all py-5 font-mono text-sm"
+                />
+              </div>
+              <DialogFooter className="flex items-center gap-2 sm:justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsJoinOpen(false)}
+                  disabled={isLoading}
+                  className="text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800/50"
+                >
+                  {tr(language, "Hủy bỏ", "Cancel")}
+                </Button>
+                <Button
+                  onClick={handleJoinProject}
+                  disabled={isLoading}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-emerald-600/10"
+                  id="submit-join-project-btn"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                      {tr(language, "Đang tham gia...", "Joining...")}
+                    </>
+                  ) : (
+                    tr(language, "Tham gia dự án", "Join Project")
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* UID MEMBER ADD MODAL */}
+          <Dialog open={isUidAddOpen} onOpenChange={(open) => !searchLoading && setIsUidAddOpen(open)}>
+            <DialogContent className="sm:max-w-[460px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-300 bg-clip-text text-transparent flex items-center gap-2">
+                  <Users className="h-5.5 w-5.5 text-indigo-400" />
+                  {tr(language, "Thêm thành viên", "Add Team Members")}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  {tr(
+                    language,
+                    "Tìm và thêm thành viên hoặc giảng viên vào dự án của bạn bằng UID của họ.",
+                    "Search and add students or lecturers to your new project using their Supabase UID."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 py-4">
+                {/* Search Input Box */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-indigo-400 uppercase tracking-widest block">
+                    {tr(language, "Nhập UID người dùng", "Enter User UID")}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="e.g. f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+                      value={uidInput}
+                      onChange={(e) => setUidInput(e.target.value)}
+                      disabled={searchLoading}
+                      className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all font-mono text-sm flex-1"
+                    />
+                    <Button
+                      onClick={handleSearchUid}
+                      disabled={searchLoading || !uidInput.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
+                    >
+                      {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr(language, "Tìm", "Search")}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Found User Result Card */}
+                {searchedUser && (
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-inner">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-200">{searchedUser.full_name}</h4>
+                        <p className="text-xs text-slate-400 mt-0.5">{searchedUser.email}</p>
+                      </div>
+                      <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold text-[10px] uppercase py-0.5 px-2">
+                        {searchedUser.role}
+                      </Badge>
+                    </div>
+                    <Button
+                      onClick={handleAddMemberByUid}
+                      disabled={searchLoading}
+                      className="w-full bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 hover:border-indigo-500 text-indigo-300 hover:text-white font-bold rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {searchLoading ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Added Members List */}
+                {addedMembers.length > 0 && (
+                  <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {tr(language, "Thành viên đã thêm", "Added Members")} ({addedMembers.length})
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {addedMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          className="bg-slate-950/30 border border-slate-900 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <span className="block font-bold text-slate-300 truncate">{member.full_name}</span>
+                            <span className="block text-[10px] text-slate-500 truncate mt-0.5">{member.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-slate-800 text-slate-400 border-0 text-[9px] uppercase py-0.5 px-1.5 font-semibold">
+                              {member.projectRole}
+                            </Badge>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(member.id)}
+                              className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex items-center gap-2 sm:justify-end pt-2 border-t border-slate-800/60">
+                <Button
+                  onClick={() => {
+                    setIsUidAddOpen(false);
+                    setNewCreatedGroupId(null);
+                    setAddedMembers([]);
+                    window.location.reload();
+                  }}
+                  className="w-full bg-slate-850 hover:bg-slate-750 text-white font-bold rounded-xl py-3 border-0 shadow-md cursor-pointer"
+                >
+                  {tr(language, "Hoàn tất & Tiếp tục", "Complete & Continue")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white">
+      <OnboardingNameModal />
+      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       {/* BACKGROUND DECORATIONS */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
@@ -226,6 +712,10 @@ const ProjectManagement: React.FC = () => {
                 <button
                   key={item.name}
                   onClick={() => {
+                    if (item.name === "Workspace Settings") {
+                      setIsSettingsOpen(true);
+                      return;
+                    }
                     setActiveTab(item.name);
                     toast({
                       title: tr(
@@ -471,10 +961,10 @@ const ProjectManagement: React.FC = () => {
               {/* GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groups.map((group, index) => {
-                  const role = determineUserRole(group, index);
+                  const role = determineUserRole(group as Group & { lecturer_id?: string }, index);
                   const color = getProjectColor(group.id);
-                  const createdAt = (group as any).created_at
-                    ? new Date((group as any).created_at).toISOString().split("T")[0]
+                  const createdAt = (group as Group & { created_at?: string }).created_at
+                    ? new Date((group as Group & { created_at?: string }).created_at!).toISOString().split("T")[0]
                     : "2026-05-23";
 
                   return (
@@ -680,6 +1170,120 @@ const ProjectManagement: React.FC = () => {
               ) : (
                 tr(language, "Tham gia dự án", "Join Project")
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* UID MEMBER ADD MODAL */}
+      <Dialog open={isUidAddOpen} onOpenChange={(open) => !searchLoading && setIsUidAddOpen(open)}>
+        <DialogContent className="sm:max-w-[460px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-300 bg-clip-text text-transparent flex items-center gap-2">
+              <Users className="h-5.5 w-5.5 text-indigo-400" />
+              {tr(language, "Thêm thành viên", "Add Team Members")}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm mt-1">
+              {tr(
+                language,
+                "Tìm và thêm thành viên hoặc giảng viên vào dự án của bạn bằng UID của họ.",
+                "Search and add students or lecturers to your new project using their Supabase UID."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-4">
+            {/* Search Input Box */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-indigo-400 uppercase tracking-widest block">
+                {tr(language, "Nhập UID người dùng", "Enter User UID")}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="e.g. f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+                  value={uidInput}
+                  onChange={(e) => setUidInput(e.target.value)}
+                  disabled={searchLoading}
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all font-mono text-sm flex-1"
+                />
+                <Button
+                  onClick={handleSearchUid}
+                  disabled={searchLoading || !uidInput.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
+                >
+                  {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr(language, "Tìm", "Search")}
+                </Button>
+              </div>
+            </div>
+
+            {/* Found User Result Card */}
+            {searchedUser && (
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-200">{searchedUser.full_name}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">{searchedUser.email}</p>
+                  </div>
+                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold text-[10px] uppercase py-0.5 px-2">
+                    {searchedUser.role}
+                  </Badge>
+                </div>
+                <Button
+                  onClick={handleAddMemberByUid}
+                  disabled={searchLoading}
+                  className="w-full bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 hover:border-indigo-500 text-indigo-300 hover:text-white font-bold rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
+                </Button>
+              </div>
+            )}
+
+            {/* Added Members List */}
+            {addedMembers.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  {tr(language, "Thành viên đã thêm", "Added Members")} ({addedMembers.length})
+                </h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {addedMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="bg-slate-950/30 border border-slate-900 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="min-w-0">
+                        <span className="block font-bold text-slate-300 truncate">{member.full_name}</span>
+                        <span className="block text-[10px] text-slate-500 truncate mt-0.5">{member.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-slate-800 text-slate-400 border-0 text-[9px] uppercase py-0.5 px-1.5 font-semibold">
+                          {member.projectRole}
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(member.id)}
+                          className="text-slate-500 hover:text-rose-400 p-1 hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center gap-2 sm:justify-end pt-2 border-t border-slate-800/60">
+            <Button
+              onClick={() => {
+                setIsUidAddOpen(false);
+                setNewCreatedGroupId(null);
+                setAddedMembers([]);
+                window.location.reload();
+              }}
+              className="w-full bg-slate-850 hover:bg-slate-750 text-white font-bold rounded-xl py-3 border-0 shadow-md cursor-pointer"
+            >
+              {tr(language, "Hoàn tất & Tiếp tục", "Complete & Continue")}
             </Button>
           </DialogFooter>
         </DialogContent>
