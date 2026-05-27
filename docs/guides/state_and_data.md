@@ -91,3 +91,21 @@ Policies are defined in SQL migrations under [supabase/migrations](../../supabas
     - Hardened auth gating by removing the demo session sessionStorage bypass and updating all checks to require database-only validation.
     - Integrated a `dataLoading` skeleton loading gate to eliminate 1-2s dashboard layout flashing and redirect loops.
     - Verified all changes build and pass existing unit tests with 100% success.
+
+- **Session 2: Onboarding Flow & Display Name Cooldown (2026-05-27):**
+  - **Type**: Feature / Security
+  - **Files Modified/Created**:
+    - `supabase/migrations/20260527150000_name_cooldown.sql` (added SQL migration for name cooldown and BEFORE UPDATE trigger)
+    - `src/components/OnboardingNameModal.tsx` (redesigned into premium 2-step setup requesting Role & Name and executing RPC)
+    - `src/context/AuthContext.tsx` (extended AppUserProfile type & fetcher for last_name_change_at)
+    - `src/components/DashboardSidebar.tsx` (removed role selection select dropdown entirely)
+    - `src/pages/StudentDashboard.tsx` & `src/pages/LecturerDashboard.tsx` (cleaned up roleValue and onRoleChange props from Sidebar component)
+    - `src/components/SettingsModal.tsx` (added cooldown calculations, warnings, and disabled input if cooldown is active)
+    - `src/test/session2.test.ts` (created Vitest unit tests verifying onboarding input validation, 30-day rename cooldown rules, and trigger simulation)
+  - **Summary of Changes**:
+    - Replaced the username setup modal with a gorgeous, high-fidelity 2-step onboarding screen securely prompting for Role (Student or Lecturer) and Name.
+    - Integrated role locking via Supabase `set_signup_role` RPC first to enforce write-once roles, followed by profile name updates.
+    - Stripped the role-switching select controls out of `DashboardSidebar` and parent layouts, securing dashboard access based solely on genuine Supabase profile states.
+    - Added display name cooldown protection to `users` table via BEFORE UPDATE trigger enforcing a 30-day delay on name changes.
+    - Integrated remaining cooldown day calculators into `SettingsModal` to show warning badges and dynamically disable save buttons/display name inputs if cooldown is active.
+    - Validated all changes build cleanly and pass all 10 tests across the entire test suite.

@@ -253,8 +253,6 @@ const StudentDashboard = () => {
               setActiveSection(key);
             }
           }}
-          roleValue="student"
-          onRoleChange={r => navigate(r === 'student' ? '/dashboard-student' : '/dashboard-lecturer')}
         />
       }
       header={

@@ -11,6 +11,7 @@ export type AppUserProfile = {
   role: AppUserRole;
   full_name: string;
   profile_completed: boolean;
+  last_name_change_at?: string | null;
 };
 
 type AuthContextValue = {
@@ -28,7 +29,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 async function fetchProfileRow (userId: string): Promise<AppUserProfile | null> {
   const { data, error } = await supabase
     .from("users")
-    .select("id,email,role,full_name,profile_completed")
+    .select("id,email,role,full_name,profile_completed,last_name_change_at")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return null;
@@ -38,6 +39,7 @@ async function fetchProfileRow (userId: string): Promise<AppUserProfile | null> 
     role: data.role as AppUserRole,
     full_name: data.full_name,
     profile_completed: data.profile_completed,
+    last_name_change_at: data.last_name_change_at,
   };
 }
 
@@ -68,6 +70,7 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
         role: (targetUser.user_metadata?.app_role || "student") as AppUserRole,
         full_name: targetUser.user_metadata?.full_name || targetUser.email?.split("@")[0] || "User",
         profile_completed: false,
+        last_name_change_at: null,
       });
     } else {
       setProfile(null);

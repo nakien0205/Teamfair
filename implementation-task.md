@@ -18,17 +18,17 @@
 
 ## Session 2: Onboarding Flow & Display Name Cooldown (Tasks 6, 7)
 
-- `[ ]` **Task 6: Dynamic 2-Step Onboarding Modal**
-  - `[ ]` Redesign `OnboardingNameModal.tsx` to handle onboarding when `profile && !profile.profile_completed`.
-  - `[ ]` **Step 1:** Add interactive cards for choosing between "Sinh viên / Student" and "Giảng viên / Lecturer".
-  - `[ ]` **Step 2:** Prompt user for their display name.
-  - `[ ]` On submit, trigger `set_signup_role` RPC to set their role, then update their display name.
-- `[ ]` **Task 6 (part 2): SQL migration for Name Change Cooldown**
-  - `[ ]` Create `supabase/migrations/20260527150000_name_cooldown.sql` with the `last_name_change_at` column and the BEFORE UPDATE cooldown trigger.
-  - `[ ]` Add remaining time check inside `SettingsModal.tsx` and disable name editing if the cooldown is active.
-- `[ ]` **Task 7: Remove Sidebar Role Switcher**
-  - `[ ]` Delete the `Select` role switching element in `DashboardSidebar.tsx`.
-  - `[ ]` Clean up `roleValue` and `onRoleChange` props and handlers from `StudentDashboard.tsx` and `LecturerDashboard.tsx`.
+- `[x]` **Task 6: Dynamic 2-Step Onboarding Modal**
+  - `[x]` Redesign `OnboardingNameModal.tsx` to handle onboarding when `profile && !profile.profile_completed`.
+  - `[x]` **Step 1:** Add interactive cards for choosing between "Sinh viên / Student" and "Giảng viên / Lecturer".
+  - `[x]` **Step 2:** Prompt user for their display name.
+  - `[x]` On submit, trigger `set_signup_role` RPC to set their role, then update their display name.
+- `[x]` **Task 6 (part 2): SQL migration for Name Change Cooldown**
+  - `[x]` Create `supabase/migrations/20260527150000_name_cooldown.sql` with the `last_name_change_at` column and the BEFORE UPDATE cooldown trigger.
+  - `[x]` Add remaining time check inside `SettingsModal.tsx` and disable name editing if the cooldown is active.
+- `[x]` **Task 7: Remove Sidebar Role Switcher**
+  - `[x]` Delete the `Select` role switching element in `DashboardSidebar.tsx`.
+  - `[x]` Clean up `roleValue` and `onRoleChange` props and handlers from `StudentDashboard.tsx` and `LecturerDashboard.tsx`.
 
 ## Session 3: Task Actions & Team Hierarchy Management (Tasks 2, 9)
 

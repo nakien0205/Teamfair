@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Settings, User, Mail, Shield, Check, Copy } from "lucide-react";
+import { Loader2, Settings, User, Mail, Shield, Check, Copy, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsModalProps {
@@ -35,8 +35,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Cooldown calculation
+  const lastChange = profile?.last_name_change_at ? new Date(profile.last_name_change_at) : null;
+  const cooldownEnd = lastChange ? new Date(lastChange.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const now = new Date();
+  const isCooldownActive = cooldownEnd ? now < cooldownEnd : false;
+  const remainingMs = cooldownEnd ? cooldownEnd.getTime() - now.getTime() : 0;
+  const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCooldownActive) {
+      toast.error(
+        tr(
+          language,
+          `Bạn chỉ có thể đổi tên sau ${remainingDays} ngày nữa.`,
+          `You can change your name again in ${remainingDays} days.`
+        )
+      );
+      return;
+    }
+
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error(tr(language, "Vui lòng nhập tên hợp lệ", "Please enter a valid name"));
@@ -119,9 +138,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={loading}
-                className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all py-5 font-medium"
+                disabled={loading || isCooldownActive}
+                className={`bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all py-5 font-medium ${
+                  isCooldownActive ? "opacity-60 cursor-not-allowed" : ""
+                }`}
               />
+
+              {/* Cooldown warning & remaining time */}
+              {isCooldownActive && (
+                <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>
+                    {tr(
+                      language,
+                      `Tên hiển thị chỉ được thay đổi 30 ngày một lần. Vui lòng quay lại sau ${remainingDays} ngày nữa.`,
+                      `Display name can only be changed once every 30 days. Please return in ${remainingDays} days.`
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -137,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
             </Button>
             <Button
               type="submit"
-              disabled={loading || name.trim() === profile?.full_name}
+              disabled={loading || isCooldownActive || name.trim() === profile?.full_name}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/15"
             >
               {loading ? (
