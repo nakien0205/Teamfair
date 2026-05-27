@@ -77,4 +77,17 @@ Policies are defined in SQL migrations under [supabase/migrations](../../supabas
   - **Manual Verification Details**:
     - Created unit tests confirming security access limits, localStorage keys mapping, and role redirection logic. Running vitest returns 100% passes.
 
-
+- **Session 1: Infrastructure Cleanup & Core Hardening (2026-05-27):**
+  - **Type**: Cleanup / Infrastructure
+  - **Files Modified/Created**:
+    - `supabase/migrations/20260527140000_cleanup_demo_mode.sql` (created SQL cleanup migration)
+    - `src/lib/demoSession.ts` (completely disabled demo sessions)
+    - `src/pages/Login.tsx` (removed mock/demo trigger/buttons)
+    - `src/context/TeamContext.tsx` (removed mock seeds, initialized to empty arrays, introduced `dataLoading` state)
+    - `src/components/ProtectedRoute.tsx` (removed demo fallbacks)
+    - `src/pages/ProjectManagement.tsx` (added loader check to prevent flash)
+  - **Summary of Changes**:
+    - Removed all seeded mock data structures (groups, members, materials, tasks, log, events).
+    - Hardened auth gating by removing the demo session sessionStorage bypass and updating all checks to require database-only validation.
+    - Integrated a `dataLoading` skeleton loading gate to eliminate 1-2s dashboard layout flashing and redirect loops.
+    - Verified all changes build and pass existing unit tests with 100% success.

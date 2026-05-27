@@ -1,7 +1,7 @@
 const DEMO_SESSION_KEY = "teamfair_demo_session";
 
 export function setDemoSession(): void {
-  sessionStorage.setItem(DEMO_SESSION_KEY, "true");
+  // Demo session is completely disabled. Do not write to sessionStorage.
 }
 
 export function clearDemoSession(): void {
@@ -9,5 +9,5 @@ export function clearDemoSession(): void {
 }
 
 export function isDemoSession(): boolean {
-  return sessionStorage.getItem(DEMO_SESSION_KEY) === "true";
+  return false;
 }

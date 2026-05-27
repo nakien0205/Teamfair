@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { isDemoSession } from '@/lib/demoSession';
+
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import {
   approvePersistedTask,
@@ -146,72 +146,10 @@ interface TeamContextType {
   joinProject: (projectId: string) => Promise<void>;
   currentUserName: string;
   connectionError: boolean;
+  dataLoading: boolean;
 }
 
-const initialMembers: MemberStat[] = [
-  { name: 'Nguyễn Văn A', role: 'Leader', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Trần Thị B', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Lê Văn C', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Phạm Thị D', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-];
 
-const initialTasks: Task[] = [
-  { id: '1', name: 'Thiết kế giao diện', assignedTo: 'Trần Thị B', status: 'Todo', contributionPercent: 25, approved: false, deadline: '2026-03-15' },
-  { id: '2', name: 'Viết báo cáo', assignedTo: 'Lê Văn C', status: 'Todo', contributionPercent: 20, approved: false, deadline: '2026-03-20' },
-  { id: '3', name: 'Nghiên cứu tài liệu', assignedTo: 'Phạm Thị D', status: 'In Progress', contributionPercent: 15, approved: false, deadline: '2026-03-10' },
-];
-
-const initialLog: ActivityLogEntry[] = [
-  { timestamp: new Date(Date.now() - 86400000), description: 'Nhóm được tạo' },
-  { timestamp: new Date(Date.now() - 3600000), description: 'Task "Thiết kế giao diện" được giao cho Trần Thị B' },
-];
-
-const initialMaterials: MaterialFile[] = [
-  { id: 'demo-1', fileName: 'ProjectGuidelines.pdf', size: 245760, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 86400000) },
-  { id: 'demo-2', fileName: 'TeamworkRubric.docx', size: 102400, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 43200000) },
-];
-
-export const DEMO_EVENTS: CalendarEvent[] = [
-  { id: 'demo-1', title: 'Team Meeting', type: 'Meeting', date: '2026-03-18', time: '19:00', description: 'Weekly progress review', createdBy: 'Leader' },
-  { id: 'demo-2', title: 'Milestone 1 – Proposal Submission', type: 'Milestone', date: '2026-03-25', time: '', description: 'Submit project proposal to lecturer', createdBy: 'Leader' },
-  { id: 'demo-3', title: 'Sprint Review', type: 'Meeting', date: '2026-03-12', time: '14:00', description: 'Review sprint deliverables', createdBy: 'Leader' },
-];
-
-const makeGroups = (): Group[] => [
-  {
-    id: 'g1', name: 'Nhóm 1 - Dự án Web',
-    members: structuredClone(initialMembers),
-    tasks: structuredClone(initialTasks),
-    activityLog: structuredClone(initialLog),
-  },
-  {
-    id: 'g2', name: 'Nhóm 2 - Dự án Mobile',
-    members: [
-      { name: 'Hoàng Văn E', role: 'Leader', completedTasks: 1, contributionPercent: 30, lecturerScore: null },
-      { name: 'Đỗ Thị F', role: 'Member', completedTasks: 2, contributionPercent: 40, lecturerScore: null },
-      { name: 'Vũ Văn G', role: 'Member', completedTasks: 0, contributionPercent: 10, lecturerScore: null },
-    ],
-    tasks: [
-      { id: 'g2-1', name: 'Thiết kế UI Mobile', assignedTo: 'Đỗ Thị F', status: 'Done', contributionPercent: 30, approved: true, deadline: '2026-03-12' },
-      { id: 'g2-2', name: 'Backend API', assignedTo: 'Hoàng Văn E', status: 'In Progress', contributionPercent: 30, approved: false, deadline: '2026-03-18' },
-    ],
-    activityLog: [
-      { timestamp: new Date(Date.now() - 172800000), description: 'Nhóm được tạo' },
-      { timestamp: new Date(Date.now() - 7200000), description: 'Đỗ Thị F hoàn thành "Thiết kế UI Mobile"' },
-    ],
-  },
-  {
-    id: 'g3', name: 'Nhóm 3 - Dự án AI',
-    members: [
-      { name: 'Ngô Văn H', role: 'Leader', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-      { name: 'Bùi Thị I', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-    ],
-    tasks: [],
-    activityLog: [
-      { timestamp: new Date(Date.now() - 3600000), description: 'Nhóm được tạo' },
-    ],
-  },
-];
 
 const TeamContext = createContext<TeamContextType | null>(null);
 
@@ -223,17 +161,18 @@ export const useTeam = () => {
 
 export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading: authLoading } = useAuth();
-  const [groups, setGroups] = useState<Group[]>(makeGroups);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [studentRole, setStudentRole] = useState<'Leader' | 'Member'>('Leader');
   const [reports, setReports] = useState<StudentReport[]>([]);
-  const [materialsByGroupId, setMaterialsByGroupId] = useState<Record<string, MaterialFile[]>>({ g1: initialMaterials });
-  const [calendarEventsByGroupId, setCalendarEventsByGroupId] = useState<Record<string, CalendarEvent[]>>({ g1: DEMO_EVENTS });
+  const [materialsByGroupId, setMaterialsByGroupId] = useState<Record<string, MaterialFile[]>>({});
+  const [calendarEventsByGroupId, setCalendarEventsByGroupId] = useState<Record<string, CalendarEvent[]>>({});
   const [lecturerStudentReviews, setLecturerStudentReviews] = useState<LecturerStudentReview[]>([]);
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
-  const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('demo');
+  const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('supabase');
 
   const [connectionError, setConnectionError] = useState(false);
+  const [dataLoading, setDataLoading] = useState<boolean>(true);
 
   const group = groups[currentGroupIndex] || groups[0];
   const tasks = group?.tasks ?? [];
@@ -242,7 +181,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const materials = useMemo(() => group ? (materialsByGroupId[group.id] ?? []) : [], [group, materialsByGroupId]);
   const calendarEvents = useMemo(() => group ? (calendarEventsByGroupId[group.id] ?? []) : [], [group, calendarEventsByGroupId]);
 
-  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id) && !isDemoSession();
+  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id);
 
   const resolvedStudentRole = useMemo(() => {
     if (canPersist && user?.id) {
@@ -255,7 +194,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [canPersist, user?.id, members, studentRole]);
 
   const currentUserName = useMemo(() => {
-    if (isSupabaseConfigured && !isDemoSession() && profile?.full_name) {
+    if (isSupabaseConfigured && profile?.full_name) {
       return profile.full_name;
     }
     const isLeader = resolvedStudentRole === 'Leader';
@@ -270,20 +209,21 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.id, groups]);
 
   const resetDemoState = useCallback(() => {
-    setGroups(makeGroups());
+    setGroups([]);
     setReports([]);
-    setMaterialsByGroupId({ g1: initialMaterials });
-    setCalendarEventsByGroupId({ g1: DEMO_EVENTS });
+    setMaterialsByGroupId({});
+    setCalendarEventsByGroupId({});
     setLecturerStudentReviews([]);
     setStudentBadges([]);
     setCurrentGroupIndex(0);
-    setDataSource('demo');
+    setDataSource('supabase');
   }, []);
 
   const loadPersistedState = useCallback(async () => {
     try {
+      setDataLoading(true);
       const snapshot = await loadPersistedTeamSnapshot();
-      if (!isDemoSession() && user?.id) {
+      if (user?.id) {
         setGroups(snapshot.groups);
         setReports(snapshot.reports);
         setMaterialsByGroupId(snapshot.materialsByGroupId);
@@ -317,30 +257,34 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setConnectionError(false);
     } catch (err) {
       console.warn('Supabase load failed:', err);
-      if (!isDemoSession()) {
-        setConnectionError(true);
-        setGroups([]);
-        setDataSource('supabase');
-      } else {
-        resetDemoState();
-      }
+      setConnectionError(true);
+      setGroups([]);
+      setDataSource('supabase');
+    } finally {
+      setDataLoading(false);
     }
   }, [resetDemoState, user?.id]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || isDemoSession()) {
+    if (!isSupabaseConfigured) {
       resetDemoState();
+      setDataLoading(false);
       return;
     }
 
-    if (authLoading) return;
+    if (authLoading) {
+      setDataLoading(true);
+      return;
+    }
 
     if (!user?.id) {
       resetDemoState();
+      setDataLoading(false);
       return;
     }
 
     let cancelled = false;
+    setDataLoading(true);
     loadPersistedTeamSnapshot()
       .then(snapshot => {
         if (cancelled) return;
@@ -360,6 +304,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentGroupIndex(targetIndex);
         setDataSource('supabase');
         setConnectionError(false);
+        setDataLoading(false);
       })
       .catch(error => {
         console.warn('Supabase load failed:', error);
@@ -367,6 +312,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setConnectionError(true);
           setGroups([]);
           setDataSource('supabase');
+          setDataLoading(false);
         }
       });
 
@@ -716,6 +662,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       joinProject,
       currentUserName,
       connectionError,
+      dataLoading,
     }),
     [
       groups,
@@ -751,6 +698,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       joinProject,
       currentUserName,
       connectionError,
+      dataLoading,
     ],
   );
 

@@ -11,7 +11,7 @@ import { useAuth, type AppUserRole } from "@/context/AuthContext";
 import { t, tr } from "@/lib/i18n";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { dashboardPathForRole } from "@/lib/dashboardPath";
-import { clearDemoSession, setDemoSession } from "@/lib/demoSession";
+import { clearDemoSession } from "@/lib/demoSession";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -237,14 +237,6 @@ const Login = () => {
     }
   };
 
-  const handleDemo = (demoRole: "student" | "lecturer") => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setDemoSession();
-      navigate(demoRole === "lecturer" ? "/dashboard-lecturer" : "/dashboard-student");
-    }, 500);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6 relative">
@@ -327,17 +319,7 @@ const Login = () => {
           </button>
         </div>
 
-        <div className="mt-6 space-y-3">
-          <p className="text-center text-sm text-muted-foreground">{language === "vi" ? "Hoặc trải nghiệm demo" : "Or try the demo"}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => handleDemo("student")} disabled={loading}>
-              {t(language, "demoStudent")}
-            </Button>
-            <Button variant="outline" onClick={() => handleDemo("lecturer")} disabled={loading}>
-              {t(language, "demoLecturer")}
-            </Button>
-          </div>
-        </div>
+
       </div>
     </div>
   );

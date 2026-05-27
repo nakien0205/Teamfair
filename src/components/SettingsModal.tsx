@@ -91,7 +91,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5" />
-                UID (Supabase)
+                UID
               </Label>
               <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-inner">
                 <span className="font-mono text-xs text-slate-300 truncate tracking-tight select-all flex-1">

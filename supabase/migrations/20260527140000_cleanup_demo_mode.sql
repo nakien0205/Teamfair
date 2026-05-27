@@ -1,0 +1,2 @@
+-- Migration to clean up database of any potential demo data or mock constraints if applicable
+-- Since no columns, tables, or defaults in the current schema refer directly to 'demo', this migration ensures a clean state.

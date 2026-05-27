@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
-import { isDemoSession } from "@/lib/demoSession";
+
 
 type Props = {
   children: React.ReactNode;
@@ -24,9 +24,6 @@ const ProtectedRoute = ({ children }: Props) => {
     );
   }
 
-  if (isDemoSession()) {
-    return <>{children}</>;
-  }
 
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;

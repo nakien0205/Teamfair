@@ -19,7 +19,7 @@ const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName } = useTeam();
+  const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading } = useTeam();
   const { user, profile, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>("All Projects");
@@ -318,8 +318,27 @@ const ProjectManagement: React.FC = () => {
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },
   ];
 
-  const isDemo = sessionStorage.getItem("demo_session") || !user?.id;
+  const isDemo = isDemoSession() || !user?.id;
   const isNewUserOnboarding = !isDemo && groups.length === 0 && !dismissedFreestyle;
+
+  if (dataLoading) {
+    return (
+      <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased items-center justify-center relative">
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
+          <div className="absolute top-[40%] right-[-10%] w-[40%] h-[50%] rounded-full bg-violet-600/10 blur-[120px]" />
+        </div>
+        <div className="flex flex-col items-center gap-4 z-10 relative animate-pulse">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-violet-600/20 border border-indigo-500/30 text-indigo-400">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+          <p className="text-slate-400 text-sm font-semibold tracking-wide">
+            {tr(language, "Đang tải dự án...", "Loading projects...")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isNewUserOnboarding) {
     return (
