@@ -1,9 +1,47 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import {
+  approvePersistedTask,
+  deletePersistedMaterial,
+  deletePersistedTask,
+  insertLecturerStudentEvaluation,
+  insertMaterial,
+  insertStudentReport,
+  insertTask,
+  loadPersistedTeamSnapshot,
+  markStudentReportReviewed,
+  updatePersistedTask,
+  updatePersistedTaskStatus,
+  upsertLecturerScore,
+  writeBackAgentSnapshot,
+  insertCalendarEvent,
+  updatePersistedCalendarEvent,
+  deletePersistedCalendarEvent,
+  createPersistedGroup,
+  joinPersistedGroup,
+} from '@/lib/teamPersistence';
+import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
+import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
+
+export type EventType = 'Meeting' | 'Task Deadline' | 'Milestone';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: EventType;
+  date: string; // YYYY-MM-DD
+  time: string;
+  description: string;
+  createdBy: string;
+}
 
 export interface Task {
   id: string;
   name: string;
   assignedTo: string;
+  assigneeId?: string;
   status: 'Todo' | 'In Progress' | 'Done';
   contributionPercent: number;
   approved: boolean;
@@ -14,6 +52,7 @@ export interface Task {
 }
 
 export interface MemberStat {
+  id?: string;
   name: string;
   role: string;
   completedTasks: number;
@@ -98,61 +137,19 @@ interface TeamContextType {
   lecturerStudentReviews: LecturerStudentReview[];
   studentBadges: VerifiedBadge[];
   addLecturerStudentEvaluation: (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => void;
+  applyAgentSnapshot: (snapshot: WorkspaceSnapshotJson) => void;
+  calendarEvents: CalendarEvent[];
+  addCalendarEvent: (event: Omit<CalendarEvent, 'id' | 'createdBy'>) => void;
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
+  deleteCalendarEvent: (id: string) => void;
+  createProject: (projectName: string) => Promise<string>;
+  joinProject: (projectId: string) => Promise<void>;
+  currentUserName: string;
+  connectionError: boolean;
+  dataLoading: boolean;
 }
 
-const initialMembers: MemberStat[] = [
-  { name: 'Nguyễn Văn A', role: 'Leader', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Trần Thị B', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Lê Văn C', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-  { name: 'Phạm Thị D', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-];
 
-const initialTasks: Task[] = [
-  { id: '1', name: 'Thiết kế giao diện', assignedTo: 'Trần Thị B', status: 'Todo', contributionPercent: 25, approved: false, deadline: '2026-03-15' },
-  { id: '2', name: 'Viết báo cáo', assignedTo: 'Lê Văn C', status: 'Todo', contributionPercent: 20, approved: false, deadline: '2026-03-20' },
-  { id: '3', name: 'Nghiên cứu tài liệu', assignedTo: 'Phạm Thị D', status: 'In Progress', contributionPercent: 15, approved: false, deadline: '2026-03-10' },
-];
-
-const initialLog: ActivityLogEntry[] = [
-  { timestamp: new Date(Date.now() - 86400000), description: 'Nhóm được tạo' },
-  { timestamp: new Date(Date.now() - 3600000), description: 'Task "Thiết kế giao diện" được giao cho Trần Thị B' },
-];
-
-const makeGroups = (): Group[] => [
-  {
-    id: 'g1', name: 'Nhóm 1 - Dự án Web',
-    members: structuredClone(initialMembers),
-    tasks: structuredClone(initialTasks),
-    activityLog: structuredClone(initialLog),
-  },
-  {
-    id: 'g2', name: 'Nhóm 2 - Dự án Mobile',
-    members: [
-      { name: 'Hoàng Văn E', role: 'Leader', completedTasks: 1, contributionPercent: 30, lecturerScore: null },
-      { name: 'Đỗ Thị F', role: 'Member', completedTasks: 2, contributionPercent: 40, lecturerScore: null },
-      { name: 'Vũ Văn G', role: 'Member', completedTasks: 0, contributionPercent: 10, lecturerScore: null },
-    ],
-    tasks: [
-      { id: 'g2-1', name: 'Thiết kế UI Mobile', assignedTo: 'Đỗ Thị F', status: 'Done', contributionPercent: 30, approved: true, deadline: '2026-03-12' },
-      { id: 'g2-2', name: 'Backend API', assignedTo: 'Hoàng Văn E', status: 'In Progress', contributionPercent: 30, approved: false, deadline: '2026-03-18' },
-    ],
-    activityLog: [
-      { timestamp: new Date(Date.now() - 172800000), description: 'Nhóm được tạo' },
-      { timestamp: new Date(Date.now() - 7200000), description: 'Đỗ Thị F hoàn thành "Thiết kế UI Mobile"' },
-    ],
-  },
-  {
-    id: 'g3', name: 'Nhóm 3 - Dự án AI',
-    members: [
-      { name: 'Ngô Văn H', role: 'Leader', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-      { name: 'Bùi Thị I', role: 'Member', completedTasks: 0, contributionPercent: 0, lecturerScore: null },
-    ],
-    tasks: [],
-    activityLog: [
-      { timestamp: new Date(Date.now() - 3600000), description: 'Nhóm được tạo' },
-    ],
-  },
-];
 
 const TeamContext = createContext<TeamContextType | null>(null);
 
@@ -163,21 +160,175 @@ export const useTeam = () => {
 };
 
 export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [groups, setGroups] = useState<Group[]>(makeGroups);
+  const { user, profile, loading: authLoading } = useAuth();
+  const [groups, setGroups] = useState<Group[]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [studentRole, setStudentRole] = useState<'Leader' | 'Member'>('Leader');
   const [reports, setReports] = useState<StudentReport[]>([]);
-  const [materials, setMaterials] = useState<MaterialFile[]>([
-    { id: 'demo-1', fileName: 'ProjectGuidelines.pdf', size: 245760, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 86400000) },
-    { id: 'demo-2', fileName: 'TeamworkRubric.docx', size: 102400, uploadedBy: 'Lecturer', uploadTime: new Date(Date.now() - 43200000) },
-  ]);
+  const [materialsByGroupId, setMaterialsByGroupId] = useState<Record<string, MaterialFile[]>>({});
+  const [calendarEventsByGroupId, setCalendarEventsByGroupId] = useState<Record<string, CalendarEvent[]>>({});
   const [lecturerStudentReviews, setLecturerStudentReviews] = useState<LecturerStudentReview[]>([]);
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
+  const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('supabase');
+
+  const [connectionError, setConnectionError] = useState(false);
+  const [dataLoading, setDataLoading] = useState<boolean>(true);
 
   const group = groups[currentGroupIndex] || groups[0];
-  const tasks = group.tasks;
-  const members = group.members;
-  const activityLog = group.activityLog;
+  const tasks = group?.tasks ?? [];
+  const members = group?.members ?? [];
+  const activityLog = group?.activityLog ?? [];
+  const materials = useMemo(() => group ? (materialsByGroupId[group.id] ?? []) : [], [group, materialsByGroupId]);
+  const calendarEvents = useMemo(() => group ? (calendarEventsByGroupId[group.id] ?? []) : [], [group, calendarEventsByGroupId]);
+
+  const canPersist = dataSource === 'supabase' && isSupabaseConfigured && Boolean(user?.id);
+
+  const resolvedStudentRole = useMemo(() => {
+    if (canPersist && user?.id) {
+      const currentUserMember = members.find(m => m.id === user.id);
+      if (currentUserMember?.role) {
+        return (currentUserMember.role === 'Leader' ? 'Leader' : 'Member') as 'Leader' | 'Member';
+      }
+    }
+    return studentRole;
+  }, [canPersist, user?.id, members, studentRole]);
+
+  const currentUserName = useMemo(() => {
+    if (isSupabaseConfigured && profile?.full_name) {
+      return profile.full_name;
+    }
+    const isLeader = resolvedStudentRole === 'Leader';
+    return isLeader ? (members[0]?.name || 'Nguyễn Văn A') : 'Trần Thị B';
+  }, [profile, resolvedStudentRole, members]);
+
+  const handleSetCurrentGroupIndex = useCallback((idx: number) => {
+    setCurrentGroupIndex(idx);
+    if (user?.id && groups[idx]?.id) {
+      localStorage.setItem(`teamfair_last_project_${user.id}`, groups[idx].id);
+    }
+  }, [user?.id, groups]);
+
+  const resetDemoState = useCallback(() => {
+    setGroups([]);
+    setReports([]);
+    setMaterialsByGroupId({});
+    setCalendarEventsByGroupId({});
+    setLecturerStudentReviews([]);
+    setStudentBadges([]);
+    setCurrentGroupIndex(0);
+    setDataSource('supabase');
+  }, []);
+
+  const loadPersistedState = useCallback(async () => {
+    try {
+      setDataLoading(true);
+      const snapshot = await loadPersistedTeamSnapshot();
+      if (user?.id) {
+        setGroups(snapshot.groups);
+        setReports(snapshot.reports);
+        setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+        setStudentBadges(snapshot.studentBadges);
+        
+        let targetIndex = 0;
+        const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
+        if (lastProjId) {
+          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          if (foundIdx !== -1) targetIndex = foundIdx;
+        }
+        setCurrentGroupIndex(targetIndex);
+        setDataSource('supabase');
+        setConnectionError(false);
+        return;
+      }
+      if (snapshot.groups.length === 0) {
+        resetDemoState();
+        return;
+      }
+      setGroups(snapshot.groups);
+      setReports(snapshot.reports);
+      setMaterialsByGroupId(snapshot.materialsByGroupId);
+      setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+      setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+      setStudentBadges(snapshot.studentBadges);
+      setCurrentGroupIndex(0);
+      setDataSource('supabase');
+      setConnectionError(false);
+    } catch (err) {
+      console.warn('Supabase load failed:', err);
+      setConnectionError(true);
+      setGroups([]);
+      setDataSource('supabase');
+    } finally {
+      setDataLoading(false);
+    }
+  }, [resetDemoState, user?.id]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      resetDemoState();
+      setDataLoading(false);
+      return;
+    }
+
+    if (authLoading) {
+      setDataLoading(true);
+      return;
+    }
+
+    if (!user?.id) {
+      resetDemoState();
+      setDataLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDataLoading(true);
+    loadPersistedTeamSnapshot()
+      .then(snapshot => {
+        if (cancelled) return;
+        setGroups(snapshot.groups);
+        setReports(snapshot.reports);
+        setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+        setStudentBadges(snapshot.studentBadges);
+        
+        let targetIndex = 0;
+        const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
+        if (lastProjId) {
+          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          if (foundIdx !== -1) targetIndex = foundIdx;
+        }
+        setCurrentGroupIndex(targetIndex);
+        setDataSource('supabase');
+        setConnectionError(false);
+        setDataLoading(false);
+      })
+      .catch(error => {
+        console.warn('Supabase load failed:', error);
+        if (!cancelled) {
+          setConnectionError(true);
+          setGroups([]);
+          setDataSource('supabase');
+          setDataLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, resetDemoState, user?.id]);
+
+  const persist = useCallback((operation: () => Promise<void>) => {
+    if (!canPersist) return;
+    void operation()
+      .then(loadPersistedState)
+      .catch(error => {
+        console.warn('Supabase team data persistence failed:', error);
+      });
+  }, [canPersist, loadPersistedState]);
 
   const updateGroup = useCallback((idx: number, updater: (g: Group) => Group) => {
     setGroups(prev => prev.map((g, i) => i === idx ? updater({ ...g }) : g));
@@ -207,14 +358,18 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'approved'>) => {
     const id = Date.now().toString();
+    const currentGroup = groups[currentGroupIndex];
     updateGroup(currentGroupIndex, g => ({
       ...g,
       tasks: [...g.tasks, { ...task, id, status: 'Todo', approved: false }],
       activityLog: [{ timestamp: new Date(), description: `Task "${task.name}" được tạo và giao cho ${task.assignedTo}` }, ...g.activityLog],
     }));
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => insertTask(currentGroup, task));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const deleteTask = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const newG = {
@@ -224,9 +379,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       return recalcContributions(newG);
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => deletePersistedTask(currentGroup.id, persistedTask));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateTaskStatus = useCallback((id: string, status: Task['status'], actor: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const statusLabel = status === 'In Progress' ? 'bắt đầu' : 'hoàn thành';
@@ -236,9 +394,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activityLog: [{ timestamp: new Date(), description: `${actor} đã ${statusLabel} task "${task?.name}"` }, ...g.activityLog],
       };
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => updatePersistedTaskStatus(currentGroup.id, persistedTask, status, actor));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const approveTask = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    const persistedTask = currentGroup?.tasks.find(t => t.id === id);
     updateGroup(currentGroupIndex, g => {
       const task = g.tasks.find(t => t.id === id);
       const newG = {
@@ -248,40 +409,61 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       return recalcContributions(newG);
     });
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => approvePersistedTask(currentGroup.id, persistedTask));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    const currentGroup = groups[currentGroupIndex];
     updateGroup(currentGroupIndex, g => ({
       ...g,
       tasks: g.tasks.map(t => t.id === id ? { ...t, ...updates } : t),
     }));
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => updatePersistedTask(id, updates, currentGroup.members));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const updateLecturerScore = useCallback((memberName: string, score: number, groupIdx: number) => {
+    const targetGroup = groups[groupIdx];
     updateGroup(groupIdx, g => ({
       ...g,
       members: g.members.map(m => m.name === memberName ? { ...m, lecturerScore: score } : m),
     }));
-  }, [updateGroup]);
+    if (targetGroup) persist(() => upsertLecturerScore(targetGroup.id, memberName, score));
+  }, [groups, persist, updateGroup]);
 
   const addReport = useCallback((report: Omit<StudentReport, 'id' | 'timestamp' | 'reviewed'>) => {
+    const currentGroup = groups[currentGroupIndex];
     setReports(prev => [...prev, { ...report, id: Date.now().toString(), timestamp: new Date(), reviewed: false }]);
-  }, []);
+    if (currentGroup) persist(() => insertStudentReport(currentGroup.id, report));
+  }, [currentGroupIndex, groups, persist]);
 
   const markReportReviewed = useCallback((id: string) => {
     setReports(prev => prev.map(r => r.id === id ? { ...r, reviewed: true } : r));
-  }, []);
+    persist(() => markStudentReportReviewed(id));
+  }, [persist]);
 
   const addMaterial = useCallback((file: Omit<MaterialFile, 'id' | 'uploadTime'>) => {
-    setMaterials(prev => [...prev, { ...file, id: Date.now().toString(), uploadTime: new Date() }]);
-  }, []);
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setMaterialsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: [...(prev[currentGroup.id] ?? []), { ...file, id: Date.now().toString(), uploadTime: new Date() }],
+    }));
+    persist(() => insertMaterial(currentGroup.id, file));
+  }, [currentGroupIndex, groups, persist]);
 
   const deleteMaterial = useCallback((id: string) => {
-    setMaterials(prev => prev.filter(m => m.id !== id));
-  }, []);
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setMaterialsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).filter(m => m.id !== id),
+    }));
+    persist(() => deletePersistedMaterial(id));
+  }, [currentGroupIndex, groups, persist]);
 
   const addLecturerStudentEvaluation = useCallback(
     (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => {
+      const currentGroup = groups[currentGroupIndex];
       const timestamp = new Date();
       setLecturerStudentReviews(prev => [
         ...prev,
@@ -306,15 +488,150 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         ]);
       }
+      if (currentGroup) persist(() => insertLecturerStudentEvaluation(currentGroup.id, input));
     },
-    [],
+    [currentGroupIndex, groups, persist],
   );
+
+  const addCalendarEvent = useCallback((event: Omit<CalendarEvent, 'id' | 'createdBy'>) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    const newEvent: CalendarEvent = {
+      ...event,
+      id: Date.now().toString(),
+      createdBy: resolvedStudentRole === 'Leader' ? 'Leader' : 'Member',
+    };
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: [...(prev[currentGroup.id] ?? []), newEvent],
+    }));
+    persist(() => insertCalendarEvent(currentGroup.id, newEvent));
+  }, [currentGroupIndex, groups, persist, resolvedStudentRole]);
+
+  const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEvent>) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).map(e => e.id === id ? { ...e, ...updates } : e),
+    }));
+    persist(() => updatePersistedCalendarEvent(id, updates));
+  }, [currentGroupIndex, groups, persist]);
+
+  const deleteCalendarEvent = useCallback((id: string) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return;
+    setCalendarEventsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).filter(e => e.id !== id),
+    }));
+    persist(() => deletePersistedCalendarEvent(id));
+  }, [currentGroupIndex, groups, persist]);
+
+  const createProject = useCallback(async (projectName: string) => {
+    if (canPersist && user?.id) {
+      const newId = await createPersistedGroup(projectName, user.id);
+      await loadPersistedState();
+      return newId;
+    } else {
+      const mockId = `mock-${Date.now()}`;
+      const mockG: Group = {
+        id: mockId,
+        name: projectName,
+        members: [
+          {
+            id: 'demo-user-id',
+            name: currentUserName || 'Nguyễn Văn A',
+            role: 'Leader',
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+        tasks: [],
+        activityLog: [
+          { timestamp: new Date(), description: 'Nhóm được tạo' },
+        ],
+      };
+      setGroups(prev => [...prev, mockG]);
+      return mockId;
+    }
+  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+
+  const joinProject = useCallback(async (projectId: string) => {
+    if (canPersist && user?.id) {
+      await joinPersistedGroup(projectId, user.id);
+      await loadPersistedState();
+    } else {
+      const mockG: Group = {
+        id: projectId,
+        name: `Dự án Joined - ${projectId}`,
+        members: [
+          {
+            id: 'demo-user-id',
+            name: currentUserName || 'Nguyễn Văn A',
+            role: 'Member',
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+        tasks: [],
+        activityLog: [
+          { timestamp: new Date(), description: 'Bạn đã tham gia dự án' },
+        ],
+      };
+      setGroups(prev => {
+        if (prev.some(g => g.id === projectId)) return prev;
+        return [...prev, mockG];
+      });
+    }
+  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+
+  const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
+    const state = deserializeSnapshotToTeamState(snapshot);
+    setGroups(state.groups);
+    setReports(state.reports);
+    // Materials in the snapshot are flat; assign them to the current group
+    const currentGroup = state.groups[currentGroupIndex] ?? state.groups[0];
+    if (currentGroup) {
+      setMaterialsByGroupId(prev => ({ ...prev, [currentGroup.id]: state.materials }));
+    }
+    setLecturerStudentReviews(state.lecturerStudentReviews);
+    setStudentBadges(state.studentBadges);
+    // Re-persist if in supabase mode
+    if (canPersist) {
+      const currentState = {
+        groups,
+        reports,
+        materialsByGroupId,
+        lecturerStudentReviews,
+        studentBadges,
+        calendarEventsByGroupId,
+      };
+      void writeBackAgentSnapshot(state, currentState)
+        .then(() => loadPersistedState())
+        .catch(err => {
+          console.error("Failed to write back snapshot:", err);
+        });
+    }
+  }, [
+    canPersist,
+    currentGroupIndex,
+    groups,
+    reports,
+    materialsByGroupId,
+    lecturerStudentReviews,
+    studentBadges,
+    calendarEventsByGroupId,
+    loadPersistedState,
+  ]);
 
   const value = useMemo(
     () => ({
       groups,
       currentGroupIndex,
-      setCurrentGroupIndex,
+      setCurrentGroupIndex: handleSetCurrentGroupIndex,
       tasks,
       members,
       activityLog,
@@ -325,7 +642,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addLog,
       updateTask,
       updateLecturerScore,
-      studentRole,
+      studentRole: resolvedStudentRole,
       setStudentRole,
       reports,
       addReport,
@@ -336,11 +653,21 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,
+      applyAgentSnapshot,
+      calendarEvents,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      createProject,
+      joinProject,
+      currentUserName,
+      connectionError,
+      dataLoading,
     }),
     [
       groups,
       currentGroupIndex,
-      setCurrentGroupIndex,
+      handleSetCurrentGroupIndex,
       tasks,
       members,
       activityLog,
@@ -351,7 +678,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addLog,
       updateTask,
       updateLecturerScore,
-      studentRole,
+      resolvedStudentRole,
       setStudentRole,
       reports,
       addReport,
@@ -362,6 +689,16 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,
+      applyAgentSnapshot,
+      calendarEvents,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      createProject,
+      joinProject,
+      currentUserName,
+      connectionError,
+      dataLoading,
     ],
   );
 

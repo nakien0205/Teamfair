@@ -6,6 +6,7 @@ Use this file to pick the smallest relevant doc before reading code.
 - Routing, entry points, providers, or URL paths -> entry_points_routing.md
 - How to run, build, lint, test, env vars, or Supabase migrations -> how_to_run.md
 - Student features, flows, or UI sections -> student_workspace.md
+- Python student workspace AI agent (OpenRouter tools, local snapshot) -> student_workspace_agent.md
 - Lecturer features, flows, or UI sections -> lecturer_workplace.md
 - Shared layout, navigation, or shell components -> core_layout.md
 - App state, demo data, Supabase auth, or context logic -> state_and_data.md

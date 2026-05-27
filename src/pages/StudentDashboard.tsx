@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity, Sparkles, Folder, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -22,8 +22,11 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
-import AIChatWidget from '@/components/feature-groups/AIChatWidget';
+import StudentAgentSidebar, { type LockedSection } from '@/components/feature-groups/StudentAgentSidebar';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
+import { useNotifications } from '@/context/NotificationContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SettingsModal } from '@/components/SettingsModal';
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
 
@@ -37,12 +40,14 @@ interface PeerEvaluation {
 }
 
 const StudentDashboard = () => {
-  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole } = useTeam();
+  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName } = useTeam();
   const { toast } = useToast();
+  const { sendNotification } = useNotifications();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
+  const [notifyTeam, setNotifyTeam] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [peerEvaluations, setPeerEvaluations] = useState<PeerEvaluation[]>([]);
@@ -54,6 +59,9 @@ const StudentDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<MemberStat | null>(null);
   const [activeSection, setActiveSection] = useState('work');
+  const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
+  const [lockedSection, setLockedSection] = useState<LockedSection>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const anonymousFrom = t(language, 'anonymousFrom');
 
   useEffect(() => {
@@ -65,9 +73,8 @@ const StudentDashboard = () => {
   }, [profile, authLoading, navigate]);
 
   const isLeader = studentRole === 'Leader';
-  const currentUserName = isLeader ? members[0]?.name : CURRENT_USER_MEMBER;
-  const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === CURRENT_USER_MEMBER);
-  const kanbanUser = isLeader ? (members[0]?.name || CURRENT_USER_MEMBER) : CURRENT_USER_MEMBER;
+  const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === currentUserName);
+  const kanbanUser = isLeader ? (members[0]?.name || currentUserName) : currentUserName;
 
   const handleSubmitEval = () => {
     if (!evalTarget || evalRating === 0) {
@@ -96,7 +103,23 @@ const StudentDashboard = () => {
   const handleCreateTask = () => {
     if (!newTask.name || !newTask.assignedTo) return;
     addTask(newTask);
+    if (notifyTeam) {
+      members
+        .filter(m => m.name !== currentUserName)
+        .forEach(member => {
+          void sendNotification(
+            member.id || member.name,
+            currentUserName,
+            tr(
+              language,
+              `Đã giao task mới: "${newTask.name}"`,
+              `Assigned a new task: "${newTask.name}"`
+            )
+          );
+        });
+    }
     setNewTask({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
+    setNotifyTeam(false);
     setModalOpen(false);
     toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: tr(language, `"${newTask.name}" giao cho ${newTask.assignedTo}`, `"${newTask.name}" assigned to ${newTask.assignedTo}`) });
   };
@@ -107,7 +130,7 @@ const StudentDashboard = () => {
   };
 
   const handleStatusChange = (t: Task, status: Task['status']) => {
-    updateTaskStatus(t.id, status, isLeader ? 'Leader' : CURRENT_USER_MEMBER);
+    updateTaskStatus(t.id, status, isLeader ? 'Leader' : currentUserName);
     toast({
       title: tr(language, 'Cập nhật', 'Updated'),
       description: tr(language, `"${t.name}" → ${status}`, `"${t.name}" → ${status}`),
@@ -209,7 +232,7 @@ const StudentDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Sinh viên", "Student")}
-          subtitle={tr(language, "Student workspace", "Student workspace")}
+          subtitle={isDemoSession() ? tr(language, "Student workspace", "Student workspace") : currentUserName}
           items={[
             { key: 'work', label: tr(language, 'Công việc', 'Work'), icon: <LayoutGrid /> },
             { key: 'calendar', label: tr(language, 'Lịch', 'Calendar'), icon: <CalendarDays /> },
@@ -217,11 +240,19 @@ const StudentDashboard = () => {
             { key: 'materials', label: tr(language, 'Tài liệu', 'Materials'), icon: <FileText /> },
             { key: 'verifiedBadges', label: t(language, 'verifiedBadgesTitle'), icon: <CheckCircle className="h-4 w-4 text-primary" /> },
             { key: 'activity', label: tr(language, 'Hoạt động', 'Activity'), icon: <Activity /> },
+            { key: 'settings', label: tr(language, 'Cấu hình', 'Settings'), icon: <Settings className="h-4 w-4" /> },
+            { key: 'switch-projects', label: tr(language, 'Đổi dự án', 'Switch Projects'), icon: <Folder className="h-4 w-4" /> },
           ]}
           activeKey={activeSection}
-          onSelect={setActiveSection}
-          roleValue="student"
-          onRoleChange={r => navigate(r === 'student' ? '/dashboard-student' : '/dashboard-lecturer')}
+          onSelect={(key) => {
+            if (key === 'switch-projects') {
+              navigate('/projects');
+            } else if (key === 'settings') {
+              setIsSettingsOpen(true);
+            } else {
+              setActiveSection(key);
+            }
+          }}
         />
       }
       header={
@@ -232,29 +263,43 @@ const StudentDashboard = () => {
             navigate("/login");
           }}
           leftSlot={<SidebarTrigger />}
+          rightSlot={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAiSidebarOpen(true)}
+              aria-label={tr(language, 'Mở trợ lý AI workspace', 'Open workspace AI assistant')}
+              className="gap-1.5"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs">AI</span>
+            </Button>
+          }
           showRoleSelect={false}
         />
       }
     >
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
-        <div className="bg-card rounded-xl p-4 shadow-card border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">{tr(language, 'Vai trò hiện tại', 'Current role')}</p>
-            <p className="font-display font-semibold text-lg">{studentRole}</p>
+        {isDemoSession() && (
+          <div className="bg-card rounded-xl p-4 shadow-card border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">{tr(language, 'Vai trò hiện tại', 'Current role')}</p>
+              <p className="font-display font-semibold text-lg">{studentRole}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => {
+              const next = isLeader ? 'Member' : 'Leader';
+              setStudentRole(next);
+              toast({ title: tr(language, 'Đã chuyển vai trò', 'Role changed'), description: tr(language, `Bạn giờ là ${next}`, `You are now ${next}`) });
+            }}>
+              <ArrowLeftRight className="h-4 w-4 mr-1" />
+              {tr(language, `Chuyển sang ${isLeader ? 'Member' : 'Leader'} (Demo)`, `Switch to ${isLeader ? 'Member' : 'Leader'} (Demo)`) }
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => {
-            const next = isLeader ? 'Member' : 'Leader';
-            setStudentRole(next);
-            toast({ title: tr(language, 'Đã chuyển vai trò', 'Role changed'), description: tr(language, `Bạn giờ là ${next}`, `You are now ${next}`) });
-          }}>
-            <ArrowLeftRight className="h-4 w-4 mr-1" />
-            {tr(language, `Chuyển sang ${isLeader ? 'Member' : 'Leader'} (Demo)`, `Switch to ${isLeader ? 'Member' : 'Leader'} (Demo)`) }
-          </Button>
-        </div>
+        )}
 
         {activeSection === 'work' ? (
           <div className="space-y-6">
-            <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} />
+            <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} locked={lockedSection === 'work'} />
 
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <div className="flex items-center justify-between mb-4">
@@ -287,6 +332,16 @@ const StudentDashboard = () => {
                         <div className="space-y-1">
                           <Label>{tr(language, 'Deadline', 'Deadline')}</Label>
                           <Input type="date" value={newTask.deadline} onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))} />
+                        </div>
+                        <div className="flex items-center space-x-2 py-2">
+                          <Checkbox
+                            id="notifyTeam"
+                            checked={notifyTeam}
+                            onCheckedChange={(checked) => setNotifyTeam(!!checked)}
+                          />
+                          <Label htmlFor="notifyTeam" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
+                            {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
+                          </Label>
                         </div>
                         <Button className="w-full" onClick={handleCreateTask}>{tr(language, 'Tạo Task', 'Create task')}</Button>
                       </div>
@@ -345,7 +400,7 @@ const StudentDashboard = () => {
 
         {activeSection === 'calendar' ? (
           <div className="space-y-6">
-            <ProjectCalendar isLeader={isLeader} />
+            <ProjectCalendar isLeader={isLeader} locked={lockedSection === 'calendar'} />
           </div>
         ) : null}
 
@@ -394,7 +449,7 @@ const StudentDashboard = () => {
               </section>
             </div>
 
-            <AIChatWidget />
+
 
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <h2 className="font-display text-lg font-semibold mb-4">
@@ -527,12 +582,15 @@ const StudentDashboard = () => {
           </div>
         ) : null}
 
+        <StudentAgentSidebar open={aiSidebarOpen} onOpenChange={setAiSidebarOpen} onLockedSectionChange={setLockedSection} />
+
         <StudentReportModal
           open={reportOpen}
           onOpenChange={setReportOpen}
           targetMember={reportTarget}
           currentUser={currentUserName}
         />
+        <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </div>
     </DashboardShell>
   );

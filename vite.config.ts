@@ -4,18 +4,35 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-    hmr: {
-      overlay: false,
+export default defineConfig(({ mode }) => {
+  // Map Supabase environment variables from Vercel integration to Vite prefixes at build time
+  if (process.env.SUPABASE_URL) {
+    process.env.VITE_SUPABASE_URL = process.env.SUPABASE_URL;
+  }
+  if (process.env.SUPABASE_ANON_KEY) {
+    process.env.VITE_SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+  }
+
+  return {
+    server: {
+      host: "::",
+      port: 8080,
+      hmr: {
+        overlay: false,
+      },
+      proxy: {
+        "/api/student-agent": {
+          target: "http://127.0.0.1:8010",
+          changeOrigin: true,
+          rewrite: pathStr => pathStr.replace(/^\/api\/student-agent/, "") || "/",
+        },
+      },
     },
-  },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-}));
+  };
+});

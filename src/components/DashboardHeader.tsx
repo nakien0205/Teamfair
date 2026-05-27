@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, LogOut } from "lucide-react";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton";
+import { NotificationMailIcon } from "@/components/NotificationMailIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
 
@@ -42,8 +43,9 @@ const DashboardHeader = ({ roleLabel, onExit, leftSlot, rightSlot, roleValue, on
               </SelectContent>
             </Select>
           ) : null}
-          <LanguageSwitcherButton />
           {rightSlot}
+          <NotificationMailIcon />
+          <LanguageSwitcherButton />
           <Button variant="ghost" size="sm" onClick={onExit}>
             <LogOut className="h-4 w-4 mr-1" /> {t(language, "dashboardExit")}
           </Button>

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Flag } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
+import { useNotifications } from '@/context/NotificationContext';
 
 interface Props {
   open: boolean;
@@ -28,6 +29,7 @@ const StudentReportModal = ({ open, onOpenChange, targetMember, currentUser }: P
   const { addReport } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
+  const { sendNotification } = useNotifications();
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -37,6 +39,17 @@ const StudentReportModal = ({ open, onOpenChange, targetMember, currentUser }: P
       return;
     }
     addReport({ from: currentUser, to: targetMember.name, reason, notes });
+
+    void sendNotification(
+      "lecturer",
+      currentUser,
+      tr(
+        language,
+        `Đã gửi báo cáo về ${targetMember.name}: ${reason}`,
+        `Submitted a report on ${targetMember.name}: ${reason}`
+      )
+    );
+
     toast({
       title: tr(language, 'Đã gửi báo cáo cho giảng viên', 'Report sent to lecturer'),
       description: tr(language, `Đã báo cáo ${targetMember.name}`, `Report submitted for ${targetMember.name}`),

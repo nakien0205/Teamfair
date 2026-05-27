@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator, useSidebar } from "@/components/ui/sidebar";
 import { Users } from "lucide-react";
 
@@ -9,16 +8,12 @@ export interface DashboardSidebarItem {
   icon: ReactNode;
 }
 
-type DashboardRole = "student" | "lecturer";
-
 interface Props {
   title: string;
   subtitle?: string;
   items: DashboardSidebarItem[];
   activeKey: string;
   onSelect: (key: string) => void;
-  roleValue?: DashboardRole;
-  onRoleChange?: (role: DashboardRole) => void;
 }
 
 const GROUP_ORDER = ["primary", "secondary"] as const;
@@ -42,7 +37,7 @@ function getGroupLabel(groupKey: GroupKey): string {
   return "Quản trị";
 }
 
-const DashboardSidebar = ({ title, subtitle, items, activeKey, onSelect, roleValue, onRoleChange }: Props) => {
+const DashboardSidebar = ({ title, subtitle, items, activeKey, onSelect }: Props) => {
   const { isMobile, setOpenMobile } = useSidebar();
   const groups = getGroups(items);
 
@@ -63,20 +58,6 @@ const DashboardSidebar = ({ title, subtitle, items, activeKey, onSelect, roleVal
             <div className="text-xs text-sidebar-foreground/70 truncate">{subtitle || "Workspace"}</div>
           </div>
         </div>
-
-        {roleValue && onRoleChange ? (
-          <div className="px-2 group-data-[collapsible=icon]:hidden">
-            <Select value={roleValue} onValueChange={onRoleChange}>
-              <SelectTrigger className="h-9 bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Sinh viên</SelectItem>
-                <SelectItem value="lecturer">Giảng viên</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null}
       </SidebarHeader>
 
       <SidebarSeparator />
@@ -94,13 +75,13 @@ const DashboardSidebar = ({ title, subtitle, items, activeKey, onSelect, roleVal
                   {groupItems.map(item => (
                     <SidebarMenuItem key={item.key}>
                       <SidebarMenuButton
-                        isActive={activeKey === item.key}
-                        tooltip={item.label}
-                        className="relative overflow-hidden rounded-lg data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:shadow-sm"
-                        onClick={() => {
-                          onSelect(item.key);
-                          if (isMobile) setOpenMobile(false);
-                        }}
+                         isActive={activeKey === item.key}
+                         tooltip={item.label}
+                         className="relative overflow-hidden rounded-lg data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:shadow-sm"
+                         onClick={() => {
+                           onSelect(item.key);
+                           if (isMobile) setOpenMobile(false);
+                         }}
                       >
                         <span className="flex items-center justify-center">
                           {item.icon}

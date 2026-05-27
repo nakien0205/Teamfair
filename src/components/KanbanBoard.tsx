@@ -26,9 +26,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 interface Props {
   isLeader: boolean;
   currentUser: string;
+  locked?: boolean;
 }
 
-const KanbanBoard = ({ isLeader, currentUser }: Props) => {
+const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
   const { tasks, members, addTask, updateTaskStatus, updateTask } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
@@ -83,11 +84,30 @@ const KanbanBoard = ({ isLeader, currentUser }: Props) => {
   const handleEvidenceUpload = (taskId: string) => {
     const file = evidenceRef.current?.files?.[0];
     if (!file) return;
+    // Limit file size to 50 MB
+    if (file.size > 50 * 1024 * 1024) {
+      toast({
+        title: tr(language, 'Lỗi kích thước', 'Size Error'),
+        description: tr(language, 'Dung lượng file tối đa là 50MB', 'Max file size is 50MB'),
+        variant: 'destructive',
+      });
+      if (evidenceRef.current) evidenceRef.current.value = '';
+      setEvidenceTaskId(null);
+      return;
+    }
+    // Sanitize filename to prevent directory traversal and handle weird characters safely
+    let cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    if (cleanName.length > 100) {
+      const parts = cleanName.split('.');
+      const ext = parts.length > 1 ? parts.pop() : '';
+      const base = parts.join('.');
+      cleanName = base.substring(0, 95 - (ext ? ext.length + 1 : 0)) + (ext ? '.' + ext : '');
+    }
     const task = tasks.find(t => t.id === taskId);
     if (task) {
       const existing = task.evidence || [];
-      updateTask(taskId, { evidence: [...existing, { fileName: file.name, uploadTime: new Date() }] });
-      toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${file.name}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
+      updateTask(taskId, { evidence: [...existing, { fileName: cleanName, uploadTime: new Date() }] });
+      toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${cleanName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
     }
     if (evidenceRef.current) evidenceRef.current.value = '';
     setEvidenceTaskId(null);
@@ -96,7 +116,15 @@ const KanbanBoard = ({ isLeader, currentUser }: Props) => {
   const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === currentUser);
 
   return (
-    <section className="bg-card rounded-xl p-6 shadow-card border border-border">
+    <section className="bg-card rounded-xl p-6 shadow-card border border-border relative">
+      {locked && (
+        <div className="absolute inset-0 z-10 rounded-xl bg-background/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-auto">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/90 px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg animate-pulse">
+            {tr(language, 'AI đang làm việc…', 'AI working…')}
+          </span>
+        </div>
+      )}
+      <div className={locked ? 'pointer-events-none opacity-60' : ''}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg font-semibold">{tr(language, 'Bảng Task (Kanban)', 'Task Board (Kanban)')}</h2>
         {isLeader && (
@@ -220,6 +248,7 @@ const KanbanBoard = ({ isLeader, currentUser }: Props) => {
             </div>
           </button>
         ))}
+      </div>
       </div>
     </section>
   );

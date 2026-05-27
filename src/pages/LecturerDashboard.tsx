@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, Clock, Save, LayoutDashboard, AlertTriangle, FileText, Activity, Download, ClipboardList, Star } from 'lucide-react';
+import { Brain, Clock, Save, LayoutDashboard, AlertTriangle, FileText, Activity, Download, ClipboardList, Star, Folder, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -20,9 +20,10 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
+import { SettingsModal } from '@/components/SettingsModal';
 
 const LecturerDashboard = () => {
-  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore } = useTeam();
+  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, currentUserName } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
@@ -33,6 +34,7 @@ const LecturerDashboard = () => {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (isDemoSession()) return;
@@ -97,7 +99,7 @@ const LecturerDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Giảng viên", "Lecturer")}
-          subtitle={tr(language, "Lecturer workspace", "Lecturer workspace")}
+          subtitle={isDemoSession() ? tr(language, "Lecturer workspace", "Lecturer workspace") : currentUserName}
           items={[
             { key: 'overview', label: tr(language, 'Tổng quan', 'Overview'), icon: <LayoutDashboard /> },
             { key: 'reports', label: tr(language, 'Báo cáo', 'Reports'), icon: <AlertTriangle /> },
@@ -106,11 +108,19 @@ const LecturerDashboard = () => {
             { key: 'export', label: tr(language, 'Xuất báo cáo', 'Export report'), icon: <Download /> },
             { key: 'materials', label: tr(language, 'Tài liệu', 'Materials'), icon: <FileText /> },
             { key: 'activity', label: tr(language, 'Hoạt động', 'Activity'), icon: <Activity /> },
+            { key: 'settings', label: tr(language, 'Cấu hình', 'Settings'), icon: <Settings className="h-4 w-4" /> },
+            { key: 'switch-projects', label: tr(language, 'Đổi dự án', 'Switch Projects'), icon: <Folder className="h-4 w-4" /> },
           ]}
           activeKey={activeSection}
-          onSelect={setActiveSection}
-          roleValue="lecturer"
-          onRoleChange={r => navigate(r === 'student' ? '/dashboard-student' : '/dashboard-lecturer')}
+          onSelect={(key) => {
+            if (key === 'switch-projects') {
+              navigate('/projects');
+            } else if (key === 'settings') {
+              setIsSettingsOpen(true);
+            } else {
+              setActiveSection(key);
+            }
+          }}
         />
       }
       header={
@@ -278,6 +288,7 @@ const LecturerDashboard = () => {
             </section>
           </div>
         ) : null}
+        <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </div>
     </DashboardShell>
   );
