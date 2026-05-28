@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Loader2, Users, Compass, Laptop, LogOut } from "lucide-react";
+import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Loader2, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,14 +13,13 @@ import { useLanguage } from "@/context/LanguageContext";
 import { tr } from "@/lib/i18n";
 import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
-import { isDemoSession } from "@/lib/demoSession";
 import { supabase } from "@/lib/supabaseClient";
 
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading } = useTeam();
+  const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
   const { user, profile, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>("All Projects");
@@ -36,6 +35,32 @@ const ProjectManagement: React.FC = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [dismissedFreestyle, setDismissedFreestyle] = useState<boolean>(false);
+  const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
+
+  // Fetch pending join requests for current user (applicant view)
+  const [myPendingRequests, setMyPendingRequests] = useState<Array<{id: string; group_name: string; created_at: string}>>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Load applicant's own pending requests
+    const loadMyRequests = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("join_requests")
+          .select("id, group_id, created_at, groups:group_id(project_name)")
+          .eq("user_id", user.id)
+          .eq("status", "pending");
+        if (!error && data) {
+          setMyPendingRequests(data.map((r: any) => ({
+            id: r.id,
+            group_name: r.groups?.project_name || "Unknown",
+            created_at: r.created_at,
+          })));
+        }
+      } catch {}
+    };
+    void loadMyRequests();
+  }, [user?.id, groups]);
 
   // UID search & membership additions state
   const [isUidAddOpen, setIsUidAddOpen] = useState<boolean>(false);
@@ -215,7 +240,7 @@ const ProjectManagement: React.FC = () => {
     if (!trimmedId) {
       toast({
         title: tr(language, "Lỗi xác thực", "Validation Error"),
-        description: tr(language, "Vui lòng nhập Project ID hợp lệ.", "Please enter a valid Project ID."),
+        description: tr(language, "Vui lòng nhập mã mời hợp lệ.", "Please enter a valid invite code."),
         variant: "destructive",
       });
       return;
@@ -225,20 +250,36 @@ const ProjectManagement: React.FC = () => {
     // Simulate loading for 1.2s then join
     setTimeout(async () => {
       try {
-        await joinProject(trimmedId);
+        const result = await joinProject(trimmedId);
         setIsLoading(false);
         setIsJoinOpen(false);
         setProjectIdInput("");
         setShowAddOptions(false);
 
-        toast({
-          title: tr(language, "Tham gia dự án thành công!", "Successfully Joined Project!"),
-          description: tr(
-            language,
-            "Bạn hiện là thành viên của dự án này.",
-            "You are now a member of this project."
-          ),
-        });
+        if (result.status === "pending_approval") {
+          toast({
+            title: tr(language, "Yêu cầu tham gia đã gửi!", "Join Request Sent!"),
+            description: tr(
+              language,
+              `Yêu cầu tham gia dự án "${result.groupName}" đã được gửi và đang chờ phê duyệt.`,
+              `Your request to join "${result.groupName}" has been sent and is pending approval.`
+            ),
+          });
+        } else {
+          toast({
+            title: tr(language, "Tham gia dự án thành công!", "Successfully Joined Project!"),
+            description: tr(
+              language,
+              "Bạn hiện là thành viên của dự án này.",
+              "You are now a member of this project."
+            ),
+          });
+
+          // Launch workspace immediately!
+          if (result.groupIndex !== undefined) {
+            handleLaunchWorkspace(result.groupIndex, result.groupName);
+          }
+        }
       } catch (err) {
         setIsLoading(false);
         toast({
@@ -251,12 +292,8 @@ const ProjectManagement: React.FC = () => {
   };
 
   const determineUserRole = (group: Group & { lecturer_id?: string }, index: number) => {
-    const isDemo = sessionStorage.getItem("demo_session") || !user?.id;
+    const isDemo = !user?.id;
     if (isDemo) {
-      if (group.id === "g1") return "Owner";
-      if (group.id === "g2") return "Member";
-      if (group.id === "g3") return "Member";
-      // Fallback for demo groups created dynamically
       const isLeader = group.members?.some((m) => m.name === currentUserName && m.role === "Leader");
       return isLeader ? "Owner" : "Member";
     }
@@ -319,7 +356,7 @@ const ProjectManagement: React.FC = () => {
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },
   ];
 
-  const isDemo = isDemoSession() || !user?.id;
+  const isDemo = !user?.id;
   const isNewUserOnboarding = !isDemo && groups.length === 0 && !dismissedFreestyle;
 
   if (dataLoading) {
@@ -346,14 +383,14 @@ const ProjectManagement: React.FC = () => {
       <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white relative">
         <OnboardingNameModal />
         <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
-        
+
         {/* BACKGROUND DECORATIONS */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
           <div className="absolute top-[40%] right-[-10%] w-[40%] h-[50%] rounded-full bg-violet-600/10 blur-[120px]" />
         </div>
 
-        <main className="flex-1 max-w-4xl mx-auto px-6 py-20 flex flex-col justify-center items-center z-10 relative">
+        <main className="flex-1 max-w-6xl mx-auto px-6 py-20 flex flex-col justify-center items-center z-10 relative">
           <div className="text-center mb-12 animate-in fade-in slide-in-from-top duration-500">
             <div className="flex items-center justify-center gap-3 mb-6">
               <div className="p-3 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/20">
@@ -375,11 +412,11 @@ const ProjectManagement: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-12 animate-in fade-in zoom-in-95 duration-500 delay-150">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-12 animate-in fade-in zoom-in-95 duration-500 delay-150">
             {/* Option 1: Already have a team */}
             <button
               onClick={() => setIsJoinOpen(true)}
-              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-emerald-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-emerald-500/60 rounded-3xl p-8 md:p-10 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
             >
               <div className="space-y-4">
                 <div className="p-4 w-fit rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform duration-300">
@@ -388,23 +425,23 @@ const ProjectManagement: React.FC = () => {
                 <h3 className="font-bold text-lg text-slate-100 group-hover:text-emerald-300 transition-colors">
                   {tr(language, "Đã có nhóm dự án", "Already have a team")}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-sm text-slate-400 leading-relaxed">
                   {tr(
                     language,
-                    "Nhập mã Project ID do trưởng nhóm hoặc giảng viên của bạn cung cấp để tham gia ngay.",
-                    "Enter a Project ID shared by your team leader or lecturer to join their workspace immediately."
+                    "Nhập mã mời (Invite Code) do trưởng nhóm của bạn cung cấp để tham gia ngay.",
+                    "Enter an Invite Code shared by your team leader to join their workspace."
                   )}
                 </p>
               </div>
               <span className="block mt-6 text-xs font-bold text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                {tr(language, "Nhập ID Dự án", "Enter Project ID")} &rarr;
+                {tr(language, "Nhập Mã mời", "Enter Invite Code")} &rarr;
               </span>
             </button>
 
             {/* Option 2: Create a new project */}
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/60 rounded-3xl p-8 md:p-10 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
             >
               <div className="space-y-4">
                 <div className="p-4 w-fit rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform duration-300">
@@ -413,7 +450,7 @@ const ProjectManagement: React.FC = () => {
                 <h3 className="font-bold text-lg text-slate-100 group-hover:text-indigo-300 transition-colors">
                   {tr(language, "Tạo dự án mới", "Create a new project")}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-sm text-slate-400 leading-relaxed">
                   {tr(
                     language,
                     "Tạo một không gian làm việc hoàn toàn mới và thêm các thành viên khác bằng UID của họ.",
@@ -429,7 +466,7 @@ const ProjectManagement: React.FC = () => {
             {/* Option 3: Freestyle */}
             <button
               onClick={() => setDismissedFreestyle(true)}
-              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 rounded-3xl p-6.5 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
+              className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 rounded-3xl p-8 md:p-10 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
             >
               <div className="space-y-4">
                 <div className="p-4 w-fit rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform duration-300">
@@ -438,7 +475,7 @@ const ProjectManagement: React.FC = () => {
                 <h3 className="font-bold text-lg text-slate-100 group-hover:text-amber-300 transition-colors">
                   {tr(language, "Tự do khám phá", "Freestyle Mode")}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-sm text-slate-400 leading-relaxed">
                   {tr(
                     language,
                     "Bỏ qua hướng dẫn thiết lập nhanh và truy cập trực tiếp trang danh sách quản lý dự án mẫu.",
@@ -530,22 +567,22 @@ const ProjectManagement: React.FC = () => {
                 <DialogDescription className="text-slate-400 text-sm mt-1">
                   {tr(
                     language,
-                    "Dán mã Project ID (UUID) do chủ sở hữu dự án cung cấp để tham gia vào không gian làm việc của họ.",
-                    "Paste the Project ID (UUID) provided by the project owner to join their active workspace."
+                    "Dán mã mời (Invite Code) do chủ sở hữu dự án cung cấp để tham gia vào không gian làm việc của họ.",
+                    "Paste the Invite Code provided by the project owner to join their active workspace."
                   )}
                 </DialogDescription>
               </DialogHeader>
               <div className="py-6 space-y-2">
                 <label className="text-xs font-bold text-emerald-400 uppercase tracking-widest block">
-                  {tr(language, "Project ID (UUID)", "Project ID (UUID)")}
+                  {tr(language, "Mã mời (Invite Code)", "Invite Code")}
                 </label>
                 <Input
                   id="join-project-id"
-                  placeholder="e.g. f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+                  placeholder="e.g. IV-A1B2C3"
                   value={projectIdInput}
-                  onChange={(e) => setProjectIdInput(e.target.value)}
+                  onChange={(e) => setProjectIdInput(e.target.value.toUpperCase())}
                   disabled={isLoading}
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-all py-5 font-mono text-sm"
+                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-all py-5 font-mono text-sm tracking-wider text-center"
                 />
               </div>
               <DialogFooter className="flex items-center gap-2 sm:justify-end">
@@ -750,16 +787,14 @@ const ProjectManagement: React.FC = () => {
                       ),
                     });
                   }}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden ${
-                    isActive
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden ${isActive
                       ? "text-white bg-indigo-600/10 border-l-[3px] border-indigo-500 shadow-inner shadow-indigo-500/5"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-[3px] border-transparent"
-                  }`}
+                    }`}
                 >
                   <Icon
-                    className={`h-4.5 w-4.5 transition-transform duration-300 group-hover:scale-110 ${
-                      isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-slate-300"
-                    }`}
+                    className={`h-4.5 w-4.5 transition-transform duration-300 group-hover:scale-110 ${isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-slate-300"
+                      }`}
                   />
                   {label}
                   {isActive && (
@@ -790,8 +825,8 @@ const ProjectManagement: React.FC = () => {
                   {profile?.role === "lecturer"
                     ? tr(language, "Giảng viên", "Lecturer")
                     : profile?.role === "admin"
-                    ? "Admin"
-                    : tr(language, "Sinh viên", "Student")}
+                      ? "Admin"
+                      : tr(language, "Sinh viên", "Student")}
                 </span>
               </div>
             </div>
@@ -875,9 +910,8 @@ const ProjectManagement: React.FC = () => {
                       onClick={() => setIsCreateOpen(true)}
                       onMouseEnter={() => setHoveredButton("create")}
                       onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-900 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-indigo-950/20 overflow-hidden group ${
-                        hoveredButton === "join" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
-                      }`}
+                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-900 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-indigo-950/20 overflow-hidden group ${hoveredButton === "join" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
+                        }`}
                       id="create-project-split-btn"
                     >
                       <Laptop className="h-8 w-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
@@ -898,9 +932,8 @@ const ProjectManagement: React.FC = () => {
                       onClick={() => setIsJoinOpen(true)}
                       onMouseEnter={() => setHoveredButton("join")}
                       onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-900 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-emerald-950/20 overflow-hidden group ${
-                        hoveredButton === "create" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
-                      }`}
+                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-900 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-emerald-950/20 overflow-hidden group ${hoveredButton === "create" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
+                        }`}
                       id="join-project-split-btn"
                     >
                       <Users className="h-8 w-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
@@ -932,6 +965,146 @@ const ProjectManagement: React.FC = () => {
           ) : (
             /* ACTIVE PROJECTS GRID */
             <div className="space-y-6">
+              {/* Pending Join Requests — applicant view */}
+              {myPendingRequests.length > 0 && (
+                <div className="space-y-3 mb-2">
+                  {myPendingRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="bg-gradient-to-r from-amber-950/20 to-amber-900/10 backdrop-blur-sm border border-amber-500/20 rounded-2xl p-5 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300"
+                    >
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
+                        <Clock className="h-5 w-5 text-amber-400 animate-pulse" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-bold text-amber-300">
+                          {tr(language, "Yêu cầu tham gia đang chờ...", "Join request pending...")}
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {tr(
+                            language,
+                            `Đang chờ Trưởng nhóm phê duyệt yêu cầu tham gia dự án "${req.group_name}"`,
+                            `Waiting for the Project Leader to approve your request for "${req.group_name}"`
+                          )}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <Loader2 className="h-4 w-4 text-amber-400 animate-spin" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Join Requests Management — Leader view */}
+              {pendingJoinRequests.length > 0 && (
+                <div className="bg-slate-900/40 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-2 animate-in fade-in duration-300">
+                  <div className="flex items-center gap-2">
+                    <Inbox className="h-4.5 w-4.5 text-indigo-400" />
+                    <h3 className="text-sm font-bold text-slate-200">
+                      {tr(language, "Yêu cầu tham gia", "Join Requests")} ({pendingJoinRequests.length})
+                    </h3>
+                  </div>
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto">
+                    {pendingJoinRequests.map((req) => {
+                      const applicant = req.users && !Array.isArray(req.users) ? req.users : (Array.isArray(req.users) ? req.users[0] : null);
+                      const applicantName = applicant?.full_name || "Unknown";
+                      const applicantEmail = applicant?.email || "";
+                      const nameInitials = applicantName.split(" ").pop()?.substring(0, 2).toUpperCase() || "??";
+                      // Dynamic gradient based on name
+                      const hue = applicantName.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
+
+                      return (
+                        <div
+                          key={req.id}
+                          className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-3.5 flex items-center gap-3 group hover:border-slate-700 transition-all"
+                        >
+                          {/* Gradient Avatar */}
+                          <div
+                            className="h-10 w-10 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md shrink-0"
+                            style={{ background: `linear-gradient(135deg, hsl(${hue}, 70%, 50%), hsl(${(hue + 60) % 360}, 70%, 45%))` }}
+                          >
+                            {nameInitials}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-200 truncate">{applicantName}</p>
+                            {applicantEmail && (
+                              <p className="text-[10px] text-slate-500 truncate mt-0.5">{applicantEmail}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-slate-600 font-mono">{req.invite_id}</span>
+                              <span className="text-[10px] text-slate-600">•</span>
+                              <span className="text-[10px] text-slate-500">
+                                {new Date(req.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              disabled={approvalLoading === req.id}
+                              onClick={async () => {
+                                setApprovalLoading(req.id);
+                                try {
+                                  await approveJoinRequest(req.id);
+                                  toast({
+                                    title: tr(language, "Đã phê duyệt!", "Approved!"),
+                                    description: `${applicantName} ${tr(language, "đã được thêm vào dự án.", "has been added to the project.")}`,
+                                  });
+                                } catch (err) {
+                                  toast({
+                                    title: tr(language, "Lỗi", "Error"),
+                                    description: String(err),
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  setApprovalLoading(null);
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all"
+                              title={tr(language, "Phê duyệt", "Approve")}
+                            >
+                              {approvalLoading === req.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={approvalLoading === req.id}
+                              onClick={async () => {
+                                setApprovalLoading(req.id);
+                                try {
+                                  await rejectJoinRequest(req.id);
+                                  toast({
+                                    title: tr(language, "Đã từ chối.", "Rejected."),
+                                    description: `${applicantName} ${tr(language, "đã bị từ chối.", "was rejected.")}`,
+                                  });
+                                } catch (err) {
+                                  toast({
+                                    title: tr(language, "Lỗi", "Error"),
+                                    description: String(err),
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  setApprovalLoading(null);
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-500 transition-all"
+                              title={tr(language, "Từ chối", "Reject")}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* If split button opened when list is non-empty */}
               {showAddOptions && (
                 <div className="bg-slate-900/30 border border-slate-800/80 p-8 rounded-3xl flex flex-col items-center gap-6 animate-in fade-in-0 duration-300 mb-8 shadow-inner">
@@ -943,9 +1116,8 @@ const ProjectManagement: React.FC = () => {
                       onClick={() => setIsCreateOpen(true)}
                       onMouseEnter={() => setHoveredButton("create")}
                       onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-6 w-52 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-955 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-md ${
-                        hoveredButton === "join" ? "opacity-30 border-slate-900" : "opacity-100"
-                      }`}
+                      className={`relative flex flex-col items-center justify-center p-6 w-52 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-955 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-md ${hoveredButton === "join" ? "opacity-30 border-slate-900" : "opacity-100"
+                        }`}
                     >
                       <Laptop className="h-7 w-7 text-indigo-400 mb-3" />
                       <span className="block text-sm text-slate-200 font-bold">
@@ -957,9 +1129,8 @@ const ProjectManagement: React.FC = () => {
                       onClick={() => setIsJoinOpen(true)}
                       onMouseEnter={() => setHoveredButton("join")}
                       onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-6 w-52 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-955 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-md ${
-                        hoveredButton === "create" ? "opacity-30 border-slate-900" : "opacity-100"
-                      }`}
+                      className={`relative flex flex-col items-center justify-center p-6 w-52 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-955 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-md ${hoveredButton === "create" ? "opacity-30 border-slate-900" : "opacity-100"
+                        }`}
                     >
                       <Users className="h-7 w-7 text-emerald-400 mb-3" />
                       <span className="block text-sm text-slate-200 font-bold">
@@ -999,17 +1170,16 @@ const ProjectManagement: React.FC = () => {
 
                         <div className="flex justify-between items-start relative z-10">
                           <Badge
-                            className={`backdrop-blur-md font-semibold text-xs py-1 px-2.5 rounded-lg border-0 shadow-md ${
-                              role === "Owner" || role === "Lecturer"
+                            className={`backdrop-blur-md font-semibold text-xs py-1 px-2.5 rounded-lg border-0 shadow-md ${role === "Owner" || role === "Lecturer"
                                 ? "bg-white/25 text-white"
                                 : "bg-black/35 text-white"
-                            }`}
+                              }`}
                           >
                             {role === "Owner"
                               ? tr(language, "Chủ sở hữu", "Owner")
                               : role === "Lecturer"
-                              ? tr(language, "Giảng viên", "Lecturer")
-                              : tr(language, "Thành viên", "Member")}
+                                ? tr(language, "Giảng viên", "Lecturer")
+                                : tr(language, "Thành viên", "Member")}
                           </Badge>
                         </div>
 
@@ -1021,20 +1191,6 @@ const ProjectManagement: React.FC = () => {
                       {/* Card Body */}
                       <div className="p-5 space-y-4.5 flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
-                          {/* Project ID */}
-                          <div className="bg-slate-950/60 border border-slate-900/60 rounded-xl p-3 flex items-center justify-between gap-2 shadow-inner">
-                            <span className="text-[10px] font-mono text-slate-400 truncate flex-1 tracking-tight select-all">
-                              {group.id}
-                            </span>
-                            <button
-                              onClick={() => handleCopyId(group.id)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/20 border border-transparent hover:border-indigo-500/20 transition-all duration-200 cursor-pointer shrink-0"
-                              title="Copy Project ID"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-
                           {/* Members count & Created date */}
                           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold px-1">
                             <div className="flex items-center gap-1.5">
@@ -1156,15 +1312,15 @@ const ProjectManagement: React.FC = () => {
           </DialogHeader>
           <div className="py-6 space-y-2">
             <label className="text-xs font-bold text-emerald-400 uppercase tracking-widest block">
-              {tr(language, "Project ID (UUID)", "Project ID (UUID)")}
+              {tr(language, "Mã mời (Invite Code)", "Invite Code")}
             </label>
             <Input
               id="join-project-id"
-              placeholder="e.g. f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+              placeholder="e.g. IV-A1B2C3"
               value={projectIdInput}
-              onChange={(e) => setProjectIdInput(e.target.value)}
+              onChange={(e) => setProjectIdInput(e.target.value.toUpperCase())}
               disabled={isLoading}
-              className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-all py-5 font-mono text-sm"
+              className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-all py-5 font-mono text-sm tracking-wider text-center"
             />
           </div>
           <DialogFooter className="flex items-center gap-2 sm:justify-end">

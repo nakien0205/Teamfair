@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import {
   approvePersistedTask,
   deletePersistedMaterial,
@@ -21,6 +21,14 @@ import {
   deletePersistedCalendarEvent,
   createPersistedGroup,
   joinPersistedGroup,
+  deletePersistedGroup,
+  createProjectInvite,
+  getProjectInvites,
+  revokeProjectInvite,
+  createJoinRequest,
+  getJoinRequests,
+  processJoinRequest,
+  validateInviteCode,
 } from '@/lib/teamPersistence';
 import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
 import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
@@ -58,6 +66,7 @@ export interface MemberStat {
   completedTasks: number;
   contributionPercent: number;
   lecturerScore: number | null;
+  globalRole?: 'student' | 'lecturer' | 'admin';
 }
 
 export interface ActivityLogEntry {
@@ -112,6 +121,33 @@ export interface Group {
   activityLog: ActivityLogEntry[];
 }
 
+export interface ProjectInvite {
+  id: string;
+  group_id: string;
+  created_by: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  uses_count: number;
+  approval_mode: 'auto' | 'requires_approval';
+  created_at: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  group_id: string;
+  invite_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  users?: {
+    full_name: string;
+    email: string;
+  } | {
+    full_name: string;
+    email: string;
+  }[] | null;
+}
+
 interface TeamContextType {
   groups: Group[];
   currentGroupIndex: number;
@@ -143,10 +179,22 @@ interface TeamContextType {
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   deleteCalendarEvent: (id: string) => void;
   createProject: (projectName: string) => Promise<string>;
-  joinProject: (projectId: string) => Promise<void>;
+  joinProject: (inviteCode: string) => Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }>;
+  deleteProject: (id: string) => Promise<void>;
   currentUserName: string;
   connectionError: boolean;
   dataLoading: boolean;
+  loadPersistedState: () => Promise<void>;
+
+  // Invites and requests
+  activeInvites: ProjectInvite[];
+  pendingJoinRequests: JoinRequest[];
+  generateInviteCode: (expiresAt: Date | null, maxUses: number | null, approvalMode: "auto" | "requires_approval") => Promise<ProjectInvite>;
+  fetchActiveInvites: () => Promise<ProjectInvite[]>;
+  revokeInvite: (inviteId: string) => Promise<void>;
+  fetchPendingJoinRequests: () => Promise<JoinRequest[]>;
+  approveJoinRequest: (requestId: string) => Promise<void>;
+  rejectJoinRequest: (requestId: string) => Promise<void>;
 }
 
 
@@ -170,6 +218,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lecturerStudentReviews, setLecturerStudentReviews] = useState<LecturerStudentReview[]>([]);
   const [studentBadges, setStudentBadges] = useState<VerifiedBadge[]>([]);
   const [dataSource, setDataSource] = useState<'demo' | 'supabase'>('supabase');
+
+  const [activeInvites, setActiveInvites] = useState<ProjectInvite[]>([]);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequest[]>([]);
 
   const [connectionError, setConnectionError] = useState(false);
   const [dataLoading, setDataLoading] = useState<boolean>(true);
@@ -320,6 +371,141 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cancelled = true;
     };
   }, [authLoading, resetDemoState, user?.id]);
+
+  const fetchActiveInvites = useCallback(async (): Promise<ProjectInvite[]> => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return [];
+
+    if (canPersist) {
+      try {
+        const data = await getProjectInvites(currentGroup.id);
+        setActiveInvites(data);
+        return data;
+      } catch (err) {
+        console.error("Failed to fetch project invites:", err);
+        return [];
+      }
+    } else {
+      return activeInvites;
+    }
+  }, [groups, currentGroupIndex, canPersist, activeInvites]);
+
+  const generateInviteCode = useCallback(async (
+    expiresAt: Date | null,
+    maxUses: number | null,
+    approvalMode: "auto" | "requires_approval"
+  ): Promise<ProjectInvite> => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) throw new Error("No active group selected");
+
+    if (canPersist) {
+      const invite = await createProjectInvite(currentGroup.id, expiresAt, maxUses, approvalMode);
+      setActiveInvites(prev => [invite, ...prev]);
+      return invite;
+    } else {
+      const mockInvite: ProjectInvite = {
+        id: `IV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        group_id: currentGroup.id,
+        created_by: user?.id || "mock-user",
+        expires_at: expiresAt ? expiresAt.toISOString() : null,
+        max_uses: maxUses,
+        uses_count: 0,
+        approval_mode: approvalMode,
+        created_at: new Date().toISOString(),
+      };
+      setActiveInvites(prev => [mockInvite, ...prev]);
+      return mockInvite;
+    }
+  }, [groups, currentGroupIndex, canPersist, user?.id]);
+
+  const revokeInvite = useCallback(async (inviteId: string): Promise<void> => {
+    setActiveInvites(prev => prev.filter(inv => inv.id !== inviteId));
+
+    if (canPersist) {
+      await revokeProjectInvite(inviteId);
+    }
+  }, [canPersist]);
+
+  const fetchPendingJoinRequests = useCallback(async (): Promise<JoinRequest[]> => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) return [];
+
+    if (canPersist) {
+      try {
+        const data = await getJoinRequests(currentGroup.id);
+        setPendingJoinRequests(data);
+        return data;
+      } catch (err) {
+        console.error("Failed to fetch join requests:", err);
+        return [];
+      }
+    } else {
+      return pendingJoinRequests;
+    }
+  }, [groups, currentGroupIndex, canPersist, pendingJoinRequests]);
+
+  const approveJoinRequest = useCallback(async (requestId: string): Promise<void> => {
+    const request = pendingJoinRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    setPendingJoinRequests(prev => prev.filter(r => r.id !== requestId));
+
+    if (canPersist) {
+      try {
+        await processJoinRequest(requestId, "approved");
+        await loadPersistedState();
+      } catch (err) {
+        console.error("Failed to approve join request:", err);
+        void fetchPendingJoinRequests();
+      }
+    } else {
+      const currentGroup = groups[currentGroupIndex];
+      if (currentGroup) {
+        const applicantName = request.users && !Array.isArray(request.users)
+          ? request.users.full_name
+          : "Thành viên mới";
+        
+        updateGroup(currentGroupIndex, g => ({
+          ...g,
+          members: [
+            ...g.members,
+            {
+              id: request.user_id,
+              name: applicantName,
+              role: "Member",
+              completedTasks: 0,
+              contributionPercent: 0,
+              lecturerScore: null,
+            }
+          ],
+          activityLog: [
+            { timestamp: new Date(), description: `${applicantName} đã tham gia dự án` },
+            ...g.activityLog
+          ]
+        }));
+      }
+    }
+  }, [pendingJoinRequests, canPersist, groups, currentGroupIndex, updateGroup, loadPersistedState, fetchPendingJoinRequests]);
+
+  const rejectJoinRequest = useCallback(async (requestId: string): Promise<void> => {
+    setPendingJoinRequests(prev => prev.filter(r => r.id !== requestId));
+
+    if (canPersist) {
+      try {
+        await processJoinRequest(requestId, "rejected");
+      } catch (err) {
+        console.error("Failed to reject join request:", err);
+        void fetchPendingJoinRequests();
+      }
+    }
+  }, [canPersist, fetchPendingJoinRequests]);
+
+  useEffect(() => {
+    if (canPersist && group?.id) {
+      void fetchActiveInvites();
+      void fetchPendingJoinRequests();
+    }
+  }, [group?.id, canPersist, fetchActiveInvites, fetchPendingJoinRequests]);
 
   const persist = useCallback((operation: () => Promise<void>) => {
     if (!canPersist) return;
@@ -531,6 +717,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const createProject = useCallback(async (projectName: string) => {
     if (canPersist && user?.id) {
       const newId = await createPersistedGroup(projectName, user.id);
+      localStorage.setItem(`teamfair_last_project_${user.id}`, newId);
       await loadPersistedState();
       return newId;
     } else {
@@ -558,14 +745,76 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [canPersist, user?.id, loadPersistedState, currentUserName]);
 
-  const joinProject = useCallback(async (projectId: string) => {
+  const joinProject = useCallback(async (inviteCode: string): Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }> => {
     if (canPersist && user?.id) {
-      await joinPersistedGroup(projectId, user.id);
-      await loadPersistedState();
+      const { group_id, approval_mode, group_name } = await validateInviteCode(inviteCode);
+
+      if (approval_mode === "auto") {
+        await joinPersistedGroup(group_id, user.id, "Member");
+        localStorage.setItem(`teamfair_last_project_${user.id}`, group_id);
+        
+        const snapshot = await loadPersistedTeamSnapshot();
+        setGroups(snapshot.groups);
+        setReports(snapshot.reports);
+        setMaterialsByGroupId(snapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
+        setStudentBadges(snapshot.studentBadges);
+        
+        const foundIdx = snapshot.groups.findIndex(g => g.id === group_id);
+        const targetIndex = foundIdx !== -1 ? foundIdx : 0;
+        setCurrentGroupIndex(targetIndex);
+        setDataSource('supabase');
+        setConnectionError(false);
+        
+        const joinedGroup = snapshot.groups[targetIndex];
+        return { status: "success", groupIndex: targetIndex, groupName: joinedGroup?.name || group_name };
+      } else {
+        await createJoinRequest(group_id, inviteCode, user.id);
+
+        const senderName = profile?.full_name || user.email || "Hệ thống";
+        const notificationContent = `Sinh viên ${senderName} đang yêu cầu tham gia dự án "${group_name}".`;
+
+        const { data: groupData } = await supabase
+          .from("groups")
+          .select("lecturer_id")
+          .eq("id", group_id)
+          .single();
+
+        const { data: leaderData } = await supabase
+          .from("group_members")
+          .select("student_id")
+          .eq("group_id", group_id)
+          .eq("role", "Leader")
+          .maybeSingle();
+
+        if (groupData?.lecturer_id) {
+          await supabase.from("notifications").insert({
+            recipient_id: groupData.lecturer_id,
+            sender_name: senderName,
+            content: notificationContent,
+            is_read: false,
+          });
+        }
+        if (leaderData?.student_id && leaderData.student_id !== groupData?.lecturer_id) {
+          await supabase.from("notifications").insert({
+            recipient_id: leaderData.student_id,
+            sender_name: senderName,
+            content: notificationContent,
+            is_read: false,
+          });
+        }
+
+        return { status: "pending_approval", groupName: group_name };
+      }
     } else {
+      if (inviteCode.endsWith("-REQ") || inviteCode.includes("APPROVAL")) {
+        return { status: "pending_approval", groupName: `Dự án Yêu cầu Duyệt - ${inviteCode}` };
+      }
+
       const mockG: Group = {
-        id: projectId,
-        name: `Dự án Joined - ${projectId}`,
+        id: inviteCode,
+        name: `Dự án Joined - ${inviteCode}`,
         members: [
           {
             id: 'demo-user-id',
@@ -581,12 +830,36 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { timestamp: new Date(), description: 'Bạn đã tham gia dự án' },
         ],
       };
+      let newIdx = 0;
+      let newName = mockG.name;
       setGroups(prev => {
-        if (prev.some(g => g.id === projectId)) return prev;
+        const existingIdx = prev.findIndex(g => g.id === inviteCode);
+        if (existingIdx !== -1) {
+          newIdx = existingIdx;
+          newName = prev[existingIdx].name;
+          return prev;
+        }
+        newIdx = prev.length;
         return [...prev, mockG];
       });
+      setCurrentGroupIndex(newIdx);
+      return { status: "success", groupIndex: newIdx, groupName: newName };
     }
-  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+  }, [canPersist, user?.id, profile?.full_name, currentUserName]);
+
+  const deleteProject = useCallback(async (projectId: string) => {
+    if (canPersist && user?.id) {
+      await deletePersistedGroup(projectId);
+      const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
+      if (lastProjId === projectId) {
+        localStorage.removeItem(`teamfair_last_project_${user.id}`);
+      }
+      await loadPersistedState();
+    } else {
+      setGroups(prev => prev.filter(g => g.id !== projectId));
+      setCurrentGroupIndex(0);
+    }
+  }, [canPersist, user?.id, loadPersistedState]);
 
   const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
     const state = deserializeSnapshotToTeamState(snapshot);
@@ -660,9 +933,19 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteCalendarEvent,
       createProject,
       joinProject,
+      deleteProject,
       currentUserName,
       connectionError,
       dataLoading,
+      loadPersistedState,
+      activeInvites,
+      pendingJoinRequests,
+      generateInviteCode,
+      fetchActiveInvites,
+      revokeInvite,
+      fetchPendingJoinRequests,
+      approveJoinRequest,
+      rejectJoinRequest,
     }),
     [
       groups,
@@ -696,9 +979,19 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteCalendarEvent,
       createProject,
       joinProject,
+      deleteProject,
       currentUserName,
       connectionError,
       dataLoading,
+      loadPersistedState,
+      activeInvites,
+      pendingJoinRequests,
+      generateInviteCode,
+      fetchActiveInvites,
+      revokeInvite,
+      fetchPendingJoinRequests,
+      approveJoinRequest,
+      rejectJoinRequest,
     ],
   );
 

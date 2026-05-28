@@ -8,7 +8,6 @@ import { tr } from "@/lib/i18n";
 import { buildWorkspaceSnapshotFromTeam, type WorkspaceSnapshotJson } from "@/lib/workspaceSnapshot";
 import { useToast } from "@/hooks/use-toast";
 import { loadChatHistory, insertChatMessage, clearChatHistory, type ChatMessageRow } from "@/lib/chatHistory";
-import { isDemoSession } from "@/lib/demoSession";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -142,7 +141,7 @@ const StudentAgentSidebar = ({ open, onOpenChange, onLockedSectionChange }: Stud
       setHistoryLoaded(false);
       return;
     }
-    if (isDemoSession() || !user?.id) {
+    if (!user?.id) {
       setHistoryLoaded(true);
       return;
     }

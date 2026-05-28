@@ -20,7 +20,6 @@ import ProjectCalendar from '@/components/ProjectCalendar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 import StudentAgentSidebar, { type LockedSection } from '@/components/feature-groups/StudentAgentSidebar';
 import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSection';
@@ -65,7 +64,6 @@ const StudentDashboard = () => {
   const anonymousFrom = t(language, 'anonymousFrom');
 
   useEffect(() => {
-    if (isDemoSession()) return;
     if (authLoading || !profile) return;
     if (profile.role === "lecturer" || profile.role === "admin") {
       navigate("/dashboard-lecturer", { replace: true });
@@ -232,7 +230,7 @@ const StudentDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Sinh viên", "Student")}
-          subtitle={isDemoSession() ? tr(language, "Student workspace", "Student workspace") : currentUserName}
+          subtitle={currentUserName}
           items={[
             { key: 'work', label: tr(language, 'Công việc', 'Work'), icon: <LayoutGrid /> },
             { key: 'calendar', label: tr(language, 'Lịch', 'Calendar'), icon: <CalendarDays /> },
@@ -280,22 +278,7 @@ const StudentDashboard = () => {
       }
     >
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
-        {isDemoSession() && (
-          <div className="bg-card rounded-xl p-4 shadow-card border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">{tr(language, 'Vai trò hiện tại', 'Current role')}</p>
-              <p className="font-display font-semibold text-lg">{studentRole}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => {
-              const next = isLeader ? 'Member' : 'Leader';
-              setStudentRole(next);
-              toast({ title: tr(language, 'Đã chuyển vai trò', 'Role changed'), description: tr(language, `Bạn giờ là ${next}`, `You are now ${next}`) });
-            }}>
-              <ArrowLeftRight className="h-4 w-4 mr-1" />
-              {tr(language, `Chuyển sang ${isLeader ? 'Member' : 'Leader'} (Demo)`, `Switch to ${isLeader ? 'Member' : 'Leader'} (Demo)`) }
-            </Button>
-          </div>
-        )}
+
 
         {activeSection === 'work' ? (
           <div className="space-y-6">

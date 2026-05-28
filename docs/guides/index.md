@@ -9,7 +9,7 @@ Use this file to pick the smallest relevant doc before reading code.
 - Python student workspace AI agent (OpenRouter tools, local snapshot) -> student_workspace_agent.md
 - Lecturer features, flows, or UI sections -> lecturer_workplace.md
 - Shared layout, navigation, or shell components -> core_layout.md
-- App state, demo data, Supabase auth, or context logic -> state_and_data.md
+- App state, Supabase auth -> state_and_data.md
 - Page list or where a screen lives -> pages.md
 - Full overview (when unsure) -> project_structure.md
 

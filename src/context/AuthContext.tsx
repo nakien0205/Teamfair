@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { clearDemoSession } from "@/lib/demoSession";
 
 export type AppUserRole = "student" | "lecturer" | "admin";
 
@@ -162,7 +161,6 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
-    clearDemoSession();
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
     setSession(null);

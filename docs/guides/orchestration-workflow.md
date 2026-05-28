@@ -51,7 +51,7 @@ The Orchestrator defines highly-focused, single-responsibility subagents using `
 > **Subagent Rules Injection**: Every subagent's `system_prompt` MUST explicitly include the key project rules:
 > 1. **Docs-First Rule**: Starting with `docs/guides/index.md` before reading code.
 > 2. **UI Conventions**: Reusing existing Shadcn UI primitives (`src/components/ui`) and vanilla Tailwind styling.
-> 3. **State Preservation**: Keeping the local demo-mode seeded fallback behavior intact in `TeamContext.tsx` and `AuthContext.tsx`.
+> 3. **Robust State Syncing**: Ensuring correct client-side optimistic state updates and database synchronization in `TeamContext.tsx` and `AuthContext.tsx`.
 
 #### Example Subagent Definitions:
 * **`SchemaMigratorAgent`**: Equiped with SQL execution or migration tools to create database tables and setup RLS.
@@ -70,7 +70,7 @@ The Orchestrator handles parallel and sequential task pipelines:
 Once all subagents have completed their work:
 1. **Aggregated Review**: The Orchestrator inspects all code files changed/created by subagents.
 2. **Automated Testing**: Run unit tests (via `npm run test` or `python -m unittest`) to verify no regressions have been introduced.
-3. **Verify Demo Mode**: Verify that demo/fallback mode remains fully functional.
+3. **Verify Authentication Scoping**: Verify that Row-Level Security (RLS) and routing logic properly scope resources.
 4. **Deliver Walkthrough**: Compile a comprehensive `walkthrough.md` artifact showing the changes, test executions, and visual updates.
 
 ---
@@ -116,7 +116,7 @@ gantt
   ```json
   {
     "name": "StateAgent",
-    "system_prompt": "You are a state management specialist. Read docs/guides/state_and_data.md. Update TeamContext.tsx and teamPersistence.ts to support the new 'category' task property. Ensure the default seeded demo data is also updated to prevent type errors. Maintain full demo-mode fallback capabilities."
+    "system_prompt": "You are a state management specialist. Read docs/guides/state_and_data.md. Update TeamContext.tsx and teamPersistence.ts to support the new 'category' task property. Ensure database deserialization maps correct fields without type errors. Maintain complete database-sync consistency."
   }
   ```
 * **Defining Phase 3 Agent (`UiAgent`)**:

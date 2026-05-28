@@ -31,7 +31,7 @@ Routes (summary):
 - `*` -> [src/pages/NotFound.tsx](../../src/pages/NotFound.tsx)
 
 ## State, data, auth, and i18n
-See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Supabase client, demo session, and database RLS notes.
+See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Supabase client, and database RLS notes.
 
 ## Backend (Supabase)
 - [supabase/migrations](../../supabase/migrations/) - Postgres schema, triggers on `auth.users`, RLS policies, RPC `set_signup_role`.
@@ -40,7 +40,7 @@ See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Sup
 ## Pages (top-level views)
 - [src/pages/Landing.tsx](src/pages/Landing.tsx) - marketing/hero landing page with language switcher.
 - [src/pages/RoleSelection.tsx](src/pages/RoleSelection.tsx) - select student vs lecturer.
-- [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), demo shortcuts, role-based redirect when authenticated.
+- [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), role-based redirect when authenticated.
 - [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx) - student workspace with tasks, calendar, evaluation, materials, badges, and activity log.
 - [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx) - lecturer workspace with group overview, reports, rubric, evaluations, exports, materials, and activity log.
 - [src/pages/NotFound.tsx](src/pages/NotFound.tsx) - 404 view.
@@ -48,14 +48,13 @@ See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Sup
 ## Auth and session gating
 - [src/context/AuthContext.tsx](src/context/AuthContext.tsx) - Supabase session and `public.users` profile row (`refreshProfile`, `signOut`).
 - [src/lib/supabaseClient.ts](src/lib/supabaseClient.ts) - `createClient` and `isSupabaseConfigured`.
-- [src/lib/demoSession.ts](src/lib/demoSession.ts) - demo dashboard access flag in `sessionStorage`.
 - [src/lib/dashboardPath.ts](src/lib/dashboardPath.ts) - maps `public.users.role` to student vs lecturer dashboard paths.
-- [src/components/ProtectedRoute.tsx](src/components/ProtectedRoute.tsx) - wraps dashboards; enforces session or demo mode when Supabase env is present.
+- [src/components/ProtectedRoute.tsx](src/components/ProtectedRoute.tsx) - wraps dashboards; enforces an authenticated Supabase session when Supabase is configured.
 
 ## Core layout and navigation
 - [src/components/DashboardShell.tsx](src/components/DashboardShell.tsx) - shared layout with sidebar rail + header + content area.
 - [src/components/DashboardSidebar.tsx](src/components/DashboardSidebar.tsx) - left nav, groups items into primary/secondary, handles mobile collapse.
-- [src/components/DashboardHeader.tsx](src/components/DashboardHeader.tsx) - top bar, role switcher, language switcher, exit action (signs out Supabase session and clears demo session when used from dashboards).
+- [src/components/DashboardHeader.tsx](src/components/DashboardHeader.tsx) - top bar, language switcher, exit action (signs out Supabase session when used from dashboards).
 - [src/components/DashboardTabs.tsx](src/components/DashboardTabs.tsx) - tab switcher used for local section navigation.
 
 ## Student workspace feature map
@@ -83,7 +82,7 @@ Primary entry: [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx
 - Lecturer student review and badges
   - [src/components/feature-groups/LecturerStudentEvaluationPanel.tsx](src/components/feature-groups/LecturerStudentEvaluationPanel.tsx)
 - Export and materials
-  - [src/components/ExportReport.tsx](src/components/ExportReport.tsx) - CSV/XLS export demo.
+  - [src/components/ExportReport.tsx](src/components/ExportReport.tsx) - CSV/XLS export utility.
   - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload and delete materials (lecturer view).
 
 ## Shared feature components

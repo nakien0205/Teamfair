@@ -9,7 +9,7 @@ type Props = {
 };
 
 const ProtectedRoute = ({ children }: Props) => {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   const location = useLocation();
 
   if (!isSupabaseConfigured) {
@@ -27,6 +27,10 @@ const ProtectedRoute = ({ children }: Props) => {
 
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (profile && !profile.profile_completed && location.pathname !== "/projects") {
+    return <Navigate to="/projects" replace />;
   }
 
   return <>{children}</>;
