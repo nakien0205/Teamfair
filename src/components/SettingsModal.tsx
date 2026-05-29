@@ -806,18 +806,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                   <button
                     type="button"
                     onClick={() => setShareApprovalMode("auto")}
-                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${
-                      shareApprovalMode === "auto"
+                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${shareApprovalMode === "auto"
                         ? "border-emerald-500/60 bg-emerald-500/5 shadow-md shadow-emerald-500/10"
                         : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
-                    }`}
+                      }`}
                   >
-                    <Zap className={`h-4.5 w-4.5 mb-2 ${
-                      shareApprovalMode === "auto" ? "text-emerald-400" : "text-slate-500"
-                    }`} />
-                    <span className={`block text-xs font-bold ${
-                      shareApprovalMode === "auto" ? "text-emerald-300" : "text-slate-400"
-                    }`}>
+                    <Zap className={`h-4.5 w-4.5 mb-2 ${shareApprovalMode === "auto" ? "text-emerald-400" : "text-slate-500"
+                      }`} />
+                    <span className={`block text-xs font-bold ${shareApprovalMode === "auto" ? "text-emerald-300" : "text-slate-400"
+                      }`}>
                       {tr(language, "Tham gia Ngay", "Join Instantly")}
                     </span>
                     <span className="block text-[10px] text-slate-500 mt-1 leading-snug">
@@ -831,18 +828,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                   <button
                     type="button"
                     onClick={() => setShareApprovalMode("requires_approval")}
-                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${
-                      shareApprovalMode === "requires_approval"
+                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${shareApprovalMode === "requires_approval"
                         ? "border-amber-500/60 bg-amber-500/5 shadow-md shadow-amber-500/10"
                         : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
-                    }`}
+                      }`}
                   >
-                    <ShieldCheck className={`h-4.5 w-4.5 mb-2 ${
-                      shareApprovalMode === "requires_approval" ? "text-amber-400" : "text-slate-500"
-                    }`} />
-                    <span className={`block text-xs font-bold ${
-                      shareApprovalMode === "requires_approval" ? "text-amber-300" : "text-slate-400"
-                    }`}>
+                    <ShieldCheck className={`h-4.5 w-4.5 mb-2 ${shareApprovalMode === "requires_approval" ? "text-amber-400" : "text-slate-500"
+                      }`} />
+                    <span className={`block text-xs font-bold ${shareApprovalMode === "requires_approval" ? "text-amber-300" : "text-slate-400"
+                      }`}>
                       {tr(language, "Cần Phê duyệt", "Requires Approval")}
                     </span>
                     <span className="block text-[10px] text-slate-500 mt-1 leading-snug">
@@ -910,11 +904,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                       return (
                         <div
                           key={inv.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
-                            isExpired || isMaxed
+                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${isExpired || isMaxed
                               ? "bg-slate-950/40 border-rose-900/30 opacity-60"
                               : "bg-slate-950/60 border-slate-800/50 hover:border-slate-700"
-                          }`}
+                            }`}
                         >
                           <div className="min-w-0 flex-1">
                             <span className="font-mono text-xs font-bold text-slate-200 tracking-wide">
@@ -925,15 +918,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                                 {inv.uses_count}/{inv.max_uses ?? "∞"} {tr(language, "lượt", "uses")}
                               </span>
                               <span className="text-[10px] text-slate-600">•</span>
-                              <span className={`text-[10px] ${
-                                isExpired ? "text-rose-400" : "text-slate-500"
-                              }`}>
+                              <span className={`text-[10px] ${isExpired ? "text-rose-400" : "text-slate-500"
+                                }`}>
                                 {formatInviteExpiry(inv.expires_at)}
                               </span>
                               <span className="text-[10px] text-slate-600">•</span>
-                              <span className={`text-[10px] font-semibold ${
-                                inv.approval_mode === "auto" ? "text-emerald-400" : "text-amber-400"
-                              }`}>
+                              <span className={`text-[10px] font-semibold ${inv.approval_mode === "auto" ? "text-emerald-400" : "text-amber-400"
+                                }`}>
                                 {inv.approval_mode === "auto" ? tr(language, "Tự động", "Auto") : tr(language, "Duyệt", "Approval")}
                               </span>
                             </div>

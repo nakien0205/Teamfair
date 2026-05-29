@@ -38,7 +38,7 @@ const ProjectManagement: React.FC = () => {
   const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
 
   // Fetch pending join requests for current user (applicant view)
-  const [myPendingRequests, setMyPendingRequests] = useState<Array<{id: string; group_name: string; created_at: string}>>([]);
+  const [myPendingRequests, setMyPendingRequests] = useState<Array<{ id: string; group_name: string; created_at: string }>>([]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -57,7 +57,7 @@ const ProjectManagement: React.FC = () => {
             created_at: r.created_at,
           })));
         }
-      } catch {}
+      } catch { }
     };
     void loadMyRequests();
   }, [user?.id, groups]);
@@ -788,8 +788,8 @@ const ProjectManagement: React.FC = () => {
                     });
                   }}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden ${isActive
-                      ? "text-white bg-indigo-600/10 border-l-[3px] border-indigo-500 shadow-inner shadow-indigo-500/5"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-[3px] border-transparent"
+                    ? "text-white bg-indigo-600/10 border-l-[3px] border-indigo-500 shadow-inner shadow-indigo-500/5"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-[3px] border-transparent"
                     }`}
                 >
                   <Icon
@@ -1171,8 +1171,8 @@ const ProjectManagement: React.FC = () => {
                         <div className="flex justify-between items-start relative z-10">
                           <Badge
                             className={`backdrop-blur-md font-semibold text-xs py-1 px-2.5 rounded-lg border-0 shadow-md ${role === "Owner" || role === "Lecturer"
-                                ? "bg-white/25 text-white"
-                                : "bg-black/35 text-white"
+                              ? "bg-white/25 text-white"
+                              : "bg-black/35 text-white"
                               }`}
                           >
                             {role === "Owner"

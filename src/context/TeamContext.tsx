@@ -225,6 +225,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [connectionError, setConnectionError] = useState(false);
   const [dataLoading, setDataLoading] = useState<boolean>(true);
 
+  const updateGroup = useCallback((idx: number, updater: (g: Group) => Group) => {
+    setGroups(prev => prev.map((g, i) => i === idx ? updater({ ...g }) : g));
+  }, []);
+
   const group = groups[currentGroupIndex] || groups[0];
   const tasks = group?.tasks ?? [];
   const members = group?.members ?? [];
@@ -515,10 +519,6 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Supabase team data persistence failed:', error);
       });
   }, [canPersist, loadPersistedState]);
-
-  const updateGroup = useCallback((idx: number, updater: (g: Group) => Group) => {
-    setGroups(prev => prev.map((g, i) => i === idx ? updater({ ...g }) : g));
-  }, []);
 
   const addLog = useCallback((description: string) => {
     updateGroup(currentGroupIndex, g => ({
