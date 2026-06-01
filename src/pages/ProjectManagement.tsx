@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Loader2, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox } from "lucide-react";
+import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Loader2, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox, Mail, MailOpen, Bell, Check, AlertTriangle, UserX, Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useTeam, type Group, type MemberStat } from "@/context/TeamContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useNotifications } from "@/context/NotificationContext";
 import { tr } from "@/lib/i18n";
 import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -20,9 +21,11 @@ const ProjectManagement: React.FC = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, updateProfileName } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [activeTab, setActiveTab] = useState<string>("All Projects");
+  const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all");
   const [showAddOptions, setShowAddOptions] = useState<boolean>(false);
   const [hoveredButton, setHoveredButton] = useState<"create" | "join" | null>(null);
 
@@ -36,6 +39,216 @@ const ProjectManagement: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [dismissedFreestyle, setDismissedFreestyle] = useState<boolean>(false);
   const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
+
+  // Workspace Settings — account fields state
+  const [wsName, setWsName] = useState("");
+  const [wsNameLoading, setWsNameLoading] = useState(false);
+  const [wsCopied, setWsCopied] = useState(false);
+
+  // Delete Account states
+  const [deleteAccountStep, setDeleteAccountStep] = useState<"none" | "confirm_name" | "leader_warning">("none");
+  const [deleteAccountNameInput, setDeleteAccountNameInput] = useState("");
+  const [deleteAccountSilent, setDeleteAccountSilent] = useState(false);
+  const [deleteAccountProceedInput, setDeleteAccountProceedInput] = useState("");
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [ledProjects, setLedProjects] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      const persisted = sessionStorage.getItem(`teamfair_dismissed_freestyle_${user.id}`) === "true";
+      setDismissedFreestyle(persisted);
+    }
+  }, [user?.id]);
+
+  // Sync wsName from profile
+  useEffect(() => {
+    if (profile?.full_name) {
+      setWsName(profile.full_name);
+    }
+  }, [profile?.full_name]);
+
+  // Cooldown calculation for display name
+  const lastNameChange = profile?.last_name_change_at ? new Date(profile.last_name_change_at) : null;
+  const cooldownEnd = lastNameChange ? new Date(lastNameChange.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+  const now = new Date();
+  const isCooldownActive = cooldownEnd ? now < cooldownEnd : false;
+  const remainingMs = cooldownEnd ? cooldownEnd.getTime() - now.getTime() : 0;
+  const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
+  // Workspace Settings handlers
+  const handleWsSaveName = async () => {
+    if (isCooldownActive) {
+      toast({
+        title: tr(language, "Lỗi", "Error"),
+        description: tr(
+          language,
+          `Bạn chỉ có thể đổi tên sau ${remainingDays} ngày nữa.`,
+          `You can change your name again in ${remainingDays} days.`
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+    const trimmed = wsName.trim();
+    if (!trimmed) {
+      toast({
+        title: tr(language, "Lỗi", "Error"),
+        description: tr(language, "Vui lòng nhập tên hợp lệ", "Please enter a valid name"),
+        variant: "destructive",
+      });
+      return;
+    }
+    setWsNameLoading(true);
+    try {
+      await updateProfileName(trimmed);
+      toast({
+        title: tr(language, "Thành công!", "Success!"),
+        description: tr(language, "Cập nhật hồ sơ thành công!", "Profile updated successfully!"),
+      });
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      toast({
+        title: tr(language, "Lỗi", "Error"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setWsNameLoading(false);
+    }
+  };
+
+  const handleWsCopyUid = () => {
+    if (!profile?.id) return;
+    void navigator.clipboard.writeText(profile.id);
+    setWsCopied(true);
+    toast({
+      title: tr(language, "Đã sao chép UID!", "UID Copied!"),
+    });
+    setTimeout(() => setWsCopied(false), 2000);
+  };
+
+  // Delete Account: Step 1 -> check if name matches -> check if Leader of any project
+  const handleDeleteAccountVerifyName = async () => {
+    if (deleteAccountNameInput !== profile?.full_name) {
+      toast({
+        title: tr(language, "Lỗi xác minh", "Verification Error"),
+        description: tr(language, "Tên không khớp. Vui lòng nhập chính xác tên hiển thị của bạn.", "Name does not match. Please type your exact display name."),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user is Leader of any projects
+    if (user?.id) {
+      try {
+        const { data, error } = await supabase
+          .from("group_members")
+          .select("group_id, groups:group_id(project_name)")
+          .eq("student_id", user.id)
+          .eq("role", "Leader");
+
+        if (!error && data && data.length > 0) {
+          // Also check groups where user is lecturer_id
+          const { data: lecturerGroups } = await supabase
+            .from("groups")
+            .select("id, project_name")
+            .eq("lecturer_id", user.id);
+
+          // Merge and deduplicate
+          const allLedIds = new Set<string>();
+          const allLed: Array<{ id: string; name: string; memberCount: number }> = [];
+
+          for (const row of (data as unknown as Array<{ group_id: string; groups: { project_name: string } | null }>)) {
+            if (!allLedIds.has(row.group_id)) {
+              allLedIds.add(row.group_id);
+              allLed.push({ id: row.group_id, name: row.groups?.project_name || "Unknown", memberCount: 0 });
+            }
+          }
+          for (const row of (lecturerGroups || [])) {
+            if (!allLedIds.has(row.id)) {
+              allLedIds.add(row.id);
+              allLed.push({ id: row.id, name: row.project_name, memberCount: 0 });
+            }
+          }
+
+          // Fetch member counts
+          for (const proj of allLed) {
+            const { count } = await supabase
+              .from("group_members")
+              .select("*", { count: "exact", head: true })
+              .eq("group_id", proj.id);
+            proj.memberCount = count || 0;
+          }
+
+          setLedProjects(allLed);
+          setDeleteAccountStep("leader_warning");
+          setDeleteAccountProceedInput("");
+          return;
+        }
+
+        // Also check lecturer_id only groups
+        const { data: lecturerOnlyGroups } = await supabase
+          .from("groups")
+          .select("id, project_name")
+          .eq("lecturer_id", user.id);
+
+        if (lecturerOnlyGroups && lecturerOnlyGroups.length > 0) {
+          const allLed: Array<{ id: string; name: string; memberCount: number }> = [];
+          for (const row of lecturerOnlyGroups) {
+            const { count } = await supabase
+              .from("group_members")
+              .select("*", { count: "exact", head: true })
+              .eq("group_id", row.id);
+            allLed.push({ id: row.id, name: row.project_name, memberCount: count || 0 });
+          }
+          setLedProjects(allLed);
+          setDeleteAccountStep("leader_warning");
+          setDeleteAccountProceedInput("");
+          return;
+        }
+      } catch (err) {
+        console.error("Error checking leader status:", err);
+      }
+    }
+
+    // Not a leader of any project — execute deletion directly
+    await executeAccountDeletion();
+  };
+
+  // Execute the actual account deletion
+  const executeAccountDeletion = async () => {
+    setDeleteAccountLoading(true);
+    try {
+      // 1. Call the RPC to clean all public.* data
+      const { data: deletedUserId, error: rpcError } = await supabase.rpc("delete_user_account", {
+        p_silent: deleteAccountSilent,
+      });
+      if (rpcError) throw new Error(rpcError.message);
+
+      // 2. Call the Edge Function to delete auth.users
+      try {
+        await supabase.functions.invoke("delete-user-auth", {
+          body: { user_id: deletedUserId || user?.id },
+        });
+      } catch (edgeErr) {
+        // Edge function failure is non-fatal — public data is already gone
+        console.warn("Edge function delete-user-auth failed (auth row may remain orphaned):", edgeErr);
+      }
+
+      // 3. Sign out and redirect
+      await signOut();
+      navigate("/");
+    } catch (err) {
+      console.error("Account deletion failed:", err);
+      toast({
+        title: tr(language, "Lỗi xóa tài khoản", "Account Deletion Failed"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
 
   // Fetch pending join requests for current user (applicant view)
   const [myPendingRequests, setMyPendingRequests] = useState<Array<{ id: string; group_name: string; created_at: string }>>([]);
@@ -51,13 +264,15 @@ const ProjectManagement: React.FC = () => {
           .eq("user_id", user.id)
           .eq("status", "pending");
         if (!error && data) {
-          setMyPendingRequests(data.map((r: any) => ({
+          setMyPendingRequests((data as unknown as Array<{ id: string; created_at: string; groups: { project_name: string } | null }>).map((r) => ({
             id: r.id,
             group_name: r.groups?.project_name || "Unknown",
             created_at: r.created_at,
           })));
         }
-      } catch { }
+      } catch (err) {
+        console.error("Error loading pending requests:", err);
+      }
     };
     void loadMyRequests();
   }, [user?.id, groups]);
@@ -349,17 +564,91 @@ const ProjectManagement: React.FC = () => {
     navigate(redirectPath);
   };
 
+  // Find source project based on member/task/group name lookup
+  const findSourceProject = (notifContent: string, senderName: string) => {
+    // 1. Task Name search
+    for (const group of groups) {
+      if (group.tasks) {
+        for (const task of group.tasks) {
+          if (task.name && notifContent.toLowerCase().includes(task.name.toLowerCase())) {
+            return group;
+          }
+        }
+      }
+    }
+
+    // 2. Member Name search (exclude generic names)
+    if (senderName && senderName !== "Lecturer" && senderName !== "System" && senderName !== "Hệ thống" && senderName !== "Giảng viên") {
+      for (const group of groups) {
+        if (group.members) {
+          for (const member of group.members) {
+            if (member.name && member.name.toLowerCase() === senderName.toLowerCase()) {
+              return group;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Project Name search
+    for (const group of groups) {
+      if (group.name && notifContent.toLowerCase().includes(group.name.toLowerCase())) {
+        return group;
+      }
+    }
+
+    return null;
+  };
+
+  // Helper to format elapsed time in Viet/English
+  const formatTime = (date: Date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return tr(language, "Vừa xong", "Just now");
+    if (diffMins < 60) return `${diffMins} ${tr(language, "phút trước", "m ago")}`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} ${tr(language, "giờ trước", "h ago")}`;
+
+    return d.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getAvatarGradient = (name: string) => {
+    const hue = name.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
+    return `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 60) % 360}, 70%, 45%))`;
+  };
+
   const sidebarItems = [
     { name: "All Projects", labelVi: "Tất cả dự án", labelEn: "All Projects", icon: Folder },
     { name: "Global Calendar", labelVi: "Lịch chung", labelEn: "Global Calendar", icon: Calendar },
     { name: "Activity Logs", labelVi: "Nhật ký hoạt động", labelEn: "Activity Logs", icon: History },
+    { name: "Notification", labelVi: "Thông báo", labelEn: "Notification", icon: Bell },
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },
   ];
 
   const isDemo = !user?.id;
-  const isNewUserOnboarding = !isDemo && groups.length === 0 && !dismissedFreestyle;
+  const myGroups = groups.filter(group => {
+    if (isDemo) return true;
+    if (profile?.role === "admin") return true;
+    if (profile?.role === "lecturer") {
+      const isOwner = group.lecturer_id === user?.id;
+      const isMember = group.members?.some(m => m.id === user?.id);
+      return isOwner || isMember;
+    }
+    return group.members?.some(m => m.id === user?.id);
+  });
 
-  if (dataLoading) {
+  const isNewUserOnboarding = !isDemo && myGroups.length === 0 && !dismissedFreestyle;
+
+  if (dataLoading || (user?.id && !profile)) {
     return (
       <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased items-center justify-center relative">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -382,7 +671,7 @@ const ProjectManagement: React.FC = () => {
     return (
       <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white relative">
         <OnboardingNameModal />
-        <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} defaultToMember={true} />
 
         {/* BACKGROUND DECORATIONS */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -465,7 +754,12 @@ const ProjectManagement: React.FC = () => {
 
             {/* Option 3: Freestyle */}
             <button
-              onClick={() => setDismissedFreestyle(true)}
+              onClick={() => {
+                if (user?.id) {
+                  sessionStorage.setItem(`teamfair_dismissed_freestyle_${user.id}`, "true");
+                }
+                setDismissedFreestyle(true);
+              }}
               className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 rounded-3xl p-8 md:p-10 text-left flex flex-col justify-between transition-all duration-300 transform hover:scale-[1.02] shadow-xl"
             >
               <div className="space-y-4">
@@ -734,7 +1028,7 @@ const ProjectManagement: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white">
       <OnboardingNameModal />
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} defaultToMember={true} />
       {/* BACKGROUND DECORATIONS */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
@@ -770,22 +1064,24 @@ const ProjectManagement: React.FC = () => {
                   key={item.name}
                   onClick={() => {
                     if (item.name === "Workspace Settings") {
-                      setIsSettingsOpen(true);
+                      setActiveTab("Workspace Settings");
                       return;
                     }
                     setActiveTab(item.name);
-                    toast({
-                      title: tr(
-                        language,
-                        `Đã click tiện ích: "${label}"`,
-                        `Clicked utility: "${label}"`
-                      ),
-                      description: tr(
-                        language,
-                        "Chức năng này thuộc giao diện mẫu.",
-                        "This option is part of the layout template."
-                      ),
-                    });
+                    if (item.name !== "Notification" && item.name !== "All Projects") {
+                      toast({
+                        title: tr(
+                          language,
+                          `Đã click tiện ích: "${label}"`,
+                          `Clicked utility: "${label}"`
+                        ),
+                        description: tr(
+                          language,
+                          "Chức năng này thuộc giao diện mẫu.",
+                          "This option is part of the layout template."
+                        ),
+                      });
+                    }
                   }}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden ${isActive
                     ? "text-white bg-indigo-600/10 border-l-[3px] border-indigo-500 shadow-inner shadow-indigo-500/5"
@@ -797,7 +1093,12 @@ const ProjectManagement: React.FC = () => {
                       }`}
                   />
                   {label}
-                  {isActive && (
+                  {item.name === "Notification" && unreadCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-rose-500 text-white rounded-full animate-pulse shadow-md shadow-rose-500/20">
+                      {unreadCount}
+                    </span>
+                  )}
+                  {isActive && item.name !== "Notification" && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-lg shadow-indigo-500/50 animate-pulse" />
                   )}
                 </button>
@@ -862,7 +1163,7 @@ const ProjectManagement: React.FC = () => {
             </div>
 
             {/* ACTION TRIGGERS IN HEADER */}
-            {groups.length > 0 && (
+            {myGroups.length > 0 && (
               <div className="flex items-center gap-3">
                 <Button
                   onClick={() => setShowAddOptions(true)}
@@ -876,7 +1177,463 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           {/* MAIN WORKSPACE CONTENT */}
-          {groups.length === 0 ? (
+          {activeTab === "Workspace Settings" ? (
+            <div className="space-y-8 animate-in fade-in duration-300 max-w-2xl">
+              {/* Section Header */}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-violet-600/20 border border-indigo-500/30">
+                  <Settings className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-300 bg-clip-text text-transparent">
+                    {tr(language, "Cấu hình Tài khoản", "Account Settings")}
+                  </h2>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    {tr(language, "Quản lý thông tin hồ sơ cá nhân và tài khoản Teamfair.", "Manage your personal profile and Teamfair account.")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Account Profile Card */}
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 space-y-5 shadow-lg">
+                {/* Email (Read Only) */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </Label>
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-3 text-slate-400 text-sm select-all">
+                    {profile?.email || "—"}
+                  </div>
+                </div>
+
+                {/* Supabase UID */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5" />
+                    UID
+                  </Label>
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-inner">
+                    <span className="font-mono text-xs text-slate-300 truncate tracking-tight select-all flex-1">
+                      {profile?.id || "—"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleWsCopyUid}
+                      className="p-1 h-auto hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                    >
+                      {wsCopied ? <Check className="h-3.5 w-3.5 text-emerald-400 animate-in fade-in" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Display Name */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <UserIcon className="h-3.5 w-3.5" />
+                    {tr(language, "Tên Hiển Thị", "Display Name")}
+                  </Label>
+                  <Input
+                    value={wsName}
+                    onChange={(e) => setWsName(e.target.value)}
+                    disabled={wsNameLoading || isCooldownActive}
+                    className={`bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all py-5 font-medium ${isCooldownActive ? "opacity-60 cursor-not-allowed" : ""}`}
+                  />
+                  {isCooldownActive && (
+                    <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>
+                        {tr(
+                          language,
+                          `Tên hiển thị chỉ được thay đổi 30 ngày một lần. Vui lòng quay lại sau ${remainingDays} ngày nữa.`,
+                          `Display name can only be changed once every 30 days. Please return in ${remainingDays} days.`
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Save Button */}
+                <Button
+                  onClick={() => void handleWsSaveName()}
+                  disabled={wsNameLoading || isCooldownActive || wsName.trim() === profile?.full_name}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-6 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/15"
+                >
+                  {wsNameLoading ? (
+                    <>
+                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                      {tr(language, "Đang lưu...", "Saving...")}
+                    </>
+                  ) : (
+                    tr(language, "Lưu Thay Đổi", "Save Changes")
+                  )}
+                </Button>
+              </div>
+
+              {/* Delete Account Section */}
+              <div className="bg-rose-500/5 border border-rose-500/20 rounded-2xl p-6 space-y-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <UserX className="h-4.5 w-4.5 text-rose-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-rose-400">
+                      {tr(language, "Xóa Tài khoản", "Delete me")}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      {tr(
+                        language,
+                        "Xóa vĩnh viễn tài khoản và toàn bộ dữ liệu của bạn. Hành động này không thể hoàn tác.",
+                        "Permanently delete your account and all associated data. This action cannot be undone."
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setDeleteAccountStep("confirm_name");
+                      setDeleteAccountNameInput("");
+                      setDeleteAccountSilent(false);
+                      setDeleteAccountProceedInput("");
+                      setLedProjects([]);
+                    }}
+                    className="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-rose-400 font-bold text-xs rounded-xl px-5 py-3 h-auto transition-all cursor-pointer shrink-0"
+                    id="delete-account-btn"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    {tr(language, "Xóa Tài khoản", "Delete me")}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Delete Account Dialog — Step 1: Confirm Name */}
+              <Dialog open={deleteAccountStep === "confirm_name"} onOpenChange={(open) => {
+                if (!open && !deleteAccountLoading) {
+                  setDeleteAccountStep("none");
+                }
+              }}>
+                <DialogContent className="sm:max-w-[480px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-bold tracking-tight text-rose-500 flex items-center gap-2.5">
+                      <AlertTriangle className="h-5.5 w-5.5 text-rose-500" />
+                      {tr(language, "Xác nhận Xóa Tài khoản", "Confirm Account Deletion")}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 text-sm mt-1">
+                      {tr(
+                        language,
+                        "Hành động này sẽ xóa vĩnh viễn tài khoản, tất cả dự án, và toàn bộ dữ liệu của bạn.",
+                        "This action will permanently delete your account, all projects you lead, and all your data."
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl p-4 text-sm leading-relaxed">
+                      {tr(
+                        language,
+                        "Cảnh báo: Tất cả dự án, nhiệm vụ, tài liệu và lịch sử của bạn sẽ bị xóa vĩnh viễn. Để tiếp tục, vui lòng nhập chính xác tên hiển thị bên dưới:",
+                        "Warning: All your projects, tasks, materials, and history will be permanently purged. To proceed, please type your exact display name below:"
+                      )}
+                      <div className="mt-3 font-mono bg-slate-950/60 border border-slate-800 rounded px-3 py-1.5 text-center text-rose-400 font-bold select-all tracking-wide">
+                        {profile?.full_name}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        {tr(language, "Nhập tên hiển thị để xác nhận", "Display Name Verification")}
+                      </Label>
+                      <Input
+                        required
+                        autoFocus
+                        value={deleteAccountNameInput}
+                        onChange={(e) => setDeleteAccountNameInput(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-700 rounded-xl focus-visible:ring-rose-500 focus-visible:border-rose-500 py-5 text-center text-sm font-semibold"
+                        placeholder={tr(language, "Nhập tên hiển thị tại đây...", "Type your display name here...")}
+                      />
+                    </div>
+
+                    {/* Delete Silently Checkbox */}
+                    <label className="flex items-start gap-3 cursor-pointer group select-none">
+                      <input
+                        type="checkbox"
+                        checked={deleteAccountSilent}
+                        onChange={(e) => setDeleteAccountSilent(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
+                          {tr(language, "Xóa Âm thầm", "Delete Silently")}
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                          {tr(
+                            language,
+                            "Không gửi thông báo nào đến các thành viên dự án. Họ sẽ không được thông báo về việc bạn rời đi.",
+                            "No notifications will be sent to any project members. They will not be informed of your departure."
+                          )}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <DialogFooter className="flex items-center gap-2 sm:justify-end pt-2 border-t border-slate-800/60">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setDeleteAccountStep("none")}
+                      disabled={deleteAccountLoading}
+                      className="text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800/50"
+                    >
+                      {tr(language, "Hủy bỏ", "Cancel")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void handleDeleteAccountVerifyName()}
+                      disabled={deleteAccountLoading || deleteAccountNameInput !== profile?.full_name}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl px-5 border-0 shadow-lg shadow-rose-600/15 flex items-center gap-2"
+                    >
+                      {deleteAccountLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {tr(language, "Tiếp tục", "Continue")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Delete Account Dialog — Step 2: Leader Warning */}
+              <Dialog open={deleteAccountStep === "leader_warning"} onOpenChange={(open) => {
+                if (!open && !deleteAccountLoading) {
+                  setDeleteAccountStep("none");
+                }
+              }}>
+                <DialogContent className="sm:max-w-[520px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-bold tracking-tight text-amber-400 flex items-center gap-2.5">
+                      <AlertTriangle className="h-5.5 w-5.5 text-amber-400 animate-pulse" />
+                      {tr(language, "Cảnh báo: Bạn là Trưởng nhóm!", "Warning: You are a Project Leader!")}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 text-sm mt-1">
+                      {tr(
+                        language,
+                        "Bạn hiện đang quản lý các dự án sau. Xóa tài khoản sẽ xóa vĩnh viễn tất cả các dự án này và đuổi mọi thành viên.",
+                        "You are currently leading the following projects. Deleting your account will permanently delete all of them and kick every member."
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    {/* List of affected projects */}
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-2.5 max-h-[200px] overflow-y-auto">
+                      {ledProjects.map((proj) => (
+                        <div
+                          key={proj.id}
+                          className="flex items-center justify-between bg-slate-950/40 border border-slate-800/60 rounded-xl px-3.5 py-2.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-amber-300 truncate">{proj.name}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">{proj.memberCount} {tr(language, "thành viên", "members")}</p>
+                          </div>
+                          <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-semibold uppercase py-0.5 px-2 shrink-0">
+                            {tr(language, "Sẽ bị xóa", "Will be deleted")}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl p-4 text-sm leading-relaxed">
+                      {tr(
+                        language,
+                        "Để xác nhận rằng bạn hiểu hệ quả, vui lòng nhập chính xác từ khóa bên dưới:",
+                        "To confirm that you understand the consequences, please type the exact keyword below:"
+                      )}
+                      <div className="mt-3 font-mono bg-slate-950/60 border border-slate-800 rounded px-3 py-1.5 text-center text-rose-400 font-bold select-all tracking-wider text-base">
+                        proceed
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        {tr(language, "Nhập từ khóa xác nhận", "Confirmation Keyword")}
+                      </Label>
+                      <Input
+                        required
+                        autoFocus
+                        value={deleteAccountProceedInput}
+                        onChange={(e) => setDeleteAccountProceedInput(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-700 rounded-xl focus-visible:ring-rose-500 focus-visible:border-rose-500 py-5 font-mono text-center text-sm font-semibold"
+                        placeholder={tr(language, "Nhập 'proceed' tại đây...", "Type 'proceed' here...")}
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter className="flex items-center gap-2 sm:justify-end pt-2 border-t border-slate-800/60">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setDeleteAccountStep("confirm_name");
+                      }}
+                      disabled={deleteAccountLoading}
+                      className="text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800/50 flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      {tr(language, "Quay lại", "Back")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void executeAccountDeletion()}
+                      disabled={deleteAccountLoading || deleteAccountProceedInput !== "proceed"}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl px-5 border-0 shadow-lg shadow-rose-600/15 flex items-center gap-2"
+                    >
+                      {deleteAccountLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {tr(language, "Tôi hiểu hệ quả, xóa tài khoản", "I understand, delete my account")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : activeTab === "Notification" ? (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Filter controls and mark all read */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800/80 backdrop-blur-md">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setNotifFilter("all")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                      notifFilter === "all"
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
+                        : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
+                    }`}
+                  >
+                    {tr(language, "Tất cả thông báo", "All Notifications")} ({notifications.length})
+                  </button>
+                  <button
+                    onClick={() => setNotifFilter("unread")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 relative ${
+                      notifFilter === "unread"
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
+                        : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
+                    }`}
+                  >
+                    {tr(language, "Chưa đọc", "Unread")} ({unreadCount})
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {unreadCount > 0 && (
+                  <Button
+                    onClick={markAllAsRead}
+                    variant="ghost"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/20 rounded-xl flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                  >
+                    <Check className="h-4 w-4" />
+                    {tr(language, "Đánh dấu tất cả đã đọc", "Mark all as read")}
+                  </Button>
+                )}
+              </div>
+
+              {/* Notifications List */}
+              {notifications.filter(n => notifFilter === "all" || !n.isRead).length === 0 ? (
+                <div className="flex flex-col items-center justify-center min-h-[350px] bg-slate-900/20 border-2 border-dashed border-slate-800/80 rounded-3xl p-8 shadow-inner animate-in fade-in duration-300">
+                  <div className="p-5 rounded-full bg-slate-900 border border-slate-800 shadow-md text-slate-500 mb-4 animate-bounce">
+                    <Mail className="h-10 w-10 opacity-60" />
+                  </div>
+                  <h3 className="font-bold text-lg text-slate-200">
+                    {tr(language, "Không có thông báo nào", "No Notifications Found")}
+                  </h3>
+                  <p className="text-sm text-slate-400 text-center max-w-xs mt-2">
+                    {notifFilter === "unread"
+                      ? tr(language, "Tất cả các thông báo của bạn đã được đọc.", "All of your notifications have been marked as read.")
+                      : tr(language, "Hiện tại hộp thư thông báo của bạn trống.", "Your notification inbox is currently empty.")}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {notifications
+                    .filter(n => notifFilter === "all" || !n.isRead)
+                    .map((notif) => {
+                      const sourceGroup = findSourceProject(notif.content, notif.senderName);
+                      const initials = notif.senderName.split(" ").pop()?.substring(0, 2).toUpperCase() || "US";
+                      const isUnread = !notif.isRead;
+
+                      return (
+                        <div
+                          key={notif.id}
+                          onClick={() => isUnread && markAsRead(notif.id)}
+                          className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${
+                            isUnread
+                              ? "border-indigo-500/30 hover:border-indigo-500/50 bg-indigo-950/5"
+                              : "border-slate-800/80 hover:border-slate-700/80 opacity-70"
+                          }`}
+                        >
+                          {/* Unread Left Border Highlight */}
+                          {isUnread && (
+                            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-indigo-500 rounded-l-2xl shadow-lg shadow-indigo-500/50" />
+                          )}
+
+                          {/* Avatar */}
+                          <div
+                            className="h-12 w-12 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-md shrink-0 transition-transform duration-300 group-hover:scale-105"
+                            style={{ background: getAvatarGradient(notif.senderName) }}
+                          >
+                            {initials}
+                          </div>
+
+                          {/* Content area */}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm text-slate-100 group-hover:text-white transition-colors">
+                                  {notif.senderName}
+                                </span>
+
+                                {/* Source Project Badge */}
+                                {sourceGroup ? (
+                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
+                                    {tr(language, `Dự án: ${sourceGroup.name}`, `Project: ${sourceGroup.name}`)}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-slate-800 text-slate-400 border-0 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
+                                    {tr(language, "Chung", "General")}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[11px] text-slate-500 font-medium">
+                                  {formatTime(notif.createdAt)}
+                                </span>
+                                {isUnread && (
+                                  <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-md shadow-indigo-500/50 animate-pulse shrink-0" />
+                                )}
+                              </div>
+                            </div>
+
+                            <p className="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed break-words font-medium">
+                              {notif.content}
+                            </p>
+                          </div>
+
+                          {/* Mark single as read hover action button */}
+                          {isUnread && (
+                            <div className="absolute right-4 bottom-4 sm:top-5 sm:bottom-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all shadow-md">
+                                <MailOpen className="h-3.5 w-3.5" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          ) : myGroups.length === 0 ? (
             /* EMPTY STATE OR REVEAL SPLIT BUTTON */
             <div className="flex items-center justify-center min-h-[450px]">
               {!showAddOptions ? (
@@ -1151,8 +1908,9 @@ const ProjectManagement: React.FC = () => {
 
               {/* GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {groups.map((group, index) => {
-                  const role = determineUserRole(group as Group & { lecturer_id?: string }, index);
+                {myGroups.map((group) => {
+                  const originalIndex = groups.findIndex(g => g.id === group.id);
+                  const role = determineUserRole(group as Group & { lecturer_id?: string }, originalIndex);
                   const color = getProjectColor(group.id);
                   const createdAt = (group as Group & { created_at?: string }).created_at
                     ? new Date((group as Group & { created_at?: string }).created_at!).toISOString().split("T")[0]
@@ -1208,7 +1966,7 @@ const ProjectManagement: React.FC = () => {
 
                         {/* Launch Workspace Button */}
                         <Button
-                          onClick={() => handleLaunchWorkspace(index, group.name)}
+                          onClick={() => handleLaunchWorkspace(originalIndex, group.name)}
                           className="w-full mt-2 bg-slate-800 hover:bg-indigo-600 border border-slate-700/60 hover:border-indigo-500/25 text-slate-200 hover:text-white rounded-xl py-2.5 transition-all duration-300 font-bold shadow-md hover:shadow-indigo-600/10 flex items-center justify-center gap-2 group/launch cursor-pointer"
                         >
                           {tr(language, "Vào Workspace", "Launch Workspace")}

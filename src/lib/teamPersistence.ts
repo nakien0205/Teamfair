@@ -19,6 +19,7 @@ type DbTaskStatus = "todo" | "in_progress" | "done";
 type DbGroup = {
   id: string;
   project_name: string;
+  lecturer_id?: string;
 };
 
 type DbMember = {
@@ -275,6 +276,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       members,
       tasks,
       activityLog,
+      lecturer_id: groupRow.lecturer_id,
     };
   });
 
@@ -348,7 +350,7 @@ async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { me
 
 export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot> {
   const groups = await selectOrThrow<DbGroup[]>(
-    supabase.from("groups").select("id,project_name").order("created_at", { ascending: true }),
+    supabase.from("groups").select("id,project_name,lecturer_id").order("created_at", { ascending: true }),
   );
   const members = await selectOrThrow<DbMember[]>(
     supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
@@ -939,15 +941,13 @@ export async function validateInviteCode(inviteCode: string): Promise<{ group_id
   }
 
   const { error: updateError } = await supabase
-    .from("project_invites")
-    .update({ uses_count: invite.uses_count + 1 })
-    .eq("id", inviteCode);
+    .rpc("increment_invite_use", { p_invite_code: inviteCode });
 
   if (updateError) {
     throw new Error("Lỗi khi cập nhật số lượt sử dụng mã mời");
   }
 
-  const groupName = (invite as any).groups?.project_name;
+  const groupName = (invite as unknown as { groups?: { project_name: string } }).groups?.project_name;
 
   return {
     group_id: invite.group_id as string,

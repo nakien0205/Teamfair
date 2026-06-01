@@ -119,6 +119,7 @@ export interface Group {
   members: MemberStat[];
   tasks: Task[];
   activityLog: ActivityLogEntry[];
+  lecturer_id?: string;
 }
 
 export interface ProjectInvite {

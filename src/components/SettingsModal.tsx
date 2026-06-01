@@ -14,9 +14,10 @@ import { supabase } from "@/lib/supabaseClient";
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultToMember?: boolean;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange, defaultToMember = false }) => {
   const { profile, updateProfileName } = useAuth();
   const { language } = useLanguage();
   const { groups, currentGroupIndex, members, loadPersistedState, deleteProject, generateInviteCode, fetchActiveInvites, revokeInvite, activeInvites } = useTeam();
@@ -45,7 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const currentGroup = groups[currentGroupIndex];
-  const isCallerLeader = currentGroup && members.some(m => m.id === profile?.id && m.role === 'Leader');
+  const isCallerLeader = !defaultToMember && currentGroup && members.some(m => m.id === profile?.id && m.role === 'Leader');
   const otherMembers = currentGroup ? members.filter(m => m.id && m.id !== profile?.id) : [];
 
   useEffect(() => {

@@ -57,6 +57,9 @@ Order matters; examples in this repo:
 11. `20260527150000_name_cooldown.sql` - name cooldown persistence and restrictions.
 12. `20260527160000_member_management_rpcs.sql` - member role update and leader resignation RPCs.
 13. `20260529120000_project_sharing.sql` - `project_invites` and `join_requests` tables to support invite code sharing and join request workflow, complete with RLS policies, constraints, indexes, and grants.
+14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
+15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
+16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
