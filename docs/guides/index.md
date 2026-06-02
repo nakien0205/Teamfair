@@ -11,6 +11,7 @@ Use this file to pick the smallest relevant doc before reading code.
 - Shared layout, navigation, or shell components -> core_layout.md
 - App state, Supabase auth -> state_and_data.md
 - Page list or where a screen lives -> pages.md
+- Sentry setup, error tracking, and source map configuration -> setup_sentry.md
 - Full overview (when unsure) -> project_structure.md
 
 ## Read order rule

@@ -14,56 +14,68 @@ import LecturerDashboard from "./pages/LecturerDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProjectManagement from "./pages/ProjectManagement";
+import * as Sentry from "@sentry/react";
+import SentryErrorBoundaryFallback from "@/components/SentryErrorBoundaryFallback";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <TeamProvider>
-            <NotificationProvider>
-              <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                <Route
-                  path="/dashboard-student"
-                  element={
-                    <ProtectedRoute>
-                      <StudentDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard-lecturer"
-                  element={
-                    <ProtectedRoute>
-                      <LecturerDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/projects"
-                  element={
-                    <ProtectedRoute>
-                      <ProjectManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/project-management-sandbox" element={<Navigate to="/projects" replace />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </NotificationProvider>
-        </TeamProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <Sentry.ErrorBoundary
+    fallback={({ error, componentStack, resetError }) => (
+      <SentryErrorBoundaryFallback
+        error={error}
+        componentStack={componentStack}
+        resetError={resetError}
+      />
+    )}
+  >
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <TeamProvider>
+              <NotificationProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route
+                      path="/dashboard-student"
+                      element={
+                        <ProtectedRoute>
+                          <StudentDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard-lecturer"
+                      element={
+                        <ProtectedRoute>
+                          <LecturerDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/projects"
+                      element={
+                        <ProtectedRoute>
+                          <ProjectManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="/project-management-sandbox" element={<Navigate to="/projects" replace />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </NotificationProvider>
+            </TeamProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </Sentry.ErrorBoundary>
 );
 
 export default App;
