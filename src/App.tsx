@@ -8,7 +8,6 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import Landing from "./pages/Landing";
-import RoleSelection from "./pages/RoleSelection";
 import Login from "./pages/Login";
 import StudentDashboard from "./pages/StudentDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
@@ -30,7 +29,6 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Landing />} />
-                <Route path="/start" element={<RoleSelection />} />
                 <Route path="/login" element={<Login />} />
                 <Route
                   path="/dashboard-student"

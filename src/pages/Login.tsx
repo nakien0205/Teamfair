@@ -11,20 +11,16 @@ import { useAuth, type AppUserRole } from "@/context/AuthContext";
 import { t, tr } from "@/lib/i18n";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { dashboardPathForRole } from "@/lib/dashboardPath";
-import { clearDemoSession } from "@/lib/demoSession";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [params] = useSearchParams();
-  const roleParam = params.get("role") || "student";
-  const role = roleParam === "lecturer" ? "lecturer" : "student";
+
   const { language } = useLanguage();
   const { session, profile, loading: authLoading, refreshProfile } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -144,25 +140,11 @@ const Login = () => {
   }, [language]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || authLoading || !session?.user?.id) return;
-    const pending = sessionStorage.getItem("oauth_signup_role");
-    if (pending !== "student" && pending !== "lecturer") return;
-    void (async () => {
-      const { error } = await supabase.rpc("set_signup_role", { p_role: pending });
-      if (error) {
-        console.error(error);
-        toast.error(t(language, "authOAuthRoleFailed"));
-      }
-      sessionStorage.removeItem("oauth_signup_role");
-      await refreshProfile();
-    })();
-  }, [session?.user?.id, authLoading, language, refreshProfile]);
-
-  useEffect(() => {
     if (authLoading || !session?.user || !profile) return;
-    if (sessionStorage.getItem("oauth_signup_role")) return;
     if (location.pathname !== "/login") return;
-    const dest = from && from !== "/login" ? from : dashboardPathForRole(profile.role);
+    const dest = from && from !== "/login"
+      ? from
+      : (profile.profile_completed ? dashboardPathForRole(profile.role) : "/projects");
     navigate(dest, { replace: true });
   }, [session, profile, authLoading, navigate, location.pathname, from]);
 
@@ -174,14 +156,13 @@ const Login = () => {
     }
     setLoading(true);
     try {
-      clearDemoSession();
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              full_name: fullName.trim() || email.split("@")[0] || "User",
+              full_name: email.split("@")[0] || "User",
             },
           },
         });
@@ -191,10 +172,10 @@ const Login = () => {
         }
         if (data.session) {
           await refreshProfile();
-          const r = (await supabase.from("users").select("role").eq("id", data.user.id).maybeSingle()).data?.role as
-            | AppUserRole
-            | undefined;
-          navigate(dashboardPathForRole(r ?? "student"), { replace: true });
+          const u = (await supabase.from("users").select("role, profile_completed").eq("id", data.user.id).maybeSingle()).data;
+          const r = u?.role as AppUserRole | undefined;
+          const isCompleted = u?.profile_completed ?? false;
+          navigate(isCompleted ? dashboardPathForRole(r ?? "student") : "/projects", { replace: true });
         } else {
           toast.message(t(language, "authSignUpConfirmEmail"));
         }
@@ -205,10 +186,10 @@ const Login = () => {
           return;
         }
         await refreshProfile();
-        const r = (await supabase.from("users").select("role").eq("id", data.user.id).maybeSingle()).data?.role as
-          | AppUserRole
-          | undefined;
-        navigate(dashboardPathForRole(r ?? "student"), { replace: true });
+        const u = (await supabase.from("users").select("role, profile_completed").eq("id", data.user.id).maybeSingle()).data;
+        const r = u?.role as AppUserRole | undefined;
+        const isCompleted = u?.profile_completed ?? false;
+        navigate(isCompleted ? dashboardPathForRole(r ?? "student") : "/projects", { replace: true });
       }
     } finally {
       setLoading(false);
@@ -221,17 +202,14 @@ const Login = () => {
       return;
     }
     setLoading(true);
-    clearDemoSession();
-    sessionStorage.setItem("oauth_signup_role", role === "lecturer" ? "lecturer" : "student");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/login?role=${role}`,
+        redirectTo: `${window.location.origin}/login`,
       },
     });
     setLoading(false);
     if (error) {
-      sessionStorage.removeItem("oauth_signup_role");
       toast.error(t(language, "authGoogleFailed"), { description: error.message });
     }
   };
@@ -249,9 +227,6 @@ const Login = () => {
             <span className="font-display text-2xl font-bold">TEAMFAIR</span>
           </div>
           <h1 className="font-display text-xl font-bold mb-1">{t(language, "loginTitle")}</h1>
-          <p className="text-muted-foreground text-sm">
-            {t(language, "loginRoleLabel")}: {role === "lecturer" ? t(language, "lecturer") : t(language, "student")}
-          </p>
         </div>
 
         <div className="bg-card rounded-xl p-6 shadow-card space-y-4 border border-border">
@@ -272,12 +247,6 @@ const Login = () => {
           </div>
 
           <form onSubmit={(e) => void handleLogin(e)} className="space-y-4">
-            {isSignUp ? (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">{t(language, "loginFullNameOptional")}</Label>
-                <Input id="fullName" type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-              </div>
-            ) : null}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

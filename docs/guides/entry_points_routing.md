@@ -10,18 +10,17 @@ Provider nesting in [src/App.tsx](../../src/App.tsx) (outer to inner):
 2. `TooltipProvider`
 3. `LanguageProvider`
 4. `AuthProvider` ([src/context/AuthContext.tsx](../../src/context/AuthContext.tsx)) - Supabase session + `public.users` profile
-5. `TeamProvider` - in-memory demo team data
+5. `TeamProvider` - coordinates dashboard state and Supabase persistence
 6. `BrowserRouter` + `Routes`
 
 Routes defined in [src/App.tsx](../../src/App.tsx):
 - `/` -> [src/pages/Landing.tsx](../../src/pages/Landing.tsx)
-- `/start` -> [src/pages/RoleSelection.tsx](../../src/pages/RoleSelection.tsx)
-- `/login` -> [src/pages/Login.tsx](../../src/pages/Login.tsx) - Google OAuth, email sign-in / sign-up, demo shortcuts; query `?role=student` or `?role=lecturer` selects intended app role for new accounts / OAuth flow.
+- `/login` -> [src/pages/Login.tsx](../../src/pages/Login.tsx) - Google OAuth, email sign-in / sign-up. Role and name onboarding are managed after login.
 - `/dashboard-student` -> wrapped in [src/components/ProtectedRoute.tsx](../../src/components/ProtectedRoute.tsx) -> [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx)
 - `/dashboard-lecturer` -> `ProtectedRoute` -> [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx)
 - `*` -> [src/pages/NotFound.tsx](../../src/pages/NotFound.tsx)
 
-**Protected dashboards:** When `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set, unauthenticated users (without demo session) hitting dashboard routes are redirected to `/login`. When env vars are absent, dashboards stay accessible for local UI work without a backend.
+**Protected dashboards:** When hitting dashboard routes, unauthenticated users are automatically redirected to `/login`. Since demo mode is completely disabled, valid auth credentials and environment variables are strictly required to access dashboards.
 
 Utility:
 - [src/pages/Index.tsx](../../src/pages/Index.tsx) - redirect helper (not mounted on the main route table above).

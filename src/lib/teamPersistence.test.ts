@@ -152,6 +152,7 @@ describe("teamPersistence", () => {
         completedTasks: 1,
         contributionPercent: 100,
         lecturerScore: null,
+        globalRole: "student",
       },
       {
         id: "student-2",
@@ -160,6 +161,7 @@ describe("teamPersistence", () => {
         completedTasks: 0,
         contributionPercent: 0,
         lecturerScore: null,
+        globalRole: "student",
       },
     ]);
     expect(snapshot.groups[0].tasks[0].evidence?.[0].uploadTime).toBeInstanceOf(Date);

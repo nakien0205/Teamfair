@@ -74,6 +74,15 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     if (draggedTask) {
       const task = tasks.find(t => t.id === draggedTask);
       if (task && task.status !== status) {
+        if (!isLeader && task.assignedTo !== currentUser) {
+          toast({
+            title: tr(language, 'Quyền truy cập bị từ chối', 'Access Denied'),
+            description: tr(language, 'Bạn chỉ có thể di chuyển nhiệm vụ của chính mình', 'You can only move your own tasks'),
+            variant: 'destructive',
+          });
+          setDraggedTask(null);
+          return;
+        }
         updateTaskStatus(draggedTask, status, currentUser);
         toast({ title: tr(language, 'Cập nhật', 'Updated'), description: `"${task.name}" → ${getStatusLabel(status)}` });
       }
@@ -113,7 +122,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     setEvidenceTaskId(null);
   };
 
-  const visibleTasks = isLeader ? tasks : tasks.filter(t => t.assignedTo === currentUser);
+  const visibleTasks = tasks;
 
   return (
     <section className="bg-card rounded-xl p-6 shadow-card border border-border relative">
@@ -127,7 +136,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
       <div className={locked ? 'pointer-events-none opacity-60' : ''}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg font-semibold">{tr(language, 'Bảng Task (Kanban)', 'Task Board (Kanban)')}</h2>
-        {isLeader && (
+        {isLeader ? (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-1" /> {tr(language, 'Tạo Task', 'Create Task')}</Button>
@@ -174,6 +183,16 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
               </div>
             </DialogContent>
           </Dialog>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="opacity-50 cursor-not-allowed"
+            disabled
+            title={tr(language, 'Chỉ Trưởng nhóm mới có quyền tạo task', 'Only the Project Leader can create tasks')}
+          >
+            <Plus className="h-4 w-4 mr-1" /> {tr(language, 'Tạo Task', 'Create Task')}
+          </Button>
         )}
       </div>
 
@@ -196,9 +215,9 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
               {visibleTasks.filter(t => t.status === col).map(t => (
                 <button type="button"
                   key={t.id}
-                  draggable
+                  draggable={isLeader || t.assignedTo === currentUser}
                   onDragStart={() => setDraggedTask(t.id)}
-                  className="bg-card rounded-lg border border-border p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                  className={`bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow ${(isLeader || t.assignedTo === currentUser) ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -231,17 +250,19 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                         ))}
                       </div>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 text-xs px-2"
-                      onClick={() => {
-                        setEvidenceTaskId(t.id);
-                        evidenceRef.current?.click();
-                      }}
-                    >
-                      <Upload className="h-3 w-3 mr-1" /> {tr(language, 'Tải bằng chứng', 'Upload Evidence')}
-                    </Button>
+                    {(isLeader || t.assignedTo === currentUser) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs px-2"
+                        onClick={() => {
+                          setEvidenceTaskId(t.id);
+                          evidenceRef.current?.click();
+                        }}
+                      >
+                        <Upload className="h-3 w-3 mr-1" /> {tr(language, 'Tải bằng chứng', 'Upload Evidence')}
+                      </Button>
+                    )}
                   </div>
                 </button>
               ))}

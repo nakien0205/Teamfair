@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { isDemoSession } from "@/lib/demoSession";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,7 +27,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const canPersist = isSupabaseConfigured && !isDemoSession() && Boolean(user?.id);
+  const canPersist = isSupabaseConfigured && Boolean(user?.id);
 
   // Load and seed notifications
   useEffect(() => {

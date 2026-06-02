@@ -21,7 +21,7 @@ const Landing = () => {
             <Users className="h-7 w-7" />
             <span className="font-display text-xl font-bold tracking-tight">TEAMFAIR</span>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => navigate('/start')}>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/login')}>
             {t(language, "landingStart")}
           </Button>
         </nav>
@@ -36,7 +36,7 @@ const Landing = () => {
             {t(language, "landingHeroDescription")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => navigate('/start')}>
+            <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => navigate('/login')}>
               {t(language, "landingGetStarted")} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>

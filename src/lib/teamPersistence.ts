@@ -9,6 +9,8 @@ import type {
   VerifiedBadge,
   CalendarEvent,
   EventType,
+  ProjectInvite,
+  JoinRequest,
 } from "@/context/TeamContext";
 import type { DeserializedTeamState } from "./workspaceSnapshot";
 
@@ -17,6 +19,7 @@ type DbTaskStatus = "todo" | "in_progress" | "done";
 type DbGroup = {
   id: string;
   project_name: string;
+  lecturer_id?: string;
 };
 
 type DbMember = {
@@ -242,6 +245,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
           ? Math.round((memberApprovedPercent / totalApprovedPercent) * 100)
           : 0,
         lecturerScore: scoresByGroupAndStudent.get(`${groupRow.id}:${name}`) ?? null,
+        globalRole: user?.role as "student" | "lecturer" | "admin" | undefined,
       };
     });
 
@@ -272,6 +276,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       members,
       tasks,
       activityLog,
+      lecturer_id: groupRow.lecturer_id,
     };
   });
 
@@ -345,7 +350,7 @@ async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { me
 
 export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot> {
   const groups = await selectOrThrow<DbGroup[]>(
-    supabase.from("groups").select("id,project_name").order("created_at", { ascending: true }),
+    supabase.from("groups").select("id,project_name,lecturer_id").order("created_at", { ascending: true }),
   );
   const members = await selectOrThrow<DbMember[]>(
     supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
@@ -556,7 +561,20 @@ export async function writeBackAgentSnapshot(
       };
 
       if (!currentTask) {
-        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapTask.id)
+        const insertPayload: {
+          id?: string;
+          group_id: string;
+          title: string;
+          description: string | null;
+          assignee_id: string | null;
+          status: DbTaskStatus;
+          weight: number;
+          contribution_percent: number;
+          approved: boolean;
+          deadline: string | null;
+          priority: Task["priority"] | null;
+          evidence: Array<{ fileName: string; uploadTime: string }>;
+        } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapTask.id)
           ? { id: snapTask.id, ...dbTaskPayload }
           : dbTaskPayload;
         
@@ -581,7 +599,14 @@ export async function writeBackAgentSnapshot(
     if (!exists) {
       const groupId = snapshotState.groups[0]?.id;
       if (groupId) {
-        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapMat.id)
+        const insertPayload: {
+          id?: string;
+          group_id: string;
+          file_name: string;
+          file_size: number;
+          uploaded_by_name: string;
+          created_at: string;
+        } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapMat.id)
           ? {
               id: snapMat.id,
               group_id: groupId,
@@ -609,7 +634,16 @@ export async function writeBackAgentSnapshot(
     if (!exists) {
       const groupId = snapshotState.groups[0]?.id;
       if (groupId) {
-        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReport.id)
+        const insertPayload: {
+          id?: string;
+          group_id: string;
+          from_name: string;
+          to_name: string;
+          reason: string;
+          notes: string | null;
+          reviewed: boolean;
+          created_at: string;
+        } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReport.id)
           ? {
               id: snapReport.id,
               group_id: groupId,
@@ -641,7 +675,15 @@ export async function writeBackAgentSnapshot(
     if (!exists) {
       const groupId = snapshotState.groups[0]?.id;
       if (groupId) {
-        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReview.id)
+        const insertPayload: {
+          id?: string;
+          group_id: string;
+          student_name: string;
+          rating: number;
+          comment: string | null;
+          award_badge: boolean;
+          created_at: string;
+        } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapReview.id)
           ? {
               id: snapReview.id,
               group_id: groupId,
@@ -671,7 +713,15 @@ export async function writeBackAgentSnapshot(
     if (!exists) {
       const groupId = snapshotState.groups[0]?.id;
       if (groupId) {
-        const insertPayload = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapBadge.id)
+        const insertPayload: {
+          id?: string;
+          group_id: string;
+          student_name: string;
+          rating: number;
+          comment: string | null;
+          awarded_at: string;
+          link: string;
+        } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapBadge.id)
           ? {
               id: snapBadge.id,
               group_id: groupId,
@@ -751,5 +801,160 @@ export async function joinPersistedGroup(groupId: string, userId: string, role?:
     .insert({ group_id: groupId, student_id: userId, role: role || "Member" });
   if (error) throw new Error(error.message);
 }
+
+export async function deletePersistedGroup(groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId);
+  if (error) throw new Error(error.message);
+}
+
+function generateInviteCodeString(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `IV-${code}`;
+}
+
+export async function createProjectInvite(
+  groupId: string,
+  expiresAt: Date | null,
+  maxUses: number | null,
+  approvalMode: "auto" | "requires_approval"
+): Promise<ProjectInvite> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("User not authenticated");
+
+  let attempts = 0;
+  while (attempts < 5) {
+    const inviteId = generateInviteCodeString();
+    const { data, error } = await supabase
+      .from("project_invites")
+      .insert({
+        id: inviteId,
+        group_id: groupId,
+        created_by: user.id,
+        expires_at: expiresAt ? expiresAt.toISOString() : null,
+        max_uses: maxUses,
+        approval_mode: approvalMode,
+      })
+      .select()
+      .single();
+
+    if (!error) {
+      return data as ProjectInvite;
+    }
+    
+    if (error.code === "23505") {
+      attempts++;
+      continue;
+    }
+    throw new Error(error.message);
+  }
+  throw new Error("Failed to generate a unique invite code after 5 attempts");
+}
+
+export async function getProjectInvites(groupId: string): Promise<ProjectInvite[]> {
+  const { data, error } = await supabase
+    .from("project_invites")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []) as ProjectInvite[];
+}
+
+export async function revokeProjectInvite(inviteId: string): Promise<void> {
+  const { error } = await supabase
+    .from("project_invites")
+    .delete()
+    .eq("id", inviteId);
+  if (error) throw new Error(error.message);
+}
+
+export async function createJoinRequest(groupId: string, inviteId: string, userId: string): Promise<JoinRequest> {
+  const { data, error } = await supabase
+    .from("join_requests")
+    .insert({
+      group_id: groupId,
+      invite_id: inviteId,
+      user_id: userId,
+      status: "pending",
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as JoinRequest;
+}
+
+export async function getJoinRequests(groupId: string): Promise<JoinRequest[]> {
+  const { data, error } = await supabase
+    .from("join_requests")
+    .select("*, users:user_id(full_name, email)")
+    .eq("group_id", groupId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []) as JoinRequest[];
+}
+
+export async function processJoinRequest(requestId: string, status: "approved" | "rejected"): Promise<void> {
+  const { data: request, error: updateError } = await supabase
+    .from("join_requests")
+    .update({ status })
+    .eq("id", requestId)
+    .select()
+    .single();
+
+  if (updateError) throw new Error(updateError.message);
+  if (!request) throw new Error("Join request not found");
+
+  if (status === "approved") {
+    await joinPersistedGroup(request.group_id, request.user_id, "Member");
+  }
+}
+
+export async function validateInviteCode(inviteCode: string): Promise<{ group_id: string; approval_mode: "auto" | "requires_approval"; group_name: string }> {
+  const { data: invite, error } = await supabase
+    .from("project_invites")
+    .select("*, groups(project_name)")
+    .eq("id", inviteCode)
+    .maybeSingle();
+
+  if (error || !invite) {
+    throw new Error("Mã mời không tồn tại hoặc không hợp lệ");
+  }
+
+  if (invite.expires_at) {
+    if (new Date(invite.expires_at) <= new Date()) {
+      throw new Error("Mã mời đã hết hạn");
+    }
+  }
+
+  if (invite.max_uses !== null && invite.max_uses !== undefined) {
+    if (invite.uses_count >= invite.max_uses) {
+      throw new Error("Mã mời đã đạt số lượt sử dụng tối đa");
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .rpc("increment_invite_use", { p_invite_code: inviteCode });
+
+  if (updateError) {
+    throw new Error("Lỗi khi cập nhật số lượt sử dụng mã mời");
+  }
+
+  const groupName = (invite as unknown as { groups?: { project_name: string } }).groups?.project_name;
+
+  return {
+    group_id: invite.group_id as string,
+    approval_mode: invite.approval_mode as "auto" | "requires_approval",
+    group_name: groupName || "Nhóm dự án",
+  };
+}
+
 
 

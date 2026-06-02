@@ -19,7 +19,7 @@ The app reads Supabase from **Vite** env vars (must be prefixed with `VITE_` to 
 | `VITE_SUPABASE_ANON_KEY` | Supabase **anon** public key (Dashboard → Settings → API) |
 | `VITE_STUDENT_AGENT_URL` | Optional. Base URL of the **Python FastAPI** student agent (no trailing slash). Leave unset in local dev to use the Vite proxy to `127.0.0.1:8010`. **Required for production** on Vercel if the sidebar should call a hosted agent (see [student_workspace_agent.md](student_workspace_agent.md)). |
 
-Copy [.env.example](../../.env.example) to `.env` and fill in the values. If these are missing, auth UI shows a configuration message and dashboards still work via **demo mode** (see [state_and_data.md](state_and_data.md)).
+Copy [.env.example](../../.env.example) to `.env` and fill in the values. Since demo mode has been completely removed, these environment variables are strictly required to initialize the Supabase client and run the application.
 
 **Do not** put the Google OAuth **client secret** in any `VITE_*` variable (it would be exposed in the client bundle). Configure Google under **Supabase Dashboard → Authentication → Providers → Google**.
 
@@ -54,6 +54,12 @@ Order matters; examples in this repo:
 8. `20260522130000_notifications_schema.sql` - notifications table with RLS to support the custom Mail notification system.
 9. `20260523120000_project_management_rls.sql` - relaxed RLS policies for groups insertion/selection/modification and joining project groups.
 10. `20260525120000_security_rls_fixes.sql` - security hardening RLS migration containing fixes for calendar access, notifications forge vulnerabilities, and lecturer project view/escalation bugs.
+11. `20260527150000_name_cooldown.sql` - name cooldown persistence and restrictions.
+12. `20260527160000_member_management_rpcs.sql` - member role update and leader resignation RPCs.
+13. `20260529120000_project_sharing.sql` - `project_invites` and `join_requests` tables to support invite code sharing and join request workflow, complete with RLS policies, constraints, indexes, and grants.
+14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
+15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
+16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
@@ -66,23 +72,29 @@ Enable **Email** and **Google** under **Authentication → Providers** in Supaba
 
 If the SQL migration is skipped, Vercel can still render the app, but real logged-in dashboard data may fail to load/save because the database tables/columns are missing.
 
-## Verification History
+## Python AI Agent Server
 
-### 2026-05-27 Automated Verification & Quality Assurance Run
-- **Type**: Verification / QA Audit
-- **Files Modified**: None (verification check)
-- **Summary of Changes**:
-  - Executed Vitest test suite (`npm run test -- --run`) against local codebase.
-  - Ran production build (`npm run build`) to ensure clean compilation and verify zero bundling or TypeScript errors.
-  - Performed project lint check (`npm run lint`) to audit code style and quality.
-- **Manual Verification Details**:
-  - **Vitest Run**: 7 out of 7 tests passed successfully (duration 1.86s).
-    - `src/test/example.test.ts` (1 test passed)
-    - `src/test/session4.test.ts` (3 tests passed)
-    - `src/lib/teamPersistence.test.ts` (3 tests passed)
-  - **Vite Build**: Compiled client environment for production cleanly with zero errors in 4.82 seconds.
-    - Generated `dist/index.html` (2.02 kB)
-    - Generated `dist/assets/index-DT4GjIDL.css` (90.84 kB)
-    - Generated `dist/assets/index-Baobqgqi.js` (1,207.20 kB)
-  - **ESLint**: Completed successfully with 0 errors and 16 React Fast Refresh/useMemo warnings on Shadcn UI components.
+The Python agent package mirrors the React student dashboard to allow deterministic reasoning and snapshots via tools.
+
+### Prerequisites & Dependencies
+All code is located in the **`python/`** directory.
+```bash
+cd python
+pip install -r student_workspace_agent/requirements.txt
+```
+
+### Run the CLI Agent
+To run a direct instruction on the store snapshot from the command line:
+```bash
+python -m student_workspace_agent -m "Your instruction"
+```
+
+### Start the local FastAPI Server
+To start the server for local Vite dashboard integration (runs on port **8010**):
+```bash
+python -m uvicorn student_workspace_agent.server:app --host 127.0.0.1 --port 8010
+```
+
+### Windows Terminal Note
+If Vietnamese character parsing displays incorrectly in your terminal console, ensure your active terminal shell's stdout encoding is configured to UTF-8.
 

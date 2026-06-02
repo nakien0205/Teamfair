@@ -1,5 +1,4 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { isDemoSession } from "@/lib/demoSession";
 
 export interface ChatMessageRow {
   id: string;
@@ -12,7 +11,7 @@ export interface ChatMessageRow {
 }
 
 function canPersistChat(): boolean {
-  return isSupabaseConfigured && !isDemoSession();
+  return isSupabaseConfigured;
 }
 
 async function currentUserId(): Promise<string | null> {

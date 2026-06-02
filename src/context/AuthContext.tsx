@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { clearDemoSession } from "@/lib/demoSession";
 
 export type AppUserRole = "student" | "lecturer" | "admin";
 
@@ -162,7 +161,6 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
-    clearDemoSession();
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
     setSession(null);
@@ -174,11 +172,16 @@ export function AuthProvider ({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured || !user?.id) return;
     const { error } = await supabase
       .from("users")
-      .update({ full_name: newName, profile_completed: true })
-      .eq("id", user.id);
+      .upsert({
+        id: user.id,
+        email: user.email || "",
+        role: profile?.role || (user.user_metadata?.app_role || "student") as AppUserRole,
+        full_name: newName,
+        profile_completed: true,
+      });
     if (error) throw error;
     await refreshProfile();
-  }, [user?.id, refreshProfile]);
+  }, [user, profile?.role, refreshProfile]);
 
   const value = useMemo(
     () => ({

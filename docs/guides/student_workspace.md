@@ -1,10 +1,15 @@
 See [index.md](index.md) for the docs routing map.
 
 ## Student workspace feature map
-Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx) when Supabase is configured; see [state_and_data.md](state_and_data.md)).
+
+Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx); see [state_and_data.md](state_and_data.md)).
+
 - Task work and status flow
   - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, evidence uploads.
-  - **Dynamic Identity & Role Mapping**: The dashboard dynamically maps the student's name and role based on their active session. `currentUserName` is bound to the logged-in profile's `full_name` (falling back to demo mocks like `'Trần Thị B'` only when unauthenticated). The active student's role (`Leader` vs `Member`) is fetched directly from their row in the `group_members` table in Supabase. For real authenticated sessions, the demo role-switching button is hidden, and the student's name is dynamically displayed in the sidebar's top-left corner subtitle.
+  - **Dynamic Identity & Role Mapping**: The dashboard dynamically maps the student's name and role based on their active session. `currentUserName` is bound to the logged-in profile's `full_name`. The active student's role (`Leader` vs `Member`) is fetched directly from their row in the `group_members` table in Supabase, and the student's name is dynamically displayed in the sidebar's top-left corner subtitle.
+  - **Leader Workspace Settings & Danger Zone**: Student Leaders have access to a dedicated collapsible "Danger Zone" section in their [Workspace Settings](src/components/SettingsModal.tsx). The Danger Zone features two key controls:
+    - **Share my Project**: A placeholder action (currently inactive) designed to handle future public project mapping and guest collaborations.
+    - **Delete my Project**: A destructive control that prompts the leader to type the exact name of their project as verification. Once confirmed, it triggers cascade deletion in Supabase (deleting the group and cascading through tasks, calendar events, logs, materials, chat messages, etc.) and performs a redirect back to `/` to refresh the user session.
   - **Task Creation Alerts**: When creating a new task, the student can check a "Notify team members" box. If selected, it triggers a real-time notification (via `sendNotification` from `NotificationContext`) to all other group peers.
 - Calendar and timeline
   - [src/components/ProjectCalendar.tsx](src/components/ProjectCalendar.tsx) - month/week views, event creation, task deadline sync.

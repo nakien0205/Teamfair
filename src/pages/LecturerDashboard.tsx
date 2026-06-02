@@ -18,7 +18,6 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import LecturerStudentEvaluationPanel from '@/components/feature-groups/LecturerStudentEvaluationPanel';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { isDemoSession } from '@/lib/demoSession';
 import { t, tr } from '@/lib/i18n';
 import { SettingsModal } from '@/components/SettingsModal';
 
@@ -37,7 +36,6 @@ const LecturerDashboard = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    if (isDemoSession()) return;
     if (authLoading || !profile) return;
     if (profile.role === "student") {
       navigate("/dashboard-student", { replace: true });
@@ -99,7 +97,7 @@ const LecturerDashboard = () => {
       sidebar={
         <DashboardSidebar
           title={tr(language, "Giảng viên", "Lecturer")}
-          subtitle={isDemoSession() ? tr(language, "Lecturer workspace", "Lecturer workspace") : currentUserName}
+          subtitle={currentUserName}
           items={[
             { key: 'overview', label: tr(language, 'Tổng quan', 'Overview'), icon: <LayoutDashboard /> },
             { key: 'reports', label: tr(language, 'Báo cáo', 'Reports'), icon: <AlertTriangle /> },
