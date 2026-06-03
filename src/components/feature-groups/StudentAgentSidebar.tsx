@@ -114,7 +114,7 @@ const StudentAgentSidebar = ({ open, onOpenChange, onLockedSectionChange }: Stud
   const { language } = useLanguage();
   const { toast } = useToast();
   const team = useTeam();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const formId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -236,9 +236,14 @@ const StudentAgentSidebar = ({ open, onOpenChange, onLockedSectionChange }: Stud
       void insertChatMessage(currentGroupId, { role: "user", content: trimmed });
 
       try {
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
         const res = await fetch(chatEndpoint(), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             message: trimmed,
             workspace: snapshot,
@@ -323,7 +328,7 @@ const StudentAgentSidebar = ({ open, onOpenChange, onLockedSectionChange }: Stud
         setLoading(false);
       }
     },
-    [autoApply, currentGroupId, heavyTask, language, loading, onLockedSectionChange, pushMessage, snapshot, team, toast],
+    [autoApply, currentGroupId, heavyTask, language, loading, onLockedSectionChange, pushMessage, session?.access_token, snapshot, team, toast],
   );
 
   const handleSend = () => {

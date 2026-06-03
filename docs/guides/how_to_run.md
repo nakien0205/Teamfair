@@ -95,6 +95,24 @@ To start the server for local Vite dashboard integration (runs on port **8010**)
 python -m uvicorn student_workspace_agent.server:app --host 127.0.0.1 --port 8010
 ```
 
+### Deploy the Python Agent
+The agent can be deployed as a container from the **`python/`** directory. The included [python/Dockerfile](../../python/Dockerfile) installs `student_workspace_agent/requirements.txt`, runs the FastAPI app with Uvicorn on `0.0.0.0`, and reads the hosting platform's `PORT` env var (default `8010`).
+
+Recommended production target: **Railway**.
+
+1. Create a Railway service from the GitHub repository.
+2. Set the service **Root Directory** to `python/`.
+3. Use `Dockerfile` as the Dockerfile path.
+4. Configure `/health` as the health check path.
+5. Add runtime variables on Railway:
+   - `OPENROUTER_API_KEY`
+   - `OPENROUTER_HTTP_REFERER=https://teamfair.vercel.app`
+   - `OPENROUTER_X_TITLE=Teamfair`
+   - Optional: `STUDENT_AGENT_CORS_ORIGINS=https://teamfair.vercel.app,http://localhost:8080,http://127.0.0.1:8080`
+6. After Railway creates the public HTTPS URL, add it to Vercel as `VITE_STUDENT_AGENT_URL` with no trailing slash, then redeploy the frontend.
+
+The student agent sidebar sends the current Supabase access token as an `Authorization: Bearer ...` header when a session exists. The current Python server uses CORS and request validation but does not yet validate that token server-side.
+
 ### Windows Terminal Note
 If Vietnamese character parsing displays incorrectly in your terminal console, ensure your active terminal shell's stdout encoding is configured to UTF-8.
 
