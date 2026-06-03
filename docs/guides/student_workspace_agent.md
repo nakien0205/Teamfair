@@ -21,14 +21,14 @@ All agent code is under **[`python/student_workspace_agent/`](../../python/stude
 | `tools.py` | OpenAI Chat Completions `tools` JSON (function names + JSON Schema for arguments). |
 | `tool_handlers.py` | Maps each tool name to store reads/writes; returns **JSON strings** as tool results for the model. |
 | `agent.py` | OpenAI SDK client pointed at OpenRouter; **tool loop** on the light model; optional **heavy** synthesis pass; `run_agent_detailed` returns answer + **tool_trace** + optional **reasoning** fragments. |
-| `server.py` | FastAPI app: `POST /chat`, `GET /health`. CORS allows local Vite and **<https://teamfair.vercel.app>** (override with `STUDENT_AGENT_CORS_ORIGINS`). |
+| `server.py` | FastAPI app: `POST /chat`, `GET /health`. CORS allows local Vite, **<https://teamfair.company>**, **<https://www.teamfair.company>**, and **<https://teamfair.vercel.app>** (override with `STUDENT_AGENT_CORS_ORIGINS`). |
 | `__main__.py` | CLI entrypoint. |
 | `requirements.txt` | `openai`, `python-dotenv`, `pydantic`, `fastapi`, `uvicorn`. |
 
 ### Environment variables
 
 - **`OPENROUTER_API_KEY`** (required): read from the project `.env` at the repo root (see `config.py` path logic: two levels up from the package).
-- Optional: **`OPENROUTER_HTTP_REFERER`**, **`OPENROUTER_X_TITLE`** for OpenRouter attribution headers. Default referer is **`https://teamfair.vercel.app`** so production traffic matches your deployed domain.
+- Optional: **`OPENROUTER_HTTP_REFERER`**, **`OPENROUTER_X_TITLE`** for OpenRouter attribution headers. Default referer is **`https://teamfair.company`** so production traffic matches the custom Vercel domain.
 - Optional: **`STUDENT_AGENT_CORS_ORIGINS`** — comma-separated list to replace the default CORS allowlist for the HTTP server.
 
 ### Models (hard rule in code)

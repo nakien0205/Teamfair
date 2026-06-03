@@ -16,6 +16,8 @@ from .store import StudentWorkspaceStore
 _DEFAULT_ORIGINS = (
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "https://teamfair.company",
+    "https://www.teamfair.company",
     "https://teamfair.vercel.app",
 )
 
@@ -23,7 +25,7 @@ _DEFAULT_ORIGINS = (
 def _cors_origins() -> list[str]:
     raw = os.environ.get("STUDENT_AGENT_CORS_ORIGINS", "").strip()
     if raw:
-        return [o.strip() for o in raw.split(",") if o.strip()]
+        return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
     return list(_DEFAULT_ORIGINS)
 
 

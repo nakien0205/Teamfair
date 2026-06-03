@@ -30,7 +30,8 @@ Use these when creating or editing the OAuth 2.0 **Web application** client that
 - `http://localhost:8080`
 - `http://127.0.0.1:8080`
 - `https://<your-production-domain>` (when deployed)
-- `https://teamfair.vercel.app` (current production site)
+- `https://teamfair.company` (current production custom domain)
+- `https://teamfair.vercel.app` (Vercel preview/fallback domain)
 
 **Authorized redirect URIs** (OAuth code returns to **Supabase**, not your app origin):
 - `https://<project-ref>.supabase.co/auth/v1/callback`  
@@ -96,7 +97,7 @@ python -m uvicorn student_workspace_agent.server:app --host 127.0.0.1 --port 801
 ```
 
 ### Deploy the Python Agent
-The agent can be deployed as a container from the **`python/`** directory. The included [python/Dockerfile](../../python/Dockerfile) installs `student_workspace_agent/requirements.txt`, runs the FastAPI app with Uvicorn on `0.0.0.0`, and reads the hosting platform's `PORT` env var (default `8010`).
+The agent can be deployed as a container from the **`python/`** directory. The included [python/Dockerfile](../../python/Dockerfile) installs `student_workspace_agent/requirements.txt`, runs the FastAPI app with Uvicorn on `0.0.0.0`, and reads the hosting platform's `PORT` env var (default `8010` when no platform port is provided).
 
 Recommended production target: **Railway**.
 
@@ -106,10 +107,11 @@ Recommended production target: **Railway**.
 4. Configure `/health` as the health check path.
 5. Add runtime variables on Railway:
    - `OPENROUTER_API_KEY`
-   - `OPENROUTER_HTTP_REFERER=https://teamfair.vercel.app`
+   - `OPENROUTER_HTTP_REFERER=https://teamfair.company`
    - `OPENROUTER_X_TITLE=Teamfair`
-   - Optional: `STUDENT_AGENT_CORS_ORIGINS=https://teamfair.vercel.app,http://localhost:8080,http://127.0.0.1:8080`
-6. After Railway creates the public HTTPS URL, add it to Vercel as `VITE_STUDENT_AGENT_URL` with no trailing slash, then redeploy the frontend.
+   - `STUDENT_AGENT_CORS_ORIGINS=https://teamfair.company,https://www.teamfair.company,https://teamfair.vercel.app,http://localhost:8080,http://127.0.0.1:8080`
+   - If the Railway public domain target port is manually set to `8010`, also add `PORT=8010`. Otherwise, leave `PORT` unset and let Railway inject/expose its own port.
+6. After Railway creates the public HTTPS URL, add it to Vercel as `VITE_STUDENT_AGENT_URL=https://teamfair.up.railway.app` with no trailing slash, then redeploy the frontend.
 
 The student agent sidebar sends the current Supabase access token as an `Authorization: Bearer ...` header when a session exists. The current Python server uses CORS and request validation but does not yet validate that token server-side.
 

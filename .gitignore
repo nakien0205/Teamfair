@@ -244,3 +244,4 @@ supabase/*
 !supabase/migrations/**
 
 note_to_self.txt
+.vercel

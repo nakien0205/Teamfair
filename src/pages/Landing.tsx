@@ -4,7 +4,6 @@ import { Users, ArrowRight, BarChart3, Brain, CheckCircle } from 'lucide-react';
 import LanguageSwitcherButton from '@/components/LanguageSwitcherButton';
 import { useLanguage } from '@/context/LanguageContext';
 import { t } from '@/lib/i18n';
-import * as Sentry from '@sentry/react';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -36,25 +35,9 @@ const Landing = () => {
           <p className="text-lg md:text-xl opacity-80 mb-10 max-w-xl mx-auto">
             {t(language, "landingHeroDescription")}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => navigate('/login')}>
               {t(language, "landingGetStarted")} <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="destructive"
-              className="text-base px-8"
-              onClick={() => {
-                // Send a log before throwing the error
-                Sentry.logger.info('User triggered test error', {
-                  action: 'test_error_button_click',
-                });
-                // Send a test metric before throwing the error
-                Sentry.metrics.count('test_counter', 1);
-                throw new Error('This is your first error!');
-              }}
-            >
-              Break the world
             </Button>
           </div>
         </div>

@@ -14,8 +14,8 @@ light_model = "deepseek/deepseek-v4-flash"
 heavy_model = "deepseek/deepseek-v4-pro"
 
 # Optional OpenRouter attribution (see https://openrouter.ai/docs)
-# Production app: https://teamfair.vercel.app/ — override with OPENROUTER_HTTP_REFERER for local-only dev.
-HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", "https://teamfair.vercel.app")
+# Production app: https://teamfair.company/ — override with OPENROUTER_HTTP_REFERER for local-only dev.
+HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", "https://teamfair.company")
 X_TITLE = os.environ.get("OPENROUTER_X_TITLE", "Teamfair Student Workspace Agent")
 
 
