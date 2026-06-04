@@ -17,6 +17,7 @@ import {
   upsertLecturerScore,
   writeBackAgentSnapshot,
   insertCalendarEvent,
+  insertActivityLog,
   updatePersistedCalendarEvent,
   deletePersistedCalendarEvent,
   createPersistedGroup,
@@ -56,7 +57,14 @@ export interface Task {
   deadline: string;
   description?: string;
   priority?: 'Low' | 'Medium' | 'High';
-  evidence?: { fileName: string; uploadTime: Date }[];
+  evidence?: {
+    fileName: string;
+    uploadTime: Date;
+    fileSize?: number;
+    mimeType?: string;
+    storagePath?: string;
+    publicUrl?: string;
+  }[];
 }
 
 export interface MemberStat {
@@ -522,11 +530,13 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [canPersist, loadPersistedState]);
 
   const addLog = useCallback((description: string) => {
+    const currentGroup = groups[currentGroupIndex];
     updateGroup(currentGroupIndex, g => ({
       ...g,
       activityLog: [{ timestamp: new Date(), description }, ...g.activityLog],
     }));
-  }, [currentGroupIndex, updateGroup]);
+    if (currentGroup) persist(() => insertActivityLog(currentGroup.id, description));
+  }, [currentGroupIndex, groups, persist, updateGroup]);
 
   const recalcContributions = (g: Group): Group => {
     const approved = g.tasks.filter(t => t.approved);

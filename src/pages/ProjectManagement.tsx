@@ -550,7 +550,7 @@ const ProjectManagement: React.FC = () => {
     setCurrentGroupIndex(groupIndex);
 
     const role = profile?.role || (sessionStorage.getItem("demo_session") === "lecturer" ? "lecturer" : "student");
-    const redirectPath = role === "lecturer" || role === "admin" ? "/dashboard-lecturer" : "/dashboard-student";
+    const redirectPath = role === "lecturer" || role === "admin" ? "/dashboard-lecturer" : "/student/dashboard";
 
     toast({
       title: tr(language, "Khởi chạy Workspace!", "Workspace Launched!"),

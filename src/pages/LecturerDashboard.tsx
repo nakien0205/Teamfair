@@ -38,11 +38,13 @@ const LecturerDashboard = () => {
   useEffect(() => {
     if (authLoading || !profile) return;
     if (profile.role === "student") {
-      navigate("/dashboard-student", { replace: true });
+      navigate("/student/dashboard", { replace: true });
     }
   }, [profile, authLoading, navigate]);
 
   const group = groups[currentGroupIndex];
+  if (!group) return null;
+
   const baseScore = 10;
 
   const handleScoreChange = (name: string, val: string) => {
@@ -115,6 +117,8 @@ const LecturerDashboard = () => {
               navigate('/projects');
             } else if (key === 'settings') {
               setIsSettingsOpen(true);
+            } else if (key === 'rubric') {
+              navigate('/lecturer/rubrics');
             } else {
               setActiveSection(key);
             }

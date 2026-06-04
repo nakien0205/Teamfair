@@ -151,19 +151,41 @@ function normalizeEvidence(evidence: unknown): NonNullable<Task["evidence"]> {
   if (!Array.isArray(evidence)) return [];
   return evidence.flatMap(item => {
     if (!item || typeof item !== "object") return [];
-    const candidate = item as { fileName?: unknown; uploadTime?: unknown };
+    const candidate = item as {
+      fileName?: unknown;
+      uploadTime?: unknown;
+      fileSize?: unknown;
+      mimeType?: unknown;
+      storagePath?: unknown;
+      publicUrl?: unknown;
+    };
     if (typeof candidate.fileName !== "string") return [];
     return [{
       fileName: candidate.fileName,
       uploadTime: new Date(typeof candidate.uploadTime === "string" ? candidate.uploadTime : Date.now()),
+      fileSize: typeof candidate.fileSize === "number" ? candidate.fileSize : undefined,
+      mimeType: typeof candidate.mimeType === "string" ? candidate.mimeType : undefined,
+      storagePath: typeof candidate.storagePath === "string" ? candidate.storagePath : undefined,
+      publicUrl: typeof candidate.publicUrl === "string" ? candidate.publicUrl : undefined,
     }];
   });
 }
 
-function serializeEvidence(evidence: Task["evidence"] | undefined): Array<{ fileName: string; uploadTime: string }> {
+function serializeEvidence(evidence: Task["evidence"] | undefined): Array<{
+  fileName: string;
+  uploadTime: string;
+  fileSize?: number;
+  mimeType?: string;
+  storagePath?: string;
+  publicUrl?: string;
+}> {
   return (evidence ?? []).map(item => ({
     fileName: item.fileName,
     uploadTime: item.uploadTime.toISOString(),
+    fileSize: item.fileSize,
+    mimeType: item.mimeType,
+    storagePath: item.storagePath,
+    publicUrl: item.publicUrl,
   }));
 }
 
