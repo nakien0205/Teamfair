@@ -399,9 +399,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [];
       }
     } else {
-      return activeInvites;
+      return [];
     }
-  }, [groups, currentGroupIndex, canPersist, activeInvites]);
+  }, [groups, currentGroupIndex, canPersist]);
 
   const generateInviteCode = useCallback(async (
     expiresAt: Date | null,
@@ -453,9 +453,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [];
       }
     } else {
-      return pendingJoinRequests;
+      return [];
     }
-  }, [groups, currentGroupIndex, canPersist, pendingJoinRequests]);
+  }, [groups, currentGroupIndex, canPersist]);
 
   const approveJoinRequest = useCallback(async (requestId: string): Promise<void> => {
     const request = pendingJoinRequests.find(r => r.id === requestId);

@@ -25,11 +25,24 @@ import LecturerRubricsList from "./pages/LecturerRubricsList";
 import LecturerRubricUpload from "./pages/LecturerRubricUpload";
 import LecturerRubricPreview from "./pages/LecturerRubricPreview";
 import LecturerRubricGrade from "./pages/LecturerRubricGrade";
+import LecturerRubricDetail from "./pages/LecturerRubricDetail";
+import LecturerRubricEdit from "./pages/LecturerRubricEdit";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProjectManagement from "./pages/ProjectManagement";
 import * as Sentry from "@sentry/react";
 import SentryErrorBoundaryFallback from "@/components/SentryErrorBoundaryFallback";
+
+import LecturerLayout from "./layouts/LecturerLayout";
+import LecturerGroupsPage from "./pages/LecturerGroupsPage";
+import LecturerProgressPage from "./pages/LecturerProgressPage";
+import LecturerReportsPage from "./pages/LecturerReportsPage";
+import LecturerStudentEvaluationsPage from "./pages/LecturerStudentEvaluationsPage";
+import LecturerContributionPage from "./pages/LecturerContributionPage";
+import LecturerExportReportsPage from "./pages/LecturerExportReportsPage";
+import LecturerDocumentsPage from "./pages/LecturerDocumentsPage";
+import LecturerActivityPage from "./pages/LecturerActivityPage";
+import LecturerGradingProjectGroups from "./pages/LecturerGradingProjectGroups";
 
 import StudentLayout from "./layouts/StudentLayout";
 import StudentDocuments from "./pages/StudentDocuments";
@@ -58,7 +71,7 @@ const App = () => (
               <NotificationProvider>
                 <Toaster />
                 <Sonner />
-                <BrowserRouter>
+                <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
@@ -90,46 +103,40 @@ const App = () => (
                       <Route path="leader/member-evaluations" element={<LeaderEvaluations />} />
                       <Route path="leader/progress-report" element={<LeaderProgress />} />
                     </Route>
+                    <Route path="/dashboard-lecturer" element={<Navigate to="/lecturer/dashboard" replace />} />
+                    
+                    {/* Lecturer Workspace Routes wrapped in LecturerLayout */}
                     <Route
-                      path="/dashboard-lecturer"
+                      path="/lecturer"
                       element={
                         <ProtectedRoute allowedRoles={["lecturer", "admin"]}>
-                          <LecturerDashboard />
+                          <LecturerLayout />
                         </ProtectedRoute>
                       }
-                    />
-                    <Route
-                      path="/lecturer/rubrics"
-                      element={
-                        <ProtectedRoute allowedRoles={["lecturer", "admin"]}>
-                          <LecturerRubricsList />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/lecturer/rubrics/upload"
-                      element={
-                        <ProtectedRoute allowedRoles={["lecturer", "admin"]}>
-                          <LecturerRubricUpload />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/lecturer/rubrics/preview"
-                      element={
-                        <ProtectedRoute allowedRoles={["lecturer", "admin"]}>
-                          <LecturerRubricPreview />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/lecturer/groups/:groupId/rubrics/:rubricId/grade"
-                      element={
-                        <ProtectedRoute allowedRoles={["lecturer", "admin"]}>
-                          <LecturerRubricGrade />
-                        </ProtectedRoute>
-                      }
-                    />
+                    >
+                      <Route path="dashboard" element={<LecturerDashboard />} />
+                      <Route path="groups" element={<LecturerGroupsPage />} />
+                      <Route path="progress" element={<LecturerProgressPage />} />
+                      <Route path="reports" element={<LecturerReportsPage />} />
+                      
+                      <Route path="rubrics" element={<LecturerRubricsList />} />
+                      <Route path="rubrics/upload" element={<LecturerRubricUpload />} />
+                      <Route path="rubrics/preview" element={<LecturerRubricPreview />} />
+                      <Route path="rubrics/:rubricId" element={<LecturerRubricDetail />} />
+                      <Route path="rubrics/:rubricId/edit" element={<LecturerRubricEdit />} />
+                      
+                      <Route path="grading" element={<Navigate to="/lecturer/rubrics?tab=grading" replace />} />
+                      <Route path="grading/projects/:projectId/groups/:groupId" element={<LecturerGradingProjectGroups />} />
+                      <Route path="grading/projects/:projectId/groups/:groupId/rubrics/:rubricId" element={<LecturerRubricGrade />} />
+                      
+                      <Route path="student-evaluations" element={<LecturerStudentEvaluationsPage />} />
+                      <Route path="contribution" element={<LecturerContributionPage />} />
+                      <Route path="export-reports" element={<LecturerExportReportsPage />} />
+                      
+                      <Route path="documents" element={<LecturerDocumentsPage />} />
+                      <Route path="activity" element={<LecturerActivityPage />} />
+                    </Route>
+
                     <Route
                       path="/projects"
                       element={

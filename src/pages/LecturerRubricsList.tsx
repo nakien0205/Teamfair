@@ -1,322 +1,792 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTeam } from "@/context/TeamContext";
-import { useAuth } from "@/context/AuthContext";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useTeam } from "@/context/TeamContext";
 import { tr } from "@/lib/i18n";
+import { canManageRubric } from "@/lib/rubricModel";
+import { getAccessibleRubricProjects } from "@/lib/rubricProjectAccess";
+import {
+  deleteRubric,
+  duplicateRubric,
+  fetchRubricSummaries,
+  updateRubricArchiveState,
+  type RubricSummary,
+} from "@/lib/rubricPersistence";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import {
-  FileSpreadsheet,
-  Plus,
-  Trash2,
-  GraduationCap,
-  ArrowLeft,
-  Loader2,
-  Calendar,
-  Layers,
-  HelpCircle
-} from "lucide-react";
-import DashboardShell from "@/components/DashboardShell";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardHeader from "@/components/DashboardHeader";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
-import { fetchRubrics, deleteRubric, type RubricDbRow } from "@/lib/rubricPersistence";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import DuplicateRubricDialog from "@/components/rubrics/DuplicateRubricDialog";
+import LecturerGradingWorkspace from "./LecturerGradingWorkspace";
+import {
+  Archive,
+  ArchiveRestore,
+  Copy,
+  Eye,
+  FileSpreadsheet,
+  Loader2,
+  MoreVertical,
+  PencilLine,
+  Plus,
+  Search,
+  Trash2,
+  TriangleAlert,
+  Upload,
+} from "lucide-react";
+
+type RubricWorkspaceTab = "templates" | "grading";
+type StatusFilter = "all" | "active" | "archived";
+type UsageFilter = "all" | "unused" | "used";
+type DuplicateMode = "duplicate" | "apply";
+
+function buildRubricWorkspaceSearchParams(tab: RubricWorkspaceTab, projectId: string) {
+  const nextSearchParams = new URLSearchParams();
+  if (tab === "grading") {
+    nextSearchParams.set("tab", "grading");
+  }
+  if (projectId) {
+    nextSearchParams.set("projectId", projectId);
+  }
+  return nextSearchParams;
+}
 
 const LecturerRubricsList = () => {
-  const { groups, currentGroupIndex, currentUserName } = useTeam();
-  const { profile, signOut } = useAuth();
   const { language } = useLanguage();
-  const navigate = useNavigate();
+  const { profile, user } = useAuth();
+  const { groups } = useTeam();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [rubrics, setRubrics] = useState<RubricDbRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isSelectGroupOpen, setIsSelectGroupOpen] = useState(false);
-  const [selectedRubricId, setSelectedRubricId] = useState<string | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const currentRole =
+    profile?.role ||
+    ((user?.user_metadata?.app_role ||
+      user?.app_metadata?.role ||
+      user?.user_metadata?.role) as "student" | "lecturer" | "admin" | undefined);
+  const actorId = profile?.id || user?.id || null;
 
-  const activeGroup = groups[currentGroupIndex];
+  const activeTab: RubricWorkspaceTab = searchParams.get("tab") === "grading" ? "grading" : "templates";
+  const [selectedProjectId, setSelectedProjectId] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [usageFilter, setUsageFilter] = useState<UsageFilter>("all");
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
-  // Fetch rubrics on load
-  const loadRubrics = async () => {
-    if (!activeGroup?.id) return;
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rubricToDelete, setRubricToDelete] = useState<RubricSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateMode, setDuplicateMode] = useState<DuplicateMode>("duplicate");
+  const [rubricToDuplicate, setRubricToDuplicate] = useState<RubricSummary | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const projects = useMemo(
+    () => getAccessibleRubricProjects(groups, user?.id, currentRole).map((group) => ({ id: group.id, name: group.name })),
+    [currentRole, groups, user?.id],
+  );
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) || null,
+    [projects, selectedProjectId],
+  );
+
+  const { data: rubrics = [], isLoading: loading, error: queryError, refetch: loadRubrics } = useQuery({
+    queryKey: ["rubricSummaries"],
+    queryFn: fetchRubricSummaries,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const loadError = queryError instanceof Error ? queryError.message : (queryError ? String(queryError) : null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, usageFilter, selectedProjectId]);
+
+  useEffect(() => {
+    if (projects.length === 0) return;
+    const projectIdFromQuery = searchParams.get("projectId");
+    
+    if (projectIdFromQuery === "all") {
+      if (selectedProjectId !== "all") {
+        setSelectedProjectId("all");
+      }
+      return;
+    }
+
+    if (projectIdFromQuery && projects.some((project) => project.id === projectIdFromQuery)) {
+      if (selectedProjectId !== projectIdFromQuery) {
+        setSelectedProjectId(projectIdFromQuery);
+      }
+      return;
+    }
+
+    if (!selectedProjectId || (selectedProjectId !== "all" && !projects.some((project) => project.id === selectedProjectId))) {
+      setSelectedProjectId("all");
+    }
+  }, [projects, searchParams, selectedProjectId]);
+
+  const handleProjectSelection = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setSearchParams(buildRubricWorkspaceSearchParams(activeTab, projectId), { replace: true });
+  };
+
+  const filteredRubrics = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return rubrics.filter((summary) => {
+      if (selectedProjectId && selectedProjectId !== "all" && summary.rubric.project_id !== selectedProjectId) return false;
+      if (projects.length > 0 && !projects.some((project) => project.id === summary.rubric.project_id)) return false;
+
+      const matchesSearch =
+        !normalizedQuery ||
+        summary.rubric.name.toLowerCase().includes(normalizedQuery) ||
+        summary.projectName.toLowerCase().includes(normalizedQuery) ||
+        summary.createdByName.toLowerCase().includes(normalizedQuery) ||
+        (summary.rubric.original_file_name || "").toLowerCase().includes(normalizedQuery);
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && summary.rubric.status === "active") ||
+        (statusFilter === "archived" && summary.rubric.status === "archived");
+
+      const matchesUsage =
+        usageFilter === "all" ||
+        (usageFilter === "unused" && summary.usageCount === 0) ||
+        (usageFilter === "used" && summary.usageCount > 0);
+
+      return matchesSearch && matchesStatus && matchesUsage;
+    });
+  }, [projects, rubrics, searchQuery, selectedProjectId, statusFilter, usageFilter]);
+
+  const totalPages = Math.ceil(filteredRubrics.length / ITEMS_PER_PAGE);
+  const paginatedRubrics = useMemo(() => {
+    return filteredRubrics.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  }, [filteredRubrics, currentPage, ITEMS_PER_PAGE]);
+
+  const openDuplicateDialog = (rubric: RubricSummary, mode: DuplicateMode) => {
+    setRubricToDuplicate(rubric);
+    setDuplicateMode(mode);
+    setDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicateSubmit = async ({ targetProjectId, newName }: { targetProjectId: string; newName: string }) => {
+    if (!actorId || !rubricToDuplicate) return;
+    const rubric = rubricToDuplicate;
+
     try {
-      setLoading(true);
-      const data = await fetchRubrics(activeGroup.id);
-      setRubrics(data);
-    } catch (err) {
+      setIsDuplicating(true);
+      await duplicateRubric({
+        rubricId: rubricToDuplicate.rubric.id,
+        userId: actorId,
+        targetProjectId,
+        newName,
+      });
       toast({
-        title: tr(language, "Lỗi", "Error"),
-        description: err instanceof Error ? err.message : String(err),
+        title: tr(language, "Đã nhân bản rubric", "Rubric duplicated"),
+        description: tr(
+          language,
+          `Bản sao của "${rubric.rubric.name}" đã được tạo.`,
+          `A copy of "${rubric.rubric.name}" has been created.`,
+        ),
+      });
+      setDuplicateDialogOpen(false);
+      setRubricToDuplicate(null);
+      handleProjectSelection(targetProjectId);
+      await loadRubrics();
+    } catch (error) {
+      toast({
+        title: tr(language, "Không thể nhân bản", "Unable to duplicate"),
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsDuplicating(false);
     }
   };
 
-  useEffect(() => {
-    loadRubrics();
-  }, [activeGroup?.id]);
+  const handleArchiveToggle = async (rubric: RubricSummary) => {
+    if (!actorId) return;
 
-  const handleDelete = async (rubricId: string) => {
-    if (!confirm(tr(language, "Bạn có chắc chắn muốn xóa rubric này không? Hành động này cũng sẽ xóa tất cả kết quả chấm điểm liên quan.", "Are you sure you want to delete this rubric? This will also remove all associated grading scores."))) {
+    const canManage = canManageRubric({
+      currentUserId: actorId,
+      currentUserRole: currentRole,
+      createdBy: rubric.rubric.created_by,
+    });
+
+    if (!canManage) {
+      toast({
+        title: tr(language, "Không có quyền cập nhật rubric", "Unable to update rubric"),
+        description: tr(
+          language,
+          "Chỉ người tạo rubric hoặc quản trị viên mới có thể lưu trữ hoặc khôi phục.",
+          "Only the rubric owner or an admin can archive or restore it.",
+        ),
+        variant: "destructive",
+      });
       return;
     }
+
+    const isCurrentlyArchived = rubric.rubric.status === "archived";
     try {
-      await deleteRubric(rubricId, profile?.id || null);
+      await updateRubricArchiveState(rubric.rubric.id, !isCurrentlyArchived, actorId);
       toast({
-        title: tr(language, "Thành công", "Success"),
-        description: tr(language, "Đã xóa rubric thành công.", "Rubric deleted successfully."),
+        title: isCurrentlyArchived
+          ? tr(language, "Đã khôi phục rubric", "Rubric restored")
+          : tr(language, "Đã lưu trữ rubric", "Rubric archived"),
+        description: tr(
+          language,
+          `"${rubric.rubric.name}" đã được ${isCurrentlyArchived ? "khôi phục" : "lưu trữ"}.`,
+          `"${rubric.rubric.name}" has been ${isCurrentlyArchived ? "restored" : "archived"}.`,
+        ),
       });
-      loadRubrics();
-    } catch (err) {
+      await loadRubrics();
+    } catch (error) {
       toast({
-        title: tr(language, "Lỗi", "Error"),
-        description: err instanceof Error ? err.message : String(err),
+        title: tr(language, "Thao tác thất bại", "Operation failed"),
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
   };
 
-  const handleStartGrading = (rubricId: string) => {
-    setSelectedRubricId(rubricId);
-    if (groups.length > 0) {
-      setSelectedGroupId(groups[0].id);
+  const openDeleteDialog = (rubric: RubricSummary) => {
+    const canManage = canManageRubric({
+      currentUserId: actorId,
+      currentUserRole: currentRole,
+      createdBy: rubric.rubric.created_by,
+    });
+
+    if (!canManage) {
+      toast({
+        title: tr(language, "Không có quyền xóa rubric", "Unable to delete"),
+        description: tr(
+          language,
+          "Chỉ người tạo rubric hoặc quản trị viên mới có thể xóa.",
+          "Only the rubric owner or an admin can delete it.",
+        ),
+        variant: "destructive",
+      });
+      return;
     }
-    setIsSelectGroupOpen(true);
+
+    setRubricToDelete(rubric);
+    setDeleteDialogOpen(true);
   };
 
-  const proceedToGrading = () => {
-    if (!selectedRubricId || !selectedGroupId) return;
-    setIsSelectGroupOpen(false);
-    navigate(`/lecturer/groups/${selectedGroupId}/rubrics/${selectedRubricId}/grade`);
+  const confirmDelete = async () => {
+    if (!rubricToDelete || !actorId) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteRubric(rubricToDelete.rubric.id, actorId);
+      toast({
+        title: tr(language, "Đã xóa rubric", "Rubric deleted"),
+        description: tr(
+          language,
+          `"${rubricToDelete.rubric.name}" đã được xóa vĩnh viễn.`,
+          `"${rubricToDelete.rubric.name}" has been permanently deleted.`,
+        ),
+      });
+      await loadRubrics();
+    } catch (error) {
+      toast({
+        title: tr(language, "Không thể xóa", "Unable to delete"),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setRubricToDelete(null);
+    }
   };
 
-  return (
-    <DashboardShell
-      sidebar={
-        <DashboardSidebar
-          title={tr(language, "Giảng viên", "Lecturer")}
-          subtitle={currentUserName}
-          items={[
-            { key: 'overview', label: tr(language, 'Tổng quan', 'Overview'), icon: <Layers /> },
-            { key: 'rubrics', label: tr(language, 'Thang chấm điểm', 'Rubric'), icon: <FileSpreadsheet /> },
-          ]}
-          activeKey="rubrics"
-          onSelect={(key) => {
-            if (key === 'overview') {
-              navigate('/dashboard-lecturer');
-            }
-          }}
-        />
-      }
-      header={
-        <DashboardHeader
-          roleLabel={tr(language, "Giảng viên", "Lecturer")}
-          onExit={() => {
-            void signOut();
-            navigate("/login");
-          }}
-          leftSlot={<SidebarTrigger />}
-          showRoleSelect={false}
-        />
-      }
-    >
-      <div className="container mx-auto px-6 py-6 max-w-5xl space-y-6">
-        
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/dashboard-lecturer")}
-            className="text-slate-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {tr(language, "Quay lại Bảng điều khiển", "Back to Dashboard")}
-          </Button>
-
-          <Button
-            onClick={() => navigate("/lecturer/rubrics/upload")}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            {tr(language, "Tải lên Rubric mới", "Upload New Rubric")}
-          </Button>
-        </div>
-
-        {/* Header Title */}
-        <div className="space-y-1">
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-            <FileSpreadsheet className="h-6 w-6 text-indigo-400" />
-            {tr(language, "Quản lý Thang chấm điểm (Rubric)", "Rubric Templates Management")}
-          </h1>
-          <p className="text-slate-400 text-sm">
+  const renderManagementPanel = () => {
+    if (projects.length === 0) {
+      return (
+        <Card className="rounded-3xl border-slate-200 p-12 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+            <TriangleAlert className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900">
+            {tr(language, "Chưa có dự án được phân công", "No assigned projects")}
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
             {tr(
               language,
-              "Tải lên, định cấu hình và sử dụng các file Rubric Excel/CSV để chấm điểm các nhóm sinh viên.",
-              "Upload, configure, and apply Excel/CSV rubrics to grade student teams."
+              "Bạn chưa được phân công dự án nào nên chưa thể tạo rubric.",
+              "You have not been assigned to any project yet, so rubric creation is unavailable.",
             )}
           </p>
-        </div>
+        </Card>
+      );
+    }
 
-        {/* Rubrics List */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-            <p className="text-slate-400 text-sm font-medium animate-pulse">
-              {tr(language, "Đang tải danh sách rubric...", "Loading rubrics...")}
-            </p>
+    if (loading) {
+      return (
+        <Card className="overflow-hidden rounded-3xl border-slate-200 shadow-sm animate-pulse">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  {[...Array(9)].map((_, i) => (
+                    <th key={i} className="px-3 py-4"><div className="h-4 w-16 bg-slate-200 rounded"></div></th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-3 py-4"><div className="h-5 w-32 bg-slate-200 rounded mb-2"></div><div className="h-3 w-48 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-24 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-24 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-16 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-16 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-6 w-20 bg-slate-200 rounded-full"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-16 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-24 bg-slate-200 rounded"></div></td>
+                    <td className="px-3 py-4"><div className="h-4 w-24 bg-slate-200 rounded"></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : rubrics.length === 0 ? (
-          <Card className="bg-slate-900/60 border border-slate-800 rounded-3xl p-12 text-center flex flex-col items-center justify-center gap-4">
-            <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <HelpCircle className="h-8 w-8" />
-            </div>
-            <h3 className="font-bold text-lg text-slate-100">
-              {tr(language, "Chưa có Thang chấm điểm", "No Rubrics Uploaded")}
-            </h3>
-            <p className="text-sm text-slate-400 max-w-sm">
-              {tr(
-                language,
-                "Hãy tải lên thang chấm điểm ở định dạng file .xlsx hoặc .csv để bắt đầu đánh giá các nhóm sinh viên.",
-                "Upload a grading rubric in .xlsx or .csv format to start evaluating student groups."
-              )}
-            </p>
-            <Button
-              onClick={() => navigate("/lecturer/rubrics/upload")}
-              className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20"
+        </Card>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <Card className="rounded-3xl border-red-200 p-12 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            <TriangleAlert className="h-8 w-8" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900">
+            {tr(language, "Không thể tải danh sách rubric", "Unable to load rubrics")}
+          </h3>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">{loadError}</p>
+          <Button className="mt-6 rounded-xl" onClick={() => void loadRubrics()}>
+            {tr(language, "Thử lại", "Retry")}
+          </Button>
+        </Card>
+      );
+    }
+
+    return (
+      <>
+        <Card className="rounded-3xl border-slate-200 p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-5 md:grid-cols-2">
+            <Select
+              value={selectedProjectId || "all"}
+              onValueChange={(value) => handleProjectSelection(value)}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              {tr(language, "Tải lên ngay", "Upload Now")}
-            </Button>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {rubrics.map((rubric) => (
-              <Card
-                key={rubric.id}
-                className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/40 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-xl"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="p-3 w-fit rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 transition-transform duration-300">
-                      <FileSpreadsheet className="h-5 w-5" />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(rubric.id)}
-                      className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-slate-100 group-hover:text-indigo-300 transition-colors text-base line-clamp-1">
-                      {rubric.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 mt-1 min-h-[2rem]">
-                      {rubric.description || tr(language, "Không có mô tả.", "No description provided.")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-800/80 mt-4 pt-4 flex items-center justify-between text-xs text-slate-500">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>
-                      {new Date(rubric.created_at).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US")}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleStartGrading(rubric.id)}
-                    className="bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white rounded-lg flex items-center gap-1 text-xs"
-                  >
-                    <GraduationCap className="h-3.5 w-3.5" />
-                    {tr(language, "Chấm điểm nhóm", "Grade Group")}
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Select Group Dialog */}
-      <Dialog open={isSelectGroupOpen} onOpenChange={setIsSelectGroupOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-indigo-400" />
-              {tr(language, "Chọn nhóm để chấm điểm", "Select Group to Grade")}
-            </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
-              {tr(
-                language,
-                "Vui lòng chọn nhóm sinh viên mà bạn muốn áp dụng thang chấm điểm này.",
-                "Please choose the student group you want to apply this rubric on."
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 space-y-2">
-            <label className="text-xs font-semibold text-slate-300">
-              {tr(language, "Nhóm sinh viên", "Student Group")}
-            </label>
-            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-              <SelectTrigger className="w-full bg-slate-950 border-slate-800 rounded-xl text-slate-100 h-10">
-                <SelectValue placeholder={tr(language, "Chọn nhóm...", "Select group...")} />
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={tr(language, "Tất cả dự án", "All projects")} />
               </SelectTrigger>
-              <SelectContent className="bg-slate-950 border-slate-800 text-slate-100 rounded-xl">
-                {groups.map((group) => (
-                  <SelectItem key={group.id} value={group.id} className="focus:bg-slate-900 rounded-lg">
-                    {group.name}
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">{tr(language, "Tất cả dự án", "All projects")}</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <div className="relative xl:col-span-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={tr(language, "Tìm kiếm rubric...", "Search rubrics...")}
+                className="rounded-xl pl-9"
+                disabled={!selectedProjectId}
+              />
+            </div>
+
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)} disabled={!selectedProjectId}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={tr(language, "Trạng thái", "Status")} />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="active">Đang dùng</SelectItem>
+                <SelectItem value="archived">Đã lưu trữ</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={usageFilter} onValueChange={(value) => setUsageFilter(value as UsageFilter)} disabled={!selectedProjectId}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={tr(language, "Mức sử dụng", "Usage")} />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="unused">Chưa dùng để chấm</SelectItem>
+                <SelectItem value="used">Đã dùng để chấm</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
+
+        {!selectedProjectId ? (
+          <Card className="rounded-3xl border-slate-200 p-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+              <Search className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">Vui lòng chọn dự án.</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+              Chọn dự án trước để tải lên hoặc xem danh sách mẫu rubric.
+            </p>
+          </Card>
+        ) : filteredRubrics.length === 0 ? (
+          <Card className="rounded-3xl border-slate-200 p-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+              <FileSpreadsheet className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {searchQuery || statusFilter !== "all" || usageFilter !== "all"
+                ? tr(language, "Không tìm thấy rubric", "No rubrics found")
+                : tr(language, "Chưa có rubric nào cho dự án này.", "No rubrics yet for this project.")}
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+              {searchQuery || statusFilter !== "all" || usageFilter !== "all"
+                ? tr(language, "Thử đổi bộ lọc hoặc từ khóa tìm kiếm.", "Try changing filters or search keywords.")
+                : tr(language, "Tải lên file để tạo mẫu rubric đầu tiên cho dự án này.", "Upload a file to create the first rubric template for this project.")}
+            </p>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden rounded-3xl border-slate-200 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3 font-medium">Tên rubric</th>
+                    <th className="px-3 py-3 font-medium">Dự án</th>
+                    <th className="px-3 py-3 font-medium">File gốc</th>
+                    <th className="px-3 py-3 font-medium">Sheet</th>
+                    <th className="px-3 py-3 font-medium">Số dòng/cột</th>
+                    <th className="px-3 py-3 font-medium">Trạng thái</th>
+                    <th className="px-3 py-3 font-medium">Đã dùng</th>
+                    <th className="px-3 py-3 font-medium">Người tạo</th>
+                    <th className="px-3 py-3 font-medium">Ngày tạo</th>
+                    <th className="px-3 py-3 text-right font-medium">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedRubrics.map((summary) => {
+                    const isArchived = summary.rubric.status === "archived";
+                    const hasUsage = summary.usageCount > 0;
+                    const canManage = canManageRubric({
+                      currentUserId: actorId,
+                      currentUserRole: currentRole,
+                      createdBy: summary.rubric.created_by,
+                    });
+
+                    return (
+                      <tr key={summary.rubric.id} className="hover:bg-slate-50/60">
+                        <td className="px-3 py-4">
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => navigate(`/lecturer/rubrics/${summary.rubric.id}`)}
+                              className="text-left font-semibold text-slate-900 hover:text-indigo-600"
+                            >
+                              {summary.rubric.name}
+                            </button>
+                            {summary.rubric.description ? (
+                              <p className="line-clamp-1 text-xs text-slate-500">{summary.rubric.description}</p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-slate-700">{summary.projectName}</td>
+                        <td className="px-3 py-4 text-slate-700">
+                          <div className="max-w-[120px] truncate" title={summary.rubric.original_file_name || "-"}>
+                            {summary.rubric.original_file_name || "-"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-slate-700">
+                          <div className="max-w-[80px] truncate" title={summary.selectedSheetName || "-"}>
+                            {summary.selectedSheetName || "-"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-slate-700">{summary.rowCount} / {summary.columnCount}</td>
+                        <td className="px-3 py-4">
+                          {isArchived ? (
+                            <Badge className="border-none bg-slate-200 text-slate-700 hover:bg-slate-200">Đã lưu trữ</Badge>
+                          ) : (
+                            <Badge className="border-none bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Đang dùng</Badge>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-slate-700">{hasUsage ? `${summary.usageCount} nhóm` : "Chưa dùng"}</td>
+                        <td className="px-3 py-4 text-slate-700">
+                          <div className="max-w-[80px] truncate" title={summary.createdByName}>
+                            {summary.createdByName}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-slate-600">
+                          {new Date(summary.rubric.created_at).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US")}
+                        </td>
+                        <td className="px-3 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100">
+                                  <MoreVertical className="h-4 w-4" />
+                                  <span className="sr-only">{tr(language, "Hành động", "Actions")}</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                                <DropdownMenuItem
+                                  onClick={() => navigate(`/lecturer/rubrics/${summary.rubric.id}`)}
+                                  className="cursor-pointer rounded-lg"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  {tr(language, "Xem chi tiết", "View details")}
+                                </DropdownMenuItem>
+
+
+
+                                <DropdownMenuItem
+                                  onClick={() => openDuplicateDialog(summary, "duplicate")}
+                                  className="cursor-pointer rounded-lg"
+                                >
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  {tr(language, "Nhân bản", "Duplicate")}
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => openDuplicateDialog(summary, "apply")}
+                                  className="cursor-pointer rounded-lg"
+                                >
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  {tr(language, "Áp dụng cho dự án khác", "Apply to another project")}
+                                </DropdownMenuItem>
+
+                                {canManage ? (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => void handleArchiveToggle(summary)}
+                                      className="cursor-pointer rounded-lg"
+                                    >
+                                      {isArchived ? (
+                                        <>
+                                          <ArchiveRestore className="mr-2 h-4 w-4" />
+                                          {tr(language, "Khôi phục", "Restore")}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Archive className="mr-2 h-4 w-4" />
+                                          {tr(language, "Lưu trữ", "Archive")}
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+
+                                    {!hasUsage ? (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => openDeleteDialog(summary)}
+                                          className="cursor-pointer rounded-lg text-red-600 focus:bg-red-50 focus:text-red-600"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          {tr(language, "Xóa vĩnh viễn", "Delete permanently")}
+                                        </DropdownMenuItem>
+                                      </>
+                                    ) : null}
+                                  </>
+                                ) : null}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {totalPages > 1 && !loading && filteredRubrics.length > 0 && (
+          <div className="flex items-center justify-center gap-4 pt-6 pb-2">
             <Button
-              variant="ghost"
-              onClick={() => setIsSelectGroupOpen(false)}
-              className="text-slate-400 hover:text-white rounded-xl"
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              onClick={() => {
+                setCurrentPage((p) => Math.max(1, p - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={currentPage === 1}
             >
+              Trang trước
+            </Button>
+            <span className="text-sm font-medium text-slate-600">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              onClick={() => {
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={currentPage === totalPages}
+            >
+              Trang sau
+            </Button>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-slate-900">
+            <FileSpreadsheet className="h-6 w-6 text-indigo-600" />
+            {tr(language, "Thang chấm điểm", "Rubrics")}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {tr(
+              language,
+              "Tạo và quản lý mẫu rubric theo dự án, sau đó dùng lại để chấm điểm nhóm sinh viên.",
+              "Create reusable rubric templates per project, then use them to grade student groups.",
+            )}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            className="rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500"
+            onClick={() => {
+              const url = (!selectedProjectId || selectedProjectId === "all") 
+                ? "/lecturer/rubrics/upload" 
+                : `/lecturer/rubrics/upload?projectId=${selectedProjectId}`;
+              navigate(url);
+            }}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {tr(language, "Tải lên Rubric", "Upload rubric")}
+          </Button>
+        </div>
+      </div>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setSearchParams(buildRubricWorkspaceSearchParams(value as RubricWorkspaceTab, selectedProjectId), { replace: true })
+        }
+        className="space-y-4"
+      >
+        <TabsList className="h-auto rounded-2xl bg-slate-100 p-1">
+          <TabsTrigger value="templates" className="rounded-xl px-4 py-2 data-[state=active]:bg-white">
+            {tr(language, "Mẫu Rubric", "Rubric Templates")}
+          </TabsTrigger>
+          <TabsTrigger value="grading" className="rounded-xl px-4 py-2 data-[state=active]:bg-white">
+            {tr(language, "Chấm điểm nhóm", "Group Grading")}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates" className="mt-0 space-y-6">
+          {renderManagementPanel()}
+        </TabsContent>
+
+        <TabsContent value="grading" className="mt-0 space-y-6">
+          <LecturerGradingWorkspace />
+        </TabsContent>
+      </Tabs>
+
+      <DuplicateRubricDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => {
+          setDuplicateDialogOpen(open);
+          if (!open) {
+            setRubricToDuplicate(null);
+          }
+        }}
+        sourceRubric={rubricToDuplicate}
+        projects={projects}
+        language={language}
+        mode={duplicateMode}
+        isSubmitting={isDuplicating}
+        onSubmit={handleDuplicateSubmit}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tr(language, "Xác nhận xóa rubric", "Confirm rubric deletion")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {rubricToDelete
+                ? tr(
+                    language,
+                    `Bạn có chắc chắn muốn xóa vĩnh viễn rubric "${rubricToDelete.rubric.name}"? Hành động này không thể hoàn tác.`,
+                    `Are you sure you want to permanently delete the rubric "${rubricToDelete.rubric.name}"? This action cannot be undone.`,
+                  )
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" disabled={isDeleting}>
               {tr(language, "Hủy", "Cancel")}
-            </Button>
-            <Button
-              onClick={proceedToGrading}
-              disabled={!selectedGroupId}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20"
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-red-600 hover:bg-red-500"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+              disabled={isDeleting}
             >
-              {tr(language, "Bắt đầu chấm", "Start Grading")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </DashboardShell>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {tr(language, "Đang xóa...", "Deleting...")}
+                </>
+              ) : (
+                tr(language, "Xóa vĩnh viễn", "Delete permanently")
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 

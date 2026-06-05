@@ -23,7 +23,7 @@ const LecturerStudentEvaluationPanel = () => {
   const [comment, setComment] = useState("");
   const [awardBadge, setAwardBadge] = useState(true);
 
-  const memberOptions = useMemo(() => group.members.map(m => m.name), [group.members]);
+  const memberOptions = useMemo(() => group?.members?.map(m => m.name) || [], [group?.members]);
   const awardLabel = t(language, "awardContributionBadge");
   const title = t(language, "lecturerStudentEvaluationTitle");
 
@@ -59,7 +59,7 @@ const LecturerStudentEvaluationPanel = () => {
 
     addLecturerStudentEvaluation({ studentName, rating, comment, awardBadge });
 
-    const targetStudent = group.members.find(m => m.name === studentName);
+    const targetStudent = group?.members?.find(m => m.name === studentName);
     const targetStudentId = targetStudent?.id || studentName;
     const msg = language === "vi"
       ? `Giảng viên đã đánh giá hiệu suất của bạn: ${rating} sao. ${awardBadge ? "Bạn nhận được badge Verified!" : ""}`
@@ -80,7 +80,12 @@ const LecturerStudentEvaluationPanel = () => {
     <section className="bg-card rounded-xl p-6 shadow-card border border-border">
       <h2 className="font-display text-lg font-semibold mb-4">{title}</h2>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      {!group ? (
+        <div className="py-8 text-center text-muted-foreground text-sm">
+          {language === "vi" ? "Bạn hiện chưa quản lý nhóm sinh viên nào." : "You do not manage any student groups yet."}
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>{language === "vi" ? "Chọn sinh viên" : "Select student"}</Label>
@@ -143,6 +148,7 @@ const LecturerStudentEvaluationPanel = () => {
           </Button>
         </div>
       </div>
+      )}
     </section>
   );
 };

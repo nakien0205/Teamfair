@@ -102,8 +102,10 @@ const StudentShell = ({ activeKey, children }: Props) => {
         <DashboardHeader
           roleLabel={t(language, "student")}
           onExit={() => {
-            void signOut();
-            navigate("/login");
+            void (async () => {
+              await signOut();
+              navigate("/login", { replace: true });
+            })();
           }}
           leftSlot={<SidebarTrigger />}
           rightSlot={

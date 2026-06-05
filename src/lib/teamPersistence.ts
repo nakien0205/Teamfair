@@ -371,53 +371,66 @@ async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { me
 }
 
 export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot> {
-  const groups = await selectOrThrow<DbGroup[]>(
-    supabase.from("groups").select("id,project_name,lecturer_id").order("created_at", { ascending: true }),
-  );
-  const members = await selectOrThrow<DbMember[]>(
-    supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
-  );
-  const tasks = await selectOrThrow<DbTask[]>(
-    supabase
-      .from("tasks")
-      .select("id,group_id,title,description,assignee_id,status,weight,contribution_percent,approved,deadline,priority,evidence"),
-  );
-  const activityLogs = await selectOrThrow<DbActivityLog[]>(
-    supabase.from("activity_logs").select("id,group_id,description,created_at").order("created_at", { ascending: false }),
-  );
-  const reports = await selectOrThrow<DbStudentReport[]>(
-    supabase
-      .from("student_reports")
-      .select("id,group_id,from_name,to_name,reason,notes,reviewed,created_at")
-      .order("created_at", { ascending: false }),
-  );
-  const materials = await selectOrThrow<DbMaterial[]>(
-    supabase
-      .from("materials")
-      .select("id,group_id,file_name,file_size,uploaded_by_name,created_at")
-      .order("created_at", { ascending: false }),
-  );
-  const lecturerStudentReviews = await selectOrThrow<DbLecturerStudentReview[]>(
-    supabase
-      .from("lecturer_student_reviews")
-      .select("id,group_id,student_name,rating,comment,award_badge,created_at")
-      .order("created_at", { ascending: false }),
-  );
-  const verifiedBadges = await selectOrThrow<DbVerifiedBadge[]>(
-    supabase
-      .from("verified_badges")
-      .select("id,group_id,student_name,rating,comment,awarded_at,link")
-      .order("awarded_at", { ascending: false }),
-  );
-  const lecturerScores = await selectOrThrow<DbLecturerScore[]>(
-    supabase.from("lecturer_scores").select("group_id,student_name,score"),
-  );
-  const calendarEvents = await selectOrThrow<DbCalendarEvent[]>(
-    supabase
-      .from("calendar_events")
-      .select("id,group_id,title,type,event_date,event_time,description,created_by_name,created_at")
-      .order("event_date", { ascending: true }),
-  );
+  const [
+    groups,
+    members,
+    tasks,
+    activityLogs,
+    reports,
+    materials,
+    lecturerStudentReviews,
+    verifiedBadges,
+    lecturerScores,
+    calendarEvents,
+  ] = await Promise.all([
+    selectOrThrow<DbGroup[]>(
+      supabase.from("groups").select("id,project_name,lecturer_id").order("created_at", { ascending: true }),
+    ),
+    selectOrThrow<DbMember[]>(
+      supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
+    ),
+    selectOrThrow<DbTask[]>(
+      supabase
+        .from("tasks")
+        .select("id,group_id,title,description,assignee_id,status,weight,contribution_percent,approved,deadline,priority,evidence"),
+    ),
+    selectOrThrow<DbActivityLog[]>(
+      supabase.from("activity_logs").select("id,group_id,description,created_at").order("created_at", { ascending: false }),
+    ),
+    selectOrThrow<DbStudentReport[]>(
+      supabase
+        .from("student_reports")
+        .select("id,group_id,from_name,to_name,reason,notes,reviewed,created_at")
+        .order("created_at", { ascending: false }),
+    ),
+    selectOrThrow<DbMaterial[]>(
+      supabase
+        .from("materials")
+        .select("id,group_id,file_name,file_size,uploaded_by_name,created_at")
+        .order("created_at", { ascending: false }),
+    ),
+    selectOrThrow<DbLecturerStudentReview[]>(
+      supabase
+        .from("lecturer_student_reviews")
+        .select("id,group_id,student_name,rating,comment,award_badge,created_at")
+        .order("created_at", { ascending: false }),
+    ),
+    selectOrThrow<DbVerifiedBadge[]>(
+      supabase
+        .from("verified_badges")
+        .select("id,group_id,student_name,rating,comment,awarded_at,link")
+        .order("awarded_at", { ascending: false }),
+    ),
+    selectOrThrow<DbLecturerScore[]>(
+      supabase.from("lecturer_scores").select("group_id,student_name,score"),
+    ),
+    selectOrThrow<DbCalendarEvent[]>(
+      supabase
+        .from("calendar_events")
+        .select("id,group_id,title,type,event_date,event_time,description,created_by_name,created_at")
+        .order("event_date", { ascending: true }),
+    ),
+  ]);
 
   return mapTeamRowsToSnapshot({
     groups,

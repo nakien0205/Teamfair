@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, Outlet } from "react-router-dom";
-import { Sparkles, Users, FolderOpen, ClipboardPenLine, MessageSquareQuote, FileUp, BookOpenText, CheckCircle, Scale, Brain, ArrowRight } from "lucide-react";
+import { Sparkles, Users, FolderOpen, ClipboardPenLine, MessageSquareQuote, FileUp, BookOpenText, CheckCircle, Scale, Brain, ArrowRight, Loader2 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardSidebar, { DashboardSidebarItem } from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -14,7 +14,7 @@ const StudentLayout = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { currentUserName, studentRole } = useTeam();
+  const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
 
   const isLeader = studentRole === "Leader";
@@ -35,6 +35,8 @@ const StudentLayout = () => {
   else if (pathname.includes("/leader/progress-report")) activeKey = "leader-progress";
 
   const handleSelect = (key: string) => {
+    if (dataLoading) return;
+
     switch (key) {
       case "overview": navigate("/student/dashboard"); break;
       case "my-group": navigate("/student/my-group"); break;
@@ -95,15 +97,26 @@ const StudentLayout = () => {
         <DashboardHeader
           roleLabel={t(language, "student")}
           onExit={() => {
-            void signOut();
-            navigate("/login");
+            void (async () => {
+              await signOut();
+              navigate("/login", { replace: true });
+            })();
           }}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />
       }
     >
-      <Outlet />
+      {dataLoading ? (
+        <div className="flex min-h-[280px] items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-slate-500">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <p className="text-sm">{language === "vi" ? "Đang tải dữ liệu dự án..." : "Loading project data..."}</p>
+          </div>
+        </div>
+      ) : (
+        <Outlet />
+      )}
     </DashboardShell>
   );
 };

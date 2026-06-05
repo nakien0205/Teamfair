@@ -784,7 +784,12 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => signOut().then(() => navigate("/login"))}
+            onClick={() => {
+              void (async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              })();
+            }}
             variant="ghost"
             className="text-slate-500 hover:text-slate-300 gap-2 hover:bg-slate-900/30 rounded-xl"
           >
@@ -1134,7 +1139,12 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => signOut().then(() => navigate("/login"))}
+            onClick={() => {
+              void (async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              })();
+            }}
             variant="ghost"
             className="w-full text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 rounded-xl flex items-center gap-3.5 justify-start px-4 py-3 h-auto font-semibold text-sm"
           >
