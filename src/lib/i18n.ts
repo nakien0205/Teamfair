@@ -4,7 +4,6 @@ type Dictionary = Record<Language, Record<string, string>>;
 
 const dictionary: Dictionary = {
   en: {
-    landingStart: "Get started",
     landingHeroTitle: "Fair teamwork grading",
     landingHeroSubtitle: "Transparent contribution tracking",
     landingHeroDescription: "Are you ready?",
@@ -45,7 +44,6 @@ const dictionary: Dictionary = {
     aiChatTitle: "AI assistant",
   },
   vi: {
-    landingStart: "Bắt Đầu",
     landingHeroTitle: "Đánh giá công bằng",
     landingHeroSubtitle: "Theo dõi đóng góp minh bạch",
     landingHeroDescription: "Bạn đã sẵn sàng chưa?",
