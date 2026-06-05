@@ -8,3 +8,6 @@
 🟠 P2	setup-background-jobs	Inngest + Redis caching
 🟠 P2	setup-staging-pwa	Vercel preview + staging DB + service worker
 ⚪ P3	future-scale-guide	Decision criteria for backend/RAG/multi-region
+
+
+Remember that you stash all of the changes in main you dumb fuck
