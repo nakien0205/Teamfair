@@ -186,7 +186,7 @@ const Landing = () => {
               {tr(language, 'Workspace chấm điểm nhóm công bằng', 'Fair teamwork grading workspace')}
             </p>
             <h1 className="text-balance font-display text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-              {tr(language, 'Group projects, graded fairly', 'Group projects, graded fairly')}
+              {tr(language, 'Chấm điểm công bằng cho các nhóm', 'Groups are graded fairly')}
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-lg leading-8 text-slate-200 md:text-xl">
               {tr(
@@ -284,7 +284,7 @@ const Landing = () => {
             <div>
               <p className="mb-4 text-sm font-medium text-cyan-200">{tr(language, 'Vấn đề thật', 'The real problem')}</p>
               <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-                {tr(language, 'Group work breaks at the same points', 'Group work breaks at the same points')}
+                {tr(language, 'Chúng tôi giúp các nhóm đang', 'We help groups that are')}
               </h2>
               <p className="mt-5 max-w-xl text-pretty leading-7 text-slate-300">
                 {tr(
@@ -363,7 +363,7 @@ const Landing = () => {
           <div className="order-1 lg:order-2">
             <p className="mb-4 text-sm font-semibold text-indigo-600">{tr(language, 'Workflow', 'Workflow')}</p>
             <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-              {tr(language, 'From task to fair score', 'From task to fair score')}
+              {tr(language, 'Từ công việc đến công bằng', 'From task to fair score')}
             </h2>
             <p className="mt-5 text-pretty text-lg leading-8 text-slate-700">
               {tr(
@@ -395,7 +395,7 @@ const Landing = () => {
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-sm font-medium text-cyan-200">{tr(language, 'Cho mọi vai trò', 'For every role')}</p>
             <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-              {tr(language, 'Built for every side of the group project', 'Built for every side of the group project')}
+              {tr(language, 'Hỗ trợ mọi khía cạnh của dự án', 'Built for every side of the group project')}
             </h2>
           </div>
 
@@ -436,14 +436,14 @@ const Landing = () => {
             <div>
               <p className="mb-4 text-sm font-semibold text-indigo-600">{tr(language, 'Subscription', 'Subscription')}</p>
               <h2 className="max-w-3xl text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-                {tr(language, 'Choose the workspace that fits your course', 'Choose the workspace that fits your course')}
+                {tr(language, 'Hãy chọn một lộ trình phù hợp với bạn', 'Choose a course that fits you')}
               </h2>
             </div>
             <p className="max-w-md text-pretty leading-7 text-slate-600">
               {tr(
                 language,
-                'Bắt đầu với tracking cốt lõi, sau đó thêm AI report, export cho giảng viên và hỗ trợ theo lớp.',
-                'Start with core tracking, then add AI reports, lecturer exports, and course-level support.',
+                'Bắt đầu với theo dõi cốt lõi, sau đó thêm báo cáo AI, và hỗ trợ giảng viên theo dự án.',
+                'Start with core tracking, then add AI reports, and lecturer project-level support.',
               )}
             </p>
           </div>
@@ -506,7 +506,7 @@ const Landing = () => {
               {tr(language, 'Không cần thẻ cho Starter', 'No credit card for Starter')} · EN / VI
             </p>
             <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-6xl">
-              {tr(language, 'Make group credit visible before grades are due.', 'Make group credit visible before grades are due.')}
+              {tr(language, 'Công bằng trước khi công bố', 'Righteous view before the review')}
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-slate-300">
               {tr(
