@@ -10,7 +10,6 @@ import {
   Brain,
   Building2,
   CheckCircle,
-  ClipboardCheck,
   ClipboardList,
   Crown,
   GraduationCap,
@@ -36,6 +35,9 @@ type WorkflowStep = {
   desc: string;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Hero – animated AI-review demo                                     */
+/* ------------------------------------------------------------------ */
 const HeroReviewDemo = ({ language }: { language: Language }) => {
   const demoRef = useRef<HTMLDivElement>(null);
 
@@ -43,44 +45,124 @@ const HeroReviewDemo = ({ language }: { language: Language }) => {
     () => {
       const mm = gsap.matchMedia();
 
+      /* ---- reduced-motion: skip animation, show final state ---- */
       mm.add('(prefers-reduced-motion: reduce)', () => {
-        gsap.set('.hero-cursor, .hero-loading', { autoAlpha: 0 });
-        gsap.set('.hero-analysis, .hero-review-note', { autoAlpha: 1, y: 0 });
-        gsap.set('.hero-score-value', { textContent: '38' });
-        gsap.set('.hero-low-row', { backgroundColor: '#fff1f2', borderColor: '#fb7185' });
-        gsap.set('.hero-low-bar', { scaleX: 0.38 });
+        gsap.set('.hero-cursor', { autoAlpha: 0 });
+        gsap.set('.hero-loading', { autoAlpha: 0 });
+        gsap.set('.hero-star', { autoAlpha: 1, scale: 1 });
+        gsap.set('.hero-review-a, .hero-review-b, .hero-review-c', { autoAlpha: 0 });
+        gsap.set('.hero-user-a-bar', { scaleX: 0.92, transformOrigin: 'left center' });
+        gsap.set('.hero-user-b-bar', { scaleX: 0.73, transformOrigin: 'left center' });
+        gsap.set('.hero-user-c-bar', { scaleX: 0.40, transformOrigin: 'left center' });
+        gsap.set('.hero-user-a-pct', { textContent: '92' });
+        gsap.set('.hero-user-b-pct', { textContent: '73' });
+        gsap.set('.hero-user-c-pct', { textContent: '40' });
       });
 
+      /* ---- normal motion: full animation ---- */
       mm.add('(prefers-reduced-motion: no-preference)', () => {
-        gsap.set('.hero-cursor', { x: -160, y: 175, autoAlpha: 0 });
-        gsap.set('.hero-loading, .hero-analysis, .hero-review-note', { autoAlpha: 0, y: 10 });
-        gsap.set('.hero-score-value', { textContent: '82' });
-        gsap.set('.hero-low-bar', { scaleX: 0.72, transformOrigin: 'left center' });
+        /* initial state — everything hidden / zeroed */
+        gsap.set('.hero-cursor', { x: -160, y: 0, autoAlpha: 0 });
+        gsap.set('.hero-loading, .hero-review-a, .hero-review-b, .hero-review-c', { autoAlpha: 0, y: 10 });
+        gsap.set('.hero-dot', { y: 0 });
+        gsap.set('.hero-star', { autoAlpha: 1, scale: 1 });
+        gsap.set('.hero-user-a-bar, .hero-user-b-bar, .hero-user-c-bar', { scaleX: 0, transformOrigin: 'left center' });
+        gsap.set('.hero-user-a-pct, .hero-user-b-pct, .hero-user-c-pct', { textContent: '0' });
+        gsap.set('.hero-user-a, .hero-user-b, .hero-user-c', {
+          backgroundColor: 'rgba(11,13,42,0.8)',
+          borderColor: 'rgba(255,255,255,0.1)',
+        });
 
         const tl = gsap.timeline({
           repeat: -1,
-          repeatDelay: 1.1,
+          repeatDelay: 1.5,
           defaults: { ease: 'power2.out' },
         });
 
-        tl.to('.hero-cursor', { autoAlpha: 1, duration: 0.2 })
-          .to('.hero-cursor', { x: 0, y: 0, duration: 0.85 })
-          .to('.hero-ai-button', { scale: 0.96, duration: 0.12 })
-          .to('.hero-ai-button', { scale: 1, duration: 0.18 })
-          .to('.hero-loading', { autoAlpha: 1, y: 0, duration: 0.25 }, '<')
-          .to('.hero-dot', { y: -5, repeat: 3, yoyo: true, stagger: 0.08, duration: 0.18 })
-          .to('.hero-analysis', { autoAlpha: 1, y: 0, duration: 0.35 })
-          .to('.hero-low-row', { backgroundColor: '#fff1f2', borderColor: '#fb7185', duration: 0.35 }, '<')
-          .to('.hero-low-bar', { scaleX: 0.38, duration: 0.65 }, '<')
-          .to('.hero-score-value', { textContent: 38, snap: { textContent: 1 }, duration: 0.7 }, '<')
-          .fromTo('.hero-score-ring', { scale: 1.03 }, { scale: 1, duration: 0.45 }, '<')
-          .to('.hero-review-note', { autoAlpha: 1, y: 0, duration: 0.35 })
-          .to({}, { duration: 1.35 })
-          .to('.hero-review-note, .hero-analysis, .hero-loading', { autoAlpha: 0, y: 10, duration: 0.25 })
-          .to('.hero-low-row', { backgroundColor: '#ffffff', borderColor: '#e7e2d8', duration: 0.25 }, '<')
-          .to('.hero-low-bar', { scaleX: 0.72, duration: 0.35 }, '<')
-          .to('.hero-score-value', { textContent: 82, snap: { textContent: 1 }, duration: 0.35 }, '<')
-          .to('.hero-cursor', { x: -160, y: 175, autoAlpha: 0, duration: 0.3 }, '<');
+        /* ---------- cursor appears below User C ---------- */
+        tl.to('.hero-cursor', { autoAlpha: 1, duration: 0.3 })
+
+          /* ======== User A sequence ======== */
+          .to('.hero-cursor', { x: -160, y: -240, duration: 0.55 })
+          .to('.hero-user-a', { backgroundColor: 'rgba(34,211,238,0.16)', borderColor: 'rgba(103,232,249,0.8)', duration: 0.2 }, '<0.35')
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          /* move to Gemini star */
+          .to('.hero-cursor', { x: 160, y: -130, duration: 0.6 })
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          .to('.hero-star', { scale: 0.8, duration: 0.1 }, '<')
+          .to('.hero-star', { autoAlpha: 0, scale: 0.6, duration: 0.15 })
+          /* loading dots */
+          .to('.hero-loading', { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
+          .to('.hero-dot', { y: -5, repeat: 2, yoyo: true, stagger: 0.08, duration: 0.16 })
+          .to('.hero-loading', { autoAlpha: 0, y: 8, duration: 0.5 })
+          .set('.hero-dot', { y: 0 })
+          /* star reappears */
+          .to('.hero-star', { autoAlpha: 1, scale: 1, duration: 0.2 }, '<')
+          /* bar fills + counter */
+          .to('.hero-user-a-bar', { scaleX: 0.92, duration: 0.6 }, '<')
+          .to('.hero-user-a-pct', { textContent: 92, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          /* review text */
+          .to('.hero-review-a', { autoAlpha: 1, y: 0, duration: 1 }, '<0.1')
+          .to({}, { duration: 0.8 })
+          /* fade review + unhighlight */
+          .to('.hero-review-a', { autoAlpha: 0, y: 10, duration: 0.5 })
+          .to('.hero-user-a', { backgroundColor: 'rgba(11,13,42,0.8)', borderColor: 'rgba(255,255,255,0.1)', duration: 0.2 }, '<')
+
+          /* ======== User B sequence ======== */
+          .to('.hero-cursor', { x: -160, y: -155, duration: 0.55 })
+          .to('.hero-user-b', { backgroundColor: 'rgba(244,63,94,0.16)', borderColor: 'rgba(251,113,133,0.8)', duration: 0.2 }, '<0.35')
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          .to('.hero-cursor', { x: 160, y: -130, duration: 0.6 })
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          .to('.hero-star', { scale: 0.8, duration: 0.1 }, '<')
+          .to('.hero-star', { autoAlpha: 0, scale: 0.6, duration: 0.15 })
+          .to('.hero-loading', { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
+          .to('.hero-dot', { y: -5, repeat: 2, yoyo: true, stagger: 0.08, duration: 0.16 })
+          .to('.hero-loading', { autoAlpha: 0, y: 8, duration: 0.5 })
+          .set('.hero-dot', { y: 0 })
+          .to('.hero-star', { autoAlpha: 1, scale: 1, duration: 0.2 }, '<')
+          .to('.hero-user-b-bar', { scaleX: 0.73, duration: 0.6 }, '<')
+          .to('.hero-user-b-pct', { textContent: 73, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          .to('.hero-review-b', { autoAlpha: 1, y: 0, duration: 1 }, '<0.1')
+          .to({}, { duration: 0.8 })
+          .to('.hero-review-b', { autoAlpha: 0, y: 10, duration: 0.5 })
+          .to('.hero-user-b', { backgroundColor: 'rgba(11,13,42,0.8)', borderColor: 'rgba(255,255,255,0.1)', duration: 0.2 }, '<')
+
+          /* ======== User C sequence ======== */
+          .to('.hero-cursor', { x: -160, y: -70, duration: 0.55 })
+          .to('.hero-user-c', { backgroundColor: 'rgba(148,163,184,0.16)', borderColor: 'rgba(148,163,184,0.8)', duration: 0.2 }, '<0.35')
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          .to('.hero-cursor', { x: 160, y: -130, duration: 0.6 })
+          .to('.hero-cursor', { scale: 0.85, duration: 0.08 })
+          .to('.hero-cursor', { scale: 1, duration: 0.1 })
+          .to('.hero-star', { scale: 0.8, duration: 0.1 }, '<')
+          .to('.hero-star', { autoAlpha: 0, scale: 0.6, duration: 0.15 })
+          .to('.hero-loading', { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
+          .to('.hero-dot', { y: -5, repeat: 2, yoyo: true, stagger: 0.08, duration: 0.16 })
+          .to('.hero-loading', { autoAlpha: 0, y: 8, duration: 0.5 })
+          .set('.hero-dot', { y: 0 })
+          .to('.hero-star', { autoAlpha: 1, scale: 1, duration: 0.2 }, '<')
+          .to('.hero-user-c-bar', { scaleX: 0.40, duration: 0.6 }, '<')
+          .to('.hero-user-c-pct', { textContent: 40, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          .to('.hero-review-c', { autoAlpha: 1, y: 0, duration: 1 }, '<0.1')
+          .to({}, { duration: 0.8 })
+          /* reset everything for loop */
+          .to('.hero-review-c', { autoAlpha: 0, y: 10, duration: 0.5 })
+          .to('.hero-user-c', { backgroundColor: 'rgba(11,13,42,0.8)', borderColor: 'rgba(255,255,255,0.1)', duration: 0.2 }, '<')
+          .to('.hero-cursor', { autoAlpha: 0, duration: 0.3 }, '<')
+          /* drain all progress bars and counters back to 0 incrementally */
+          .to('.hero-user-a-bar', { scaleX: 0, duration: 0.6 })
+          .to('.hero-user-a-pct', { textContent: 0, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          .to('.hero-user-b-bar', { scaleX: 0, duration: 0.6 }, '<')
+          .to('.hero-user-b-pct', { textContent: 0, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          .to('.hero-user-c-bar', { scaleX: 0, duration: 0.6 }, '<')
+          .to('.hero-user-c-pct', { textContent: 0, snap: { textContent: 1 }, duration: 0.6 }, '<')
+          .set('.hero-cursor', { x: -160, y: 0 });
       });
 
       return () => mm.revert();
@@ -91,89 +173,98 @@ const HeroReviewDemo = ({ language }: { language: Language }) => {
   return (
     <div
       ref={demoRef}
-      className="relative mx-auto w-full max-w-3xl rounded-lg border border-[#e7e2d8] bg-white p-4 shadow-[0_28px_90px_rgba(25,25,25,0.12)]"
+      className="relative mx-auto w-full min-w-0 max-w-[326px] overflow-hidden rounded-lg border border-white/[0.16] bg-white/[0.08] p-4 shadow-[0_30px_100px_rgba(42,67,255,0.28)] backdrop-blur-xl sm:max-w-3xl"
     >
       <div className="mb-4 flex items-center justify-between border-b border-[#eee9df] pb-4">
         <div>
-          <p className="text-sm font-semibold text-[#191919]">{tr(language, 'Dự án UX Research', 'UX Research Project')}</p>
-          <p className="text-xs text-[#78736b]">{tr(language, 'Tuần 7 - hồ sơ đóng góp', 'Week 7 - contribution record')}</p>
+          <p className="text-sm font-semibold text-cyan-100">{tr(language, 'Dự án khởi nghiệp', 'Startup Project')}</p>
+          <p className="text-xs text-slate-300">{tr(language, 'Tuần 7 - hồ sơ đóng góp', 'Week 7 - contribution record')}</p>
         </div>
-        <button
-          type="button"
-          className="hero-ai-button inline-flex h-9 items-center gap-2 rounded-md bg-[#191919] px-3 text-xs font-semibold text-white"
-        >
-          <Brain className="h-4 w-4" />
-          AI review
-        </button>
+        <span className="rounded-md bg-fuchsia-300/[0.15] px-3 py-1 text-xs font-medium text-fuchsia-100">
+          AI scoring
+        </span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+        {/* ---- user cards with progress bars ---- */}
         <div className="space-y-3">
-          {[
-            [tr(language, 'User A - prototype flow', 'User A - prototype flow'), '86', 'bg-[#2eaadc]', 'scaleX(0.86)'],
-            [tr(language, 'User C - interview notes', 'User C - interview notes'), '79', 'bg-[#f0b429]', 'scaleX(0.79)'],
-            [tr(language, 'User B - final report', 'User B - final report'), '72', 'bg-[#eb5757]', 'scaleX(0.72)'],
-          ].map(([label, value, color, scale], index) => (
+          {([
+            [tr(language, 'Kiên - Thiết kế UI', 'Jack - UI development'), '92', 'bg-cyan-300', 'hero-user-a', 'hero-user-a-bar', 'hero-user-a-pct'],
+            [tr(language, 'Huyền - Báo cáo bài báo', 'Kathy - Paper report'), '73', 'bg-fuchsia-300', 'hero-user-b', 'hero-user-b-bar', 'hero-user-b-pct'],
+            [tr(language, 'Thịnh - Đề xuất doanh nghiệp', 'Bruce - Business proposal'), '40', 'bg-indigo-300', 'hero-user-c', 'hero-user-c-bar', 'hero-user-c-pct'],
+          ] as const).map(([label, _value, color, rowClass, barClass, pctClass]) => (
             <div
               key={label}
-              className={`rounded-md border border-[#e7e2d8] bg-white p-4 ${index === 2 ? 'hero-low-row' : ''}`}
+              className={`${rowClass} rounded-md border border-white/10 bg-[#0b0d2a]/80 p-4 transition-colors`}
             >
               <div className="mb-3 flex items-center justify-between text-sm">
-                <span className="font-medium text-[#252525]">{label}</span>
-                <span className="font-semibold text-[#191919]">{value}%</span>
+                <span className="font-medium text-slate-100">{label}</span>
+                <span className="font-semibold text-white">
+                  <span className={pctClass}>0</span>%
+                </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-[#f1eee8]">
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className={`h-full origin-left rounded-full ${color} ${index === 2 ? 'hero-low-bar' : ''}`}
-                  style={{ transform: scale }}
+                  className={`${barClass} h-full origin-left rounded-full ${color}`}
+                  style={{ transform: 'scaleX(0)' }}
                 />
               </div>
             </div>
           ))}
         </div>
 
-        <div className="rounded-md border border-[#e7e2d8] bg-[#fbfaf7] p-5">
+        {/* ---- contribution score ring + reviews ---- */}
+        <div className="rounded-md border border-cyan-200/20 bg-cyan-200/10 p-5">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#191919]">{tr(language, 'Điểm đóng góp', 'Contribution score')}</span>
-            <Layers3 className="h-5 w-5 text-[#78736b]" />
+            <span className="text-sm font-semibold text-cyan-50">{tr(language, 'Điểm đóng góp', 'Contribution score')}</span>
+            <Layers3 className="h-5 w-5 text-cyan-100" />
           </div>
           <div className="grid place-items-center">
-            <div className="hero-score-ring grid h-36 w-36 place-items-center rounded-full border-[12px] border-[#191919] bg-white">
-              <div className="text-center">
-                <p className="hero-score-value font-display text-4xl font-semibold text-[#191919]">82</p>
-                <p className="text-xs font-medium text-[#78736b]">{tr(language, 'điểm', 'score')}</p>
+            <div className="hero-score-ring relative grid h-36 w-36 place-items-center rounded-full border-[12px] border-cyan-300/90 bg-[#07112f] shadow-[0_0_48px_rgba(103,232,249,0.32)]">
+              <Sparkles className="hero-star absolute h-12 w-12 text-cyan-100 drop-shadow-[0_0_18px_rgba(103,232,249,0.8)]" />
+              <div className="hero-loading absolute inset-0 grid place-items-center">
+                <div className="flex items-center justify-center gap-2">
+                  {[0, 1, 2].map((dot) => (
+                    <span key={dot} className="hero-dot h-2 w-2 rounded-full bg-cyan-100" />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-          <div className="hero-loading mt-5 flex items-center justify-center gap-2 text-xs font-semibold text-[#78736b]">
-            <span>{tr(language, 'AI đang kiểm tra', 'AI reviewing')}</span>
-            {[0, 1, 2].map((dot) => (
-              <span key={dot} className="hero-dot h-1.5 w-1.5 rounded-full bg-[#191919]" />
-            ))}
-          </div>
-          <div className="hero-analysis mt-4 rounded-md border border-[#f3c2c2] bg-[#fff7f7] p-3 text-sm leading-6 text-[#6f1d1d]">
-            {tr(
-              language,
-              'User B thiếu bằng chứng cho phần báo cáo cuối và ít phản hồi peer review.',
-              'User B has missing evidence for the final report and low peer-review participation.',
-            )}
+          <div className="mt-5 min-h-[7rem]">
+            <div className="hero-review-a rounded-md border border-cyan-200/30 bg-cyan-200/10 p-3 text-sm leading-6 text-cyan-50">
+              {tr(
+                language,
+                'Đánh giá Kiên: bằng chứng rõ, có MVP.',
+                'Jack review: clear evidence, has MVP.',
+              )}
+            </div>
+            <div className="hero-review-b rounded-md border border-fuchsia-200/30 bg-fuchsia-300/10 p-3 text-sm leading-6 text-fuchsia-50">
+              {tr(
+                language,
+                'Đánh giá Huyền: thiếu phần báo cáo cuối.',
+                'Kathy review: missing final-report work.',
+              )}
+            </div>
+            <div className="hero-review-c rounded-md border border-indigo-200/30 bg-indigo-300/10 p-3 text-sm leading-6 text-amber-50">
+              {tr(
+                language,
+                'Đánh giá Thịnh: bằng chứng yếu, đề xuất kinh doanh thiếu dữ liệu hỗ trợ.',
+                'Bruce review: weak evidence, business proposal lacks supporting data.',
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="hero-review-note mt-4 rounded-md border border-[#191919] bg-[#191919] p-4 text-sm leading-6 text-white">
-        {tr(
-          language,
-          'AI review: User B chưa hoàn thành vai trò báo cáo cuối, nên điểm đóng góp giảm xuống 38%.',
-          'AI review: User B did not complete the final-report role, so the contribution score drops to 38%.',
-        )}
-      </div>
-
-      <MousePointer2 className="hero-cursor pointer-events-none absolute right-10 top-16 h-7 w-7 fill-[#191919] text-[#191919]" />
+      <MousePointer2 className="hero-cursor pointer-events-none absolute left-1/2 top-[23rem] h-7 w-7 fill-white text-white drop-shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
     </div>
   );
 };
 
+/* ------------------------------------------------------------------ */
+/*  Workflow section – scroll-triggered                                */
+/* ------------------------------------------------------------------ */
 const WorkflowSection = ({ language, workflow }: { language: Language; workflow: WorkflowStep[] }) => {
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -182,15 +273,13 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
       const mm = gsap.matchMedia();
 
       mm.add('(prefers-reduced-motion: reduce)', () => {
-        gsap.set('.workflow-panel, .workflow-proof, .workflow-peer, .workflow-ai-result', { autoAlpha: 1, y: 0 });
+        gsap.set('.workflow-panel, .workflow-proof, .workflow-ai-result', { autoAlpha: 1, y: 0 });
         gsap.set('.workflow-bar', { scaleX: 1 });
-        gsap.set('.workflow-step', { borderColor: '#d9d3c9', backgroundColor: '#ffffff' });
-        gsap.set('.workflow-step-final', { borderColor: '#191919', backgroundColor: '#f7f3ea' });
       });
 
       mm.add('(prefers-reduced-motion: no-preference)', () => {
-        gsap.set('.workflow-proof, .workflow-peer, .workflow-ai-result', { autoAlpha: 0, y: 16 });
-        gsap.set('.workflow-bar', { scaleX: 0.15, transformOrigin: 'left center' });
+        gsap.set('.workflow-proof, .workflow-ai-result', { autoAlpha: 0, y: 16 });
+        gsap.set('.workflow-bar', { scaleX: 0, transformOrigin: 'left center' });
 
         const tl = gsap.timeline({
           defaults: { ease: 'power2.out' },
@@ -203,14 +292,9 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
         });
 
         tl.from('.workflow-panel', { y: 24, autoAlpha: 0, stagger: 0.08, duration: 0.35 })
-          .to('.workflow-step-0', { borderColor: '#191919', backgroundColor: '#f7f3ea', duration: 0.25 }, '<')
           .to('.workflow-proof', { autoAlpha: 1, y: 0, duration: 0.35 })
-          .to('.workflow-step-1', { borderColor: '#191919', backgroundColor: '#f7f3ea', duration: 0.25 }, '<')
-          .to('.workflow-bar', { scaleX: 1, stagger: 0.1, duration: 0.45 })
-          .to('.workflow-peer', { autoAlpha: 1, y: 0, duration: 0.35 }, '<0.1')
-          .to('.workflow-step-2', { borderColor: '#191919', backgroundColor: '#f7f3ea', duration: 0.25 }, '<')
-          .to('.workflow-ai-result', { autoAlpha: 1, y: 0, duration: 0.35 })
-          .to('.workflow-step-3', { borderColor: '#191919', backgroundColor: '#f7f3ea', duration: 0.25 }, '<');
+          .to('.workflow-bar', { scaleX: 1, stagger: 0.06, duration: 0.35 })
+          .to('.workflow-ai-result', { autoAlpha: 1, y: 0, duration: 0.35 });
       });
 
       return () => mm.revert();
@@ -219,70 +303,84 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
   );
 
   return (
-    <section id="workflow" ref={sectionRef} className="scroll-mt-24 bg-[#fbfaf7] px-6 py-24 text-[#191919]">
+    <section id="workflow" ref={sectionRef} className="scroll-mt-24 bg-[#f6f4ff] py-24 text-[#101126]">
       <div className="container mx-auto grid gap-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
         <div className="relative order-2 lg:order-1">
-          <div className="grid gap-4 rounded-lg border border-[#e7e2d8] bg-white p-4 shadow-[0_24px_70px_rgba(25,25,25,0.08)]">
+          <div className="absolute -inset-4 rounded-lg bg-gradient-to-tr from-blue-500/[0.18] via-fuchsia-500/[0.16] to-cyan-300/20 blur-xl" />
+          <div className="relative grid gap-4 rounded-lg border border-[#d8d4ff] bg-white/80 p-4 shadow-[0_24px_70px_rgba(67,56,202,0.18)] backdrop-blur">
             <div className="grid gap-4 md:grid-cols-[0.92fr_1.08fr]">
-              <div className="workflow-panel rounded-md border border-[#e7e2d8] bg-[#f7f3ea] p-5">
-                <p className="mb-4 text-sm font-semibold text-[#78736b]">{tr(language, 'Task board', 'Task board')}</p>
-                {[
-                  [tr(language, 'User A', 'User A'), tr(language, 'Prototype flow', 'Prototype flow'), 'Done'],
-                  [tr(language, 'User C', 'User C'), tr(language, 'Interview notes', 'Interview notes'), 'Done'],
-                  [tr(language, 'User B', 'User B'), tr(language, 'Final report', 'Final report'), 'Missing'],
-                ].map(([owner, task, state]) => (
-                  <div key={task} className="mb-3 rounded-md border border-[#ddd7ca] bg-white p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-[#191919]">{task}</span>
-                      <span className={`rounded-md px-2 py-1 text-xs font-semibold ${state === 'Missing' ? 'bg-[#ffe8e8] text-[#a52a2a]' : 'bg-[#e7f5e7] text-[#1f6f3d]'}`}>
-                        {state === 'Missing' ? tr(language, 'Thiếu', 'Missing') : tr(language, 'Xong', 'Done')}
-                      </span>
+              {/* ---- task board ---- */}
+              <div className="workflow-panel rounded-md bg-[#111240] p-5 text-white">
+                <p className="mb-4 text-sm font-semibold text-cyan-200">{tr(language, 'Bảng công việc', 'Task board')}</p>
+                {([
+                  [tr(language, 'Kiên', 'Jack'), tr(language, 'Thiết kế UI', 'UI development'), 'Done'] as const,
+                  [tr(language, 'Huyền', 'Kathy'), tr(language, 'Báo cáo bài báo', 'Paper report'), 'Ongoing'] as const,
+                  [tr(language, 'Thịnh', 'Bruce'), tr(language, 'Đề xuất doanh nghiệp', 'Business proposal'), 'Missing'] as const,
+                ]).map(([owner, task, state]) => {
+                  const stateStyle =
+                    state === 'Missing'
+                      ? 'bg-[#ffe8e8] text-[#a52a2a]'
+                      : state === 'Ongoing'
+                        ? 'bg-[#fef3c7] text-[#92400e]'
+                        : 'bg-[#e7f5e7] text-[#1f6f3d]';
+                  const stateLabel =
+                    state === 'Missing'
+                      ? tr(language, 'Thiếu', 'Missing')
+                      : state === 'Ongoing'
+                        ? tr(language, 'Đang làm', 'Ongoing')
+                        : tr(language, 'Xong', 'Done');
+                  return (
+                    <div key={task} className="mb-3 rounded-md border border-white/10 bg-white/[0.08] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-white">{task}</span>
+                        <span className={`rounded-md px-2 py-1 text-xs font-semibold ${stateStyle}`}>{stateLabel}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-300">{owner}</p>
                     </div>
-                    <p className="mt-2 text-xs text-[#78736b]">{owner}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
+              {/* ---- evidence check + AI summary ---- */}
               <div className="space-y-4">
-                <div className="workflow-proof rounded-md border border-[#e7e2d8] bg-white p-5">
+                <div className="workflow-proof rounded-md border border-[#d9d3ff] bg-[#fafaff] p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="font-semibold">{tr(language, 'Evidence check', 'Evidence check')}</p>
-                    <ClipboardCheck className="h-5 w-5 text-[#78736b]" />
+                    <p className="font-semibold">{tr(language, 'Kiểm tra bằng chứng', 'Evidence check')}</p>
+                    <span className="rounded-md bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                      {tr(language, '6 bằng chứng', '6 evidence')}
+                    </span>
                   </div>
                   <div className="space-y-3">
-                    {[0.9, 0.78, 0.34].map((scale, index) => (
-                      <div key={scale} className="h-3 rounded-full bg-[#f1eee8]">
-                        <div
-                          className={`workflow-bar h-full origin-left rounded-full ${index === 2 ? 'bg-[#eb5757]' : 'bg-[#2eaadc]'}`}
-                          style={{ transform: `scaleX(${scale})` }}
-                        />
+                    {[
+                      { label: tr(language, 'Kiên', 'Jack'), segments: ['bg-emerald-500', 'bg-emerald-500', 'bg-emerald-500'] },
+                      { label: tr(language, 'Huyền', 'Kathy'), segments: ['bg-amber-400'] },
+                      { label: tr(language, 'Thịnh', 'Bruce'), segments: ['bg-red-500', 'bg-emerald-500'] },
+                    ].map((row) => (
+                      <div key={row.label}>
+                        <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-600">
+                          <span>{row.label}</span>
+                          <span className="text-slate-400">
+                            {row.segments.length} {row.segments.length > 1 ? tr(language, 'files', 'files') : tr(language, 'file', 'file')}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {row.segments.map((color, i) => (
+                            <div key={i} className={`workflow-bar h-3.5 w-8 rounded-md ${color}`} style={{ transform: 'scaleX(0)' }} />
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="workflow-peer rounded-md border border-[#e7e2d8] bg-[#fffdf7] p-5">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#191919]">
-                    <MessageSquareText className="h-5 w-5" />
-                    {tr(language, 'Peer feedback', 'Peer feedback')}
-                  </div>
-                  <p className="text-sm leading-6 text-[#5f5a52]">
-                    {tr(
-                      language,
-                      '2 thành viên báo rằng User B chưa nhận phần viết báo cáo cuối.',
-                      '2 teammates reported that User B did not take the final report writing role.',
-                    )}
-                  </p>
-                </div>
-
-                <div className="workflow-ai-result rounded-md border border-[#191919] bg-[#191919] p-5 text-white">
+                <div className="workflow-ai-result rounded-md bg-gradient-to-br from-[#312e81] to-[#6d28d9] p-5 text-white">
                   <div className="flex items-start gap-3">
-                    <Brain className="mt-1 h-5 w-5" />
+                    <Brain className="mt-1 h-5 w-5 text-cyan-200" />
                     <p className="text-sm leading-6">
                       {tr(
                         language,
-                        'AI kết luận: User B thiếu bằng chứng và nhận ít xác nhận peer review, điểm đóng góp còn 38%.',
-                        'AI conclusion: User B lacks evidence and peer confirmation, leaving a 38% contribution score.',
+                        'AI kết luận: Bản báo cáo của Huyền còn thiếu phần Trích dẫn trong khi bằng chứng đầu tiên của Thịnh không hỗ trợ đề xuất của anh ấy.',
+                        "AI review: User Kathy report lacks the References section while the evidence from User Bruce first evidence does not support his proposal.",
                       )}
                     </p>
                   </div>
@@ -292,30 +390,31 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
           </div>
         </div>
 
+        {/* ---- right column: steps list ---- */}
         <div className="order-1 lg:order-2">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#78736b]">{tr(language, 'Workflow', 'Workflow')}</p>
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-indigo-600">{tr(language, 'Workflow', 'Workflow')}</p>
           <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
             {tr(language, 'Từ task đến điểm công bằng', 'From task to fair score')}
           </h2>
-          <p className="mt-5 text-pretty text-lg leading-8 text-[#5f5a52]">
+          <p className="mt-5 text-pretty text-lg leading-8 text-slate-700">
             {tr(
               language,
-              'Một luồng rõ ràng: giao việc, ghi bằng chứng, lấy peer review, rồi để AI giải thích điểm đóng góp.',
-              'One clear flow: assign work, record evidence, collect peer review, then let AI explain the contribution score.',
+              'Một luồng rõ ràng: giao việc, ghi bằng chứng, lấy đánh giá của đồng đội và của AI để tính điểm đóng góp.',
+              'One clear flow: assign work, record evidence, collect peer and AI review to calculate contribution score.',
             )}
           </p>
           <div className="mt-8 grid gap-3">
             {workflow.map((step, index) => (
               <div
                 key={step.title}
-                className={`workflow-step workflow-step-${index} ${index === workflow.length - 1 ? 'workflow-step-final' : ''} flex gap-4 rounded-md border border-[#e7e2d8] bg-white p-4 transition-colors`}
+                className={`workflow-step workflow-step-${index} flex gap-4 rounded-md border border-[#dbe5eb] bg-[#fafaff] p-4 transition-colors duration-200 hover:border-[#b4cbd9] hover:bg-[#eef7ff]`}
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#191919] text-sm font-semibold text-white">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-indigo-600 text-sm font-semibold text-white">
                   {index + 1}
                 </span>
                 <div>
                   <h3 className="font-display text-lg font-semibold">{step.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-[#5f5a52]">{step.desc}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -326,6 +425,9 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
   );
 };
 
+/* ------------------------------------------------------------------ */
+/*  Main Landing component                                             */
+/* ------------------------------------------------------------------ */
 const Landing = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
@@ -343,8 +445,8 @@ const Landing = () => {
       title: tr(language, 'Dành cho sinh viên', 'For students'),
       desc: tr(
         language,
-        'Nhóm im lặng khiến sinh viên khó chứng minh ai đã thật sự gánh phần việc nào trước khi peer review.',
-        'Quiet teams make it hard to prove who carried the work before peer review.',
+        'Nhóm im lặng khiến sinh viên khó chứng minh ai đã thật sự gánh phần việc nào trước khi đánh giá.',
+        'Quiet teams make it hard to prove who carried the work before review.',
       ),
       metric: '4.7/5',
       metricLabel: tr(language, 'độ rõ ràng khi review', 'peer clarity score'),
@@ -365,7 +467,7 @@ const Landing = () => {
       title: tr(language, 'Dành cho giảng viên', 'For lecturers'),
       desc: tr(
         language,
-        'Điểm cuối kỳ cần lịch sử task, peer feedback và bằng chứng trong một hồ sơ duy nhất.',
+        'Điểm cuối kỳ cần lịch sử làm, đánh giá đồng đội và bằng chứng trong một hồ sơ duy nhất.',
         'Final grades need task history, peer feedback, and evidence in one place.',
       ),
       metric: '12',
@@ -377,7 +479,7 @@ const Landing = () => {
     {
       icon: ClipboardList,
       title: tr(language, 'Giao việc có chủ sở hữu', 'Assign owned tasks'),
-      desc: tr(language, 'Mỗi task có người phụ trách, deadline và bằng chứng cần nộp.', 'Each task gets an owner, deadline, and expected evidence.'),
+      desc: tr(language, 'Mỗi nhiệm vụ có người phụ trách, deadline và bằng chứng cần nộp.', 'Each task gets an owner, deadline, and expected evidence.'),
     },
     {
       icon: CheckCircle,
@@ -386,13 +488,13 @@ const Landing = () => {
     },
     {
       icon: MessageSquareText,
-      title: tr(language, 'Lấy peer review có cấu trúc', 'Collect structured peer review'),
-      desc: tr(language, 'Thu phản hồi rõ ràng trước khi việc chấm điểm thành tranh cãi.', 'Collect structured feedback before grading becomes a dispute.'),
+      title: tr(language, 'Thu thập đánh giá của đồng đội', 'Collect peer review'),
+      desc: tr(language, 'Giúp phản hồi rõ ràng trước khi việc chấm điểm thành tranh cãi.', 'Help provide clear feedback before grading becomes a dispute.'),
     },
     {
       icon: Brain,
       title: tr(language, 'AI giải thích điểm', 'AI explains the score'),
-      desc: tr(language, 'AI so sánh task, bằng chứng và peer feedback để giải thích điểm đóng góp.', 'AI compares tasks, evidence, and peer feedback to explain contribution scores.'),
+      desc: tr(language, 'AI so sánh nhiệm vụ, bằng chứng và đánh giá đồng đội để giải thích điểm đóng góp.', 'AI compares tasks, evidence, and peer feedback to explain contribution scores.'),
     },
   ];
 
@@ -401,7 +503,7 @@ const Landing = () => {
       icon: GraduationCap,
       label: tr(language, 'Sinh viên', 'Students'),
       title: tr(language, 'Biết điểm dựa trên điều gì', 'Know what the score is based on'),
-      desc: tr(language, 'Xem task được giao, bằng chứng còn thiếu, peer feedback và điểm đóng góp trước khi nộp bài.', 'See assigned work, missing proof, peer feedback, and your contribution score before submission.'),
+      desc: tr(language, 'Xem nhiệm vụ được giao, bằng chứng còn thiếu, đánh giá đồng đội và điểm đóng góp trước khi nộp bài.', 'See assigned work, missing proof, peer feedback, and your contribution score before submission.'),
     },
     {
       icon: Crown,
@@ -459,24 +561,24 @@ const Landing = () => {
   ];
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#fbfaf7] text-[#191919]">
-      <nav className="sticky top-0 z-50 border-b border-[#e7e2d8] bg-[#fbfaf7]/90 backdrop-blur">
+    <main className="min-h-screen overflow-hidden bg-[#080716] text-white">
+      <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#080716]/90 backdrop-blur">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#191919] focus-visible:ring-offset-2"
+            className="flex items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080716]"
             aria-label="TeamFair home"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-md border border-[#d9d3c9] bg-white">
-              <Users className="h-5 w-5" />
+            <span className="grid h-9 w-9 place-items-center rounded-md border border-white/[0.15] bg-white/10 shadow-[0_0_28px_rgba(88,166,255,0.28)]">
+              <Users className="h-5 w-5 text-cyan-100" />
             </span>
             <span className="font-display text-xl font-semibold tracking-tight">TEAMFAIR</span>
           </button>
 
           <div className="hidden items-center gap-7 md:flex">
             {navItems.map((item) => (
-              <a key={item.href} href={item.href} className="text-sm font-medium text-[#5f5a52] transition hover:text-[#191919]">
+              <a key={item.href} href={item.href} className="text-sm font-medium text-slate-300 transition hover:text-white">
                 {item.label}
               </a>
             ))}
@@ -487,11 +589,11 @@ const Landing = () => {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/login')}
-              className="hidden text-[#191919] hover:bg-[#f1eee8] hover:text-[#191919] sm:inline-flex"
+              className="hidden border border-white/10 bg-white/5 text-white hover:bg-white/[0.12] hover:text-white sm:inline-flex"
             >
               {tr(language, 'Đăng nhập', 'Sign in')}
             </Button>
-            <Button size="sm" onClick={() => navigate('/login')} className="hidden rounded-md bg-[#191919] text-white hover:bg-[#2b2b2b] sm:inline-flex">
+            <Button size="sm" onClick={() => navigate('/login')} className="hidden rounded-md bg-cyan-300 text-[#070615] hover:bg-cyan-200 sm:inline-flex">
               {tr(language, 'Bắt đầu', 'Start free')}
             </Button>
             <LanguageSwitcherButton />
@@ -499,20 +601,25 @@ const Landing = () => {
         </div>
       </nav>
 
-      <section className="relative px-6 py-16 md:py-24">
-        <div className="container mx-auto grid min-h-[calc(100dvh-4rem)] items-center gap-12 lg:grid-cols-[0.88fr_1.12fr]">
-          <div className="max-w-3xl">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-md border border-[#e7e2d8] bg-white px-3 py-2 text-sm font-semibold text-[#5f5a52]">
-              <Sparkles className="h-4 w-4 text-[#f0b429]" />
-              {tr(language, 'Workspace chấm điểm nhóm công bằng', 'Fair teamwork grading workspace')}
+      {/* ---- hero ---- */}
+      <section className="relative overflow-hidden py-14 md:py-16">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(156,92,255,0.52),transparent_30%),radial-gradient(circle_at_82%_8%,rgba(49,137,255,0.5),transparent_28%),linear-gradient(135deg,#070615_0%,#11124b_52%,#14091f_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:52px_52px] opacity-35" />
+        <div className="absolute -right-28 top-24 h-72 w-72 rounded-full border border-cyan-300/20 bg-cyan-300/10 blur-3xl" />
+        <div className="absolute -left-24 bottom-20 h-80 w-80 rounded-full border border-fuchsia-300/20 bg-fuchsia-400/10 blur-3xl" />
+        <div className="container relative z-10 mx-auto grid min-w-0 items-center gap-12 lg:min-h-[620px] lg:grid-cols-[0.88fr_1.12fr]">
+          <div className="w-full min-w-0 max-w-[326px] sm:max-w-3xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-md border border-cyan-200/20 bg-cyan-200/10 px-3 py-2 text-sm font-semibold text-cyan-100 backdrop-blur">
+              <Sparkles className="h-4 w-4" />
+              {tr(language, 'Không gian chấm điểm nhóm công bằng', 'Fair teamwork grading workspace')}
             </p>
-            <h1 className="text-balance font-display text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-              {tr(language, 'Group projects, graded fairly', 'Group projects, graded fairly')}
+            <h1 className="text-balance font-display text-4xl font-semibold leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl">
+              {tr(language, 'Huyền tự điền', 'Not my job')}
             </h1>
-            <p className="mt-7 max-w-2xl text-pretty text-lg leading-8 text-[#5f5a52] md:text-xl">
+            <p className="mt-7 max-w-2xl text-pretty text-lg leading-8 text-slate-200 md:text-xl">
               {tr(
                 language,
-                'TeamFair theo dõi task, peer feedback và tín hiệu AI để biến đóng góp nhóm thành bằng chứng rõ ràng.',
+                'TeamFair theo dõi nhiệm vụ, đánh giá đồng đội và tín hiệu AI để biến đóng góp nhóm thành bằng chứng rõ ràng.',
                 'TeamFair tracks tasks, peer feedback, and AI contribution signals so group work becomes clear evidence.',
               )}
             </p>
@@ -520,7 +627,7 @@ const Landing = () => {
               <Button
                 size="lg"
                 onClick={() => navigate('/login')}
-                className="h-12 rounded-md bg-[#191919] px-7 text-base font-semibold text-white hover:bg-[#2b2b2b]"
+                className="h-12 w-full rounded-md bg-cyan-300 px-7 text-base font-semibold text-[#070615] shadow-[0_0_30px_rgba(103,232,249,0.34)] hover:bg-cyan-200 sm:w-auto"
               >
                 {tr(language, 'Bắt đầu miễn phí', 'Start free')}
                 <ArrowRight className="h-5 w-5" />
@@ -529,7 +636,7 @@ const Landing = () => {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-12 rounded-md border-[#d9d3c9] bg-white px-7 text-base text-[#191919] hover:bg-[#f1eee8] hover:text-[#191919]"
+                className="h-12 w-full rounded-md border-white/20 bg-white/5 px-7 text-base text-white hover:bg-white/[0.12] hover:text-white sm:w-auto"
               >
                 <a href="#workflow">
                   <PlayCircle className="h-5 w-5" />
@@ -543,15 +650,17 @@ const Landing = () => {
         </div>
       </section>
 
-      <section id="problem" className="scroll-mt-24 border-y border-[#e7e2d8] bg-white px-6 py-24">
-        <div className="container mx-auto">
+      {/* ---- problem section ---- */}
+      <section id="problem" className="relative scroll-mt-24 border-y border-white/10 bg-[#0b0a1c] py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(72,95,255,0.2),transparent_25%),radial-gradient(circle_at_88%_88%,rgba(179,90,255,0.18),transparent_30%)]" />
+        <div className="container relative mx-auto">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
-              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#78736b]">{tr(language, 'Vấn đề thật', 'The real problem')}</p>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200">{tr(language, 'Vấn đề thật', 'The real problem')}</p>
               <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
                 {tr(language, 'Ai cũng cần nhìn thấy phần việc thật', 'Every role needs a clear record')}
               </h2>
-              <p className="mt-5 max-w-xl text-pretty leading-7 text-[#5f5a52]">
+              <p className="mt-5 max-w-xl text-pretty leading-7 text-slate-300">
                 {tr(
                   language,
                   'TeamFair gom tín hiệu rời rạc thành một hồ sơ đóng góp dễ đọc cho sinh viên, nhóm trưởng và giảng viên.',
@@ -561,13 +670,13 @@ const Landing = () => {
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {painPoints.map((item) => (
-                <article key={item.title} className="rounded-lg border border-[#e7e2d8] bg-[#fbfaf7] p-5 transition duration-300 hover:-translate-y-1 hover:border-[#191919]">
-                  <item.icon className="mb-8 h-6 w-6 text-[#191919]" />
+                <article key={item.title} className="rounded-lg border border-white/[0.12] bg-white/[0.07] p-5 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-cyan-200/[0.35] hover:bg-white/[0.1]">
+                  <item.icon className="mb-8 h-6 w-6 text-cyan-200" />
                   <h3 className="font-display text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[#5f5a52]">{item.desc}</p>
-                  <div className="mt-7 border-t border-[#e7e2d8] pt-4">
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{item.desc}</p>
+                  <div className="mt-7 border-t border-white/10 pt-4">
                     <p className="font-display text-3xl font-semibold">{item.metric}</p>
-                    <p className="text-xs text-[#78736b]">{item.metricLabel}</p>
+                    <p className="text-xs text-slate-400">{item.metricLabel}</p>
                   </div>
                 </article>
               ))}
@@ -578,10 +687,12 @@ const Landing = () => {
 
       <WorkflowSection language={language} workflow={workflow} />
 
-      <section id="roles" className="scroll-mt-24 bg-[#191919] px-6 py-24 text-white">
-        <div className="container mx-auto">
+      {/* ---- roles section ---- */}
+      <section id="roles" className="relative scroll-mt-24 bg-[#0a0820] py-24 text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(48,70,255,0.18),transparent_34%),radial-gradient(circle_at_76%_28%,rgba(211,109,255,0.22),transparent_30%)]" />
+        <div className="container relative mx-auto">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#c6c0b6]">{tr(language, 'Cho mọi vai trò', 'For every role')}</p>
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200">{tr(language, 'Cho mọi vai trò', 'For every role')}</p>
             <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
               {tr(language, 'Mỗi người thấy đúng thứ họ cần', 'Each role sees what matters')}
             </h2>
@@ -591,25 +702,25 @@ const Landing = () => {
             {audiences.map((item, index) => (
               <article
                 key={item.label}
-                className={`rounded-lg border border-white/15 bg-white/[0.06] p-6 transition duration-300 hover:-translate-y-1 hover:bg-white/[0.1] ${
+                className={`rounded-lg border border-white/[0.12] bg-white/[0.07] p-6 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-blue-200/[0.35] hover:bg-white/[0.1] ${
                   index === 1 ? 'lg:mt-10' : ''
                 }`}
               >
                 <div className="mb-10 flex items-center justify-between">
-                  <span className="rounded-md bg-white/10 px-3 py-1 text-sm text-[#e7e2d8]">{item.label}</span>
-                  <item.icon className="h-6 w-6 text-[#f0b429]" />
+                  <span className="rounded-md bg-white/10 px-3 py-1 text-sm text-slate-200">{item.label}</span>
+                  <item.icon className="h-6 w-6 text-cyan-200" />
                 </div>
                 <h3 className="text-balance font-display text-2xl font-semibold">{item.title}</h3>
-                <p className="mt-4 leading-7 text-[#d5d0c7]">{item.desc}</p>
-                <div className="mt-8 rounded-md border border-white/10 bg-white/[0.06] p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm text-white">
-                    <span className="h-2 w-2 rounded-full bg-[#2eaadc]" />
+                <p className="mt-4 leading-7 text-slate-300">{item.desc}</p>
+                <div className="mt-8 rounded-md border border-white/10 bg-[#090a2a] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-cyan-100">
+                    <span className="h-2 w-2 rounded-full bg-cyan-300" />
                     {tr(language, 'Workspace sau đăng nhập', 'Workspace after sign-in')}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <span className="h-14 rounded-md bg-[#2eaadc]/30" />
-                    <span className="h-14 rounded-md bg-[#f0b429]/30" />
-                    <span className="h-14 rounded-md bg-[#eb5757]/30" />
+                    <span className="h-14 rounded-md bg-blue-400/25" />
+                    <span className="h-14 rounded-md bg-fuchsia-400/25" />
+                    <span className="h-14 rounded-md bg-cyan-300/25" />
                   </div>
                 </div>
               </article>
@@ -618,54 +729,48 @@ const Landing = () => {
         </div>
       </section>
 
-      <section id="pricing" className="scroll-mt-24 bg-[#fbfaf7] px-6 py-24 text-[#191919]">
+      {/* ---- pricing section ---- */}
+      <section id="pricing" className="scroll-mt-24 bg-[#f7f8ff] py-24 text-[#0d1026]">
         <div className="container mx-auto">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-[#78736b]">{tr(language, 'Subscription', 'Subscription')}</p>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-indigo-600">{tr(language, 'Subscription', 'Subscription')}</p>
               <h2 className="max-w-3xl text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-                {tr(language, 'Chọn workspace phù hợp với lớp học', 'Choose the workspace that fits your course')}
+                {tr(language, 'Chọn gói phù hợp với lớp học', 'Choose the workspace that fits your course')}
               </h2>
             </div>
-            <p className="max-w-md text-pretty leading-7 text-[#5f5a52]">
-              {tr(
-                language,
-                'Bắt đầu với tracking cốt lõi, sau đó thêm AI report, export cho giảng viên và hỗ trợ theo lớp.',
-                'Start with core tracking, then add AI reports, lecturer exports, and course-level support.',
-              )}
-            </p>
           </div>
 
           <div className="mt-12 grid gap-5 lg:grid-cols-3">
             {plans.map((plan) => (
               <article
                 key={plan.name}
-                className={`flex min-h-[31rem] flex-col rounded-lg border p-6 ${
+                className={`flex min-h-[31rem] flex-col rounded-lg border p-6 shadow-[0_22px_55px_rgba(67,56,202,0.10)] ${
                   plan.featured
-                    ? 'border-[#191919] bg-[#191919] text-white'
-                    : 'border-[#e7e2d8] bg-white text-[#191919]'
+                    ? 'border-indigo-300 bg-gradient-to-br from-[#19164a] via-[#312e81] to-[#7c3aed] text-white'
+                    : 'border-indigo-200 bg-gradient-to-br from-[#f0eeff] to-[#e8e4ff] text-[#0d1026]'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className={`text-sm font-semibold ${plan.featured ? 'text-[#f0b429]' : 'text-[#78736b]'}`}>
+                    <p className={`text-sm font-semibold ${plan.featured ? 'text-cyan-100' : 'text-indigo-600'}`}>
                       {plan.featured ? tr(language, 'Đề xuất', 'Recommended') : tr(language, 'Gói', 'Plan')}
                     </p>
                     <h3 className="mt-3 font-display text-2xl font-semibold">{plan.name}</h3>
                   </div>
-                  <span className={`grid h-11 w-11 place-items-center rounded-md ${plan.featured ? 'bg-white/[0.12] text-[#f0b429]' : 'bg-[#f7f3ea] text-[#191919]'}`}>
+                  <span className={`grid h-11 w-11 place-items-center rounded-md ${plan.featured ? 'bg-white/[0.12] text-cyan-100' : 'bg-indigo-50 text-indigo-600'}`}>
                     <plan.icon className="h-5 w-5" />
                   </span>
                 </div>
                 <div className="mt-8">
                   <span className="font-display text-5xl font-semibold">{plan.price}</span>
-                  {'suffix' in plan && <span className={`ml-2 text-sm ${plan.featured ? 'text-[#d5d0c7]' : 'text-[#78736b]'}`}>{plan.suffix}</span>}
-                  <p className={`mt-4 min-h-12 leading-7 ${plan.featured ? 'text-[#d5d0c7]' : 'text-[#5f5a52]'}`}>{plan.desc}</p>
+                  {'suffix' in plan && <span className={`ml-2 text-sm ${plan.featured ? 'text-slate-200' : 'text-slate-500'}`}>{plan.suffix}</span>}
+                  <p className={`mt-4 min-h-12 leading-7 ${plan.featured ? 'text-slate-200' : 'text-slate-600'}`}>{plan.desc}</p>
                 </div>
                 <ul className="mt-8 space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-center gap-3 text-sm">
-                      <CheckCircle className={`h-4 w-4 ${plan.featured ? 'text-[#f0b429]' : 'text-[#191919]'}`} />
+                      <CheckCircle className={`h-4 w-4 ${plan.featured ? 'text-cyan-200' : 'text-indigo-600'}`} />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -673,8 +778,8 @@ const Landing = () => {
                 <Button
                   className={`mt-auto h-11 rounded-md ${
                     plan.featured
-                      ? 'bg-white text-[#191919] hover:bg-[#f1eee8]'
-                      : 'bg-[#191919] text-white hover:bg-[#2b2b2b]'
+                      ? 'bg-cyan-300 text-[#070615] hover:bg-cyan-200'
+                      : 'bg-[#111240] text-white hover:bg-[#252468]'
                   }`}
                   onClick={() => navigate('/login')}
                 >
@@ -686,16 +791,15 @@ const Landing = () => {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-white px-6 py-20">
-        <div className="container mx-auto">
+      {/* ---- CTA + footer ---- */}
+      <section className="relative overflow-hidden bg-[#090719] py-20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(80,118,255,0.34),transparent_38%),linear-gradient(180deg,rgba(137,70,255,0.16),transparent_62%)]" />
+        <div className="container relative mx-auto">
           <div className="mx-auto max-w-4xl text-center">
-            <p className="mb-5 text-sm font-semibold text-[#78736b]">
-              {tr(language, 'Không cần thẻ cho Starter', 'No credit card for Starter')} - EN / VI
-            </p>
             <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-6xl">
               {tr(language, 'Làm rõ đóng góp trước khi chấm điểm', 'Make contribution visible before grades are due')}
             </h2>
-            <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-[#5f5a52]">
+            <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-slate-300">
               {tr(
                 language,
                 'TeamFair cho sinh viên, nhóm trưởng và giảng viên một hồ sơ chung về đóng góp.',
@@ -706,7 +810,7 @@ const Landing = () => {
               <Button
                 size="lg"
                 onClick={() => navigate('/login')}
-                className="h-12 rounded-md bg-[#191919] px-7 text-base font-semibold text-white hover:bg-[#2b2b2b]"
+                className="h-12 rounded-md bg-cyan-300 px-7 text-base font-semibold text-[#070615] hover:bg-cyan-200"
               >
                 {tr(language, 'Tạo workspace', 'Create workspace')}
                 <ArrowRight className="h-5 w-5" />
@@ -715,19 +819,19 @@ const Landing = () => {
                 size="lg"
                 variant="outline"
                 onClick={() => navigate('/login')}
-                className="h-12 rounded-md border-[#d9d3c9] bg-white px-7 text-base text-[#191919] hover:bg-[#f1eee8] hover:text-[#191919]"
+                className="h-12 rounded-md border-white/20 bg-white/5 px-7 text-base text-white hover:bg-white/[0.12] hover:text-white"
               >
                 {tr(language, 'Đăng nhập', 'Sign in')}
               </Button>
             </div>
           </div>
 
-          <footer className="mt-16 flex flex-col gap-4 border-t border-[#e7e2d8] pt-8 text-sm text-[#78736b] md:flex-row md:items-center md:justify-between">
+          <footer className="mt-16 flex flex-col gap-4 border-t border-white/10 pt-8 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
             <p>© 2026 TeamFair</p>
             <div className="flex flex-wrap gap-5">
               <span aria-disabled="true">{tr(language, 'Chính sách riêng tư', 'Privacy')}</span>
               <span aria-disabled="true">{tr(language, 'Điều khoản', 'Terms')}</span>
-              <a className="transition hover:text-[#191919]" href="mailto:hello@teamfair.app">
+              <a className="transition hover:text-white" href="mailto:hello@teamfair.app">
                 Contact
               </a>
             </div>
