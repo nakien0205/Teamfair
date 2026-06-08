@@ -2,7 +2,7 @@ See [index.md](index.md) for the docs routing map.
 
 ## Student workspace feature map
 
-Primary entry: [src/pages/StudentDashboard.tsx](../../src/pages/StudentDashboard.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx); see [state_and_data.md](state_and_data.md)).
+Primary entry: [src/layouts/StudentLayout.tsx](../../src/layouts/StudentLayout.tsx) wrapping all student routes (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx); see [state_and_data.md](state_and_data.md)). Student pages now render within this layout.
 
 - Task work and status flow
   - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, evidence uploads.

@@ -226,58 +226,20 @@ const StudentDashboard = () => {
   };
 
   return (
-    <DashboardShell
-      sidebar={
-        <DashboardSidebar
-          title={tr(language, "Sinh viên", "Student")}
-          subtitle={currentUserName}
-          items={[
-            { key: 'work', label: tr(language, 'Công việc', 'Work'), icon: <LayoutGrid /> },
-            { key: 'calendar', label: tr(language, 'Lịch', 'Calendar'), icon: <CalendarDays /> },
-            { key: 'fairness', label: tr(language, 'Đánh giá', 'Evaluation'), icon: <Scale /> },
-            { key: 'materials', label: tr(language, 'Tài liệu', 'Materials'), icon: <FileText /> },
-            { key: 'verifiedBadges', label: t(language, 'verifiedBadgesTitle'), icon: <CheckCircle className="h-4 w-4 text-primary" /> },
-            { key: 'activity', label: tr(language, 'Hoạt động', 'Activity'), icon: <Activity /> },
-            { key: 'settings', label: tr(language, 'Cấu hình', 'Settings'), icon: <Settings className="h-4 w-4" /> },
-            { key: 'switch-projects', label: tr(language, 'Đổi dự án', 'Switch Projects'), icon: <Folder className="h-4 w-4" /> },
-          ]}
-          activeKey={activeSection}
-          onSelect={(key) => {
-            if (key === 'switch-projects') {
-              navigate('/projects');
-            } else if (key === 'settings') {
-              setIsSettingsOpen(true);
-            } else {
-              setActiveSection(key);
-            }
-          }}
-        />
-      }
-      header={
-        <DashboardHeader
-          roleLabel={t(language, 'student')}
-          onExit={() => {
-            void signOut();
-            navigate("/login");
-          }}
-          leftSlot={<SidebarTrigger />}
-          rightSlot={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAiSidebarOpen(true)}
-              aria-label={tr(language, 'Mở trợ lý AI workspace', 'Open workspace AI assistant')}
-              className="gap-1.5"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">AI</span>
-            </Button>
-          }
-          showRoleSelect={false}
-        />
-      }
-    >
+    <>
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAiSidebarOpen(true)}
+            aria-label={tr(language, 'Mở trợ lý AI workspace', 'Open workspace AI assistant')}
+            className="gap-1.5 rounded-full"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="text-xs">AI Workspace</span>
+          </Button>
+        </div>
 
 
         {activeSection === 'work' ? (
@@ -575,7 +537,7 @@ const StudentDashboard = () => {
         />
         <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </div>
-    </DashboardShell>
+    </>
   );
 };
 
