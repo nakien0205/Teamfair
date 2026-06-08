@@ -32,6 +32,16 @@ const LecturerLayout = () => {
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+
+  const handleLogout = () => {
+    setIsFadingOut(true);
+    // Fade out animation (300ms) then navigate
+    setTimeout(() => {
+      navigate("/login", { replace: true });
+      void signOut();
+    }, 300);
+  };
 
   // Compute Display Name fallback logic: full_name > email > short uuid
   const displayName = profile?.full_name 
@@ -109,17 +119,14 @@ const LecturerLayout = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, "lecturer")}
-          onExit={() => {
-            navigate("/login", { replace: true });
-            void signOut();
-          }}
+          onExit={handleLogout}
           onHomeClick={() => navigate("/")}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />
       }
     >
-      <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
+      <div className={`container mx-auto px-6 py-6 max-w-7xl space-y-6 transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
         <Outlet />
       </div>
       <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />

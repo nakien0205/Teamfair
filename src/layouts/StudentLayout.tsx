@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
+import { useState } from "react";
 
 const StudentLayout = () => {
   const { pathname } = useLocation();
@@ -15,8 +16,18 @@ const StudentLayout = () => {
   const { signOut } = useAuth();
   const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   const isLeader = studentRole === "Leader";
+
+  const handleLogout = () => {
+    setIsFadingOut(true);
+    // Fade out animation (300ms) then navigate
+    setTimeout(() => {
+      navigate("/login", { replace: true });
+      void signOut();
+    }, 300);
+  };
 
   // Determine active key from pathname
   let activeKey = "overview";
@@ -95,17 +106,16 @@ const StudentLayout = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, "student")}
-          onExit={() => {
-            navigate("/login", { replace: true });
-            void signOut();
-          }}
+          onExit={handleLogout}
           onHomeClick={() => navigate("/")}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />
       }
     >
-      <Outlet />
+      <div className={`transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+        <Outlet />
+      </div>
     </DashboardShell>
   );
 };
