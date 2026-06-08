@@ -110,12 +110,11 @@ const LecturerLayout = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, "lecturer")}
-          onExit={() => {
-            void (async () => {
-              await signOut();
-              navigate("/login", { replace: true });
-            })();
+          onExit={async () => {
+            await signOut();
+            navigate("/login", { replace: true });
           }}
+          onHomeClick={() => navigate("/")}
           leftSlot={<SidebarTrigger />}
           showRoleSelect={false}
         />

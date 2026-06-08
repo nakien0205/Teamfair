@@ -1,7 +1,7 @@
 See [index.md](index.md) for the docs routing map.
 
 ## Pages (top-level views)
-- [src/pages/Landing.tsx](src/pages/Landing.tsx) - marketing/hero landing page with language switcher.
+- [src/pages/Landing.tsx](src/pages/Landing.tsx) - modern SaaS/EdTech landing page for TeamFair with full feature overview and language switcher.
 - [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), role-based redirect when authenticated.
 - [src/layouts/StudentLayout.tsx](src/layouts/StudentLayout.tsx) - Centralized layout for all student pages (Overview, Workspace, Tasks, Work Logs, etc.).
 - [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx) - student workspace with tasks, calendar, evaluation, materials, badges, and activity log.
