@@ -394,13 +394,13 @@ const WorkflowSection = ({ language, workflow }: { language: Language; workflow:
         <div className="order-1 lg:order-2">
           <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-indigo-600">{tr(language, 'Workflow', 'Workflow')}</p>
           <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-            {tr(language, 'Từ task đến điểm công bằng', 'From task to fair score')}
+            {tr(language, 'Từ công việc nhóm đến đánh giá minh bạch', 'From teamwork to dreamwork')}
           </h2>
           <p className="mt-5 text-pretty text-lg leading-8 text-slate-700">
             {tr(
               language,
-              'Một luồng rõ ràng: giao việc, ghi bằng chứng, lấy đánh giá của đồng đội và của AI để tính điểm đóng góp.',
-              'One clear flow: assign work, record evidence, collect peer and AI review to calculate contribution score.',
+              'Một quy trình rõ ràng để giao việc, theo dõi tiến độ, lưu bằng chứng và đánh giá đóng góp của từng thành viên.',
+              "A clear flow for assigning tasks, tracking progress, documenting progress, and evaluating each team member's contribution.",
             )}
           </p>
           <div className="mt-8 grid gap-3">
@@ -442,33 +442,33 @@ const Landing = () => {
   const painPoints = [
     {
       icon: Users,
-      title: tr(language, 'Dành cho sinh viên', 'For students'),
+      title: tr(language, 'Sinh viên', 'Students'),
       desc: tr(
         language,
-        'Nhóm im lặng khiến sinh viên khó chứng minh ai đã thật sự gánh phần việc nào trước khi đánh giá.',
-        'Quiet teams make it hard to prove who carried the work before review.',
+        'Làm nhiều nhưng khó chứng minh?\nTeamfair lưu lại công việc, tài liệu và tiến độ để công sức của bạn được ghi nhận rõ ràng',
+        'Did the work, but cannot prove it?\nTeamfair records tasks, files, and progress so your effort is easy to verify.',
       ),
       metric: '4.7/5',
-      metricLabel: tr(language, 'độ rõ ràng khi review', 'peer clarity score'),
+      metricLabel: tr(language, 'độ rõ ràng khi review', 'review clarity score'),
     },
     {
       icon: ClipboardList,
-      title: tr(language, 'Dành cho nhóm trưởng', 'For team leaders'),
+      title: tr(language, 'Nhóm trưởng', 'Team leaders'),
       desc: tr(
         language,
-        'Task rải rác làm nhóm trưởng khó thấy thành viên không hoạt động và blocker cho tới tuần deadline.',
-        'Scattered tasks hide inactive members and blockers until deadline week.',
+        'Theo dõi cả nhóm bằng một cú click\nDễ phát hiện ai đang chậm tiến độ, ai đang “mất tích” trước khi deadline tới',
+        'Track the whole team in one click\nSpot who is falling behind or going quiet before the deadline.',
       ),
       metric: '23m',
       metricLabel: tr(language, 'tiết kiệm mỗi lần kiểm tra', 'saved per review'),
     },
     {
       icon: BarChart3,
-      title: tr(language, 'Dành cho giảng viên', 'For lecturers'),
+      title: tr(language, 'Giảng viên', 'Lecturers'),
       desc: tr(
         language,
-        'Điểm cuối kỳ cần lịch sử làm, đánh giá đồng đội và bằng chứng trong một hồ sơ duy nhất.',
-        'Final grades need task history, peer feedback, and evidence in one place.',
+        'Chấm điểm dựa trên dữ liệu thật\nTheo dõi lịch sử làm việc, đánh giá đồng đội và mức độ đóng góp của từng sinh viên',
+        "Grade with real evidence\nReview work history, peer feedback, and each student's contribution level.",
       ),
       metric: '12',
       metricLabel: tr(language, 'lớp học thử nghiệm', 'course pilots'),
@@ -478,23 +478,23 @@ const Landing = () => {
   const workflow = [
     {
       icon: ClipboardList,
-      title: tr(language, 'Giao việc có chủ sở hữu', 'Assign owned tasks'),
+      title: tr(language, 'Mỗi công việc đều có người chịu trách nhiệm', 'Assign owned tasks'),
       desc: tr(language, 'Mỗi nhiệm vụ có người phụ trách, deadline và bằng chứng cần nộp.', 'Each task gets an owner, deadline, and expected evidence.'),
     },
     {
       icon: CheckCircle,
-      title: tr(language, 'Ghi bằng chứng khi làm', 'Track evidence'),
+      title: tr(language, 'Lưu tiến độ và file minh chứng', 'Track evidence'),
       desc: tr(language, 'Cập nhật việc đã làm, blocker và proof khi dự án vẫn đang chạy.', 'Track completed work, blockers, and proof while the project is still active.'),
     },
     {
       icon: MessageSquareText,
-      title: tr(language, 'Thu thập đánh giá của đồng đội', 'Collect peer review'),
+      title: tr(language, 'Peer review rõ ràng trước khi chấm điểm', 'Collect peer review'),
       desc: tr(language, 'Giúp phản hồi rõ ràng trước khi việc chấm điểm thành tranh cãi.', 'Help provide clear feedback before grading becomes a dispute.'),
     },
     {
       icon: Brain,
-      title: tr(language, 'AI giải thích điểm', 'AI explains the score'),
-      desc: tr(language, 'AI so sánh nhiệm vụ, bằng chứng và đánh giá đồng đội để giải thích điểm đóng góp.', 'AI compares tasks, evidence, and peer feedback to explain contribution scores.'),
+      title: tr(language, 'AI tổng hợp mức độ đóng góp', 'AI explains the score'),
+      desc: tr(language, 'Teamfair AI giúp phân tích công việc, tiến độ và phản hồi đồng đội để hỗ trợ giảng viên đánh giá công bằng hơn.', 'AI compares tasks, evidence, and peer feedback to explain contribution scores.'),
     },
   ];
 
@@ -522,40 +522,42 @@ const Landing = () => {
   const plans = [
     {
       icon: Sparkles,
-      name: 'Starter',
-      price: tr(language, 'Miễn phí', 'Free'),
-      desc: tr(language, 'Dành cho một dự án nhóm nhỏ.', 'For one small group project.'),
+      name: 'Free',
+      price: '0đ',
+      suffix: tr(language, '/ tháng', '/ month'),
+      desc: tr(language, 'Dùng mãi miễn phí cho một nhóm sinh viên.', 'Free forever for one student team.'),
       cta: tr(language, 'Bắt đầu miễn phí', 'Start free'),
       features: [
-        tr(language, 'Theo dõi task cốt lõi', 'Core task tracking'),
-        tr(language, 'Workspace cho sinh viên', 'Student workspace'),
-        tr(language, 'Peer review cơ bản', 'Basic peer review'),
+        tr(language, '1 nhóm, tối đa 6 thành viên', '1 team, up to 6 members'),
+        tr(language, '20 task cho mỗi nhóm', '20 tasks per team'),
+        tr(language, 'Theo dõi tiến độ cơ bản', 'Basic progress tracking'),
       ],
     },
     {
       icon: WalletCards,
-      name: 'Plus',
-      price: '$6',
-      suffix: tr(language, '/ sinh viên / môn', '/ student / course'),
-      desc: tr(language, 'Thêm AI report và xuất dữ liệu cho giảng viên.', 'Add AI reports and lecturer exports.'),
-      cta: tr(language, 'Chọn Plus', 'Choose Plus'),
+      name: 'Pro Group',
+      price: '69.000đ',
+      suffix: tr(language, '/ nhóm / tháng', '/ team / month'),
+      desc: tr(language, 'Khoảng 11.500đ mỗi người với nhóm 6; hoặc 590.000đ mỗi học kỳ.', 'About 11,500 VND per person for a team of 6; or 590,000 VND per semester.'),
+      cta: tr(language, 'Chọn Pro Group', 'Choose Pro Group'),
       featured: true,
       features: [
-        tr(language, 'Tất cả trong Starter', 'Everything in Starter'),
-        tr(language, 'AI contribution report', 'AI contribution reports'),
-        tr(language, 'Xuất báo cáo cho lớp học', 'Lecturer-ready exports'),
+        tr(language, 'Tối đa 30 thành viên', 'Up to 30 members'),
+        tr(language, 'Không giới hạn task và project', 'Unlimited tasks and projects'),
+        tr(language, 'AI phân tích tiến độ và đóng góp', 'AI progress and contribution insights'),
       ],
     },
     {
       icon: Building2,
-      name: 'Campus',
-      price: tr(language, 'Tùy chỉnh', 'Custom'),
-      desc: tr(language, 'Cho khoa, bộ môn và nhiều lớp học.', 'For departments and multi-course programs.'),
-      cta: tr(language, 'Liên hệ', 'Talk to us'),
+      name: 'Class Pack',
+      price: '790.000đ',
+      suffix: tr(language, '/ học kỳ', '/ semester'),
+      desc: tr(language, 'Cho một lớp học 30-60 sinh viên và một giảng viên.', 'For one class of 30-60 students and one lecturer.'),
+      cta: tr(language, 'Liên hệ cho lớp học', 'Talk to us'),
       features: [
-        tr(language, 'Thanh toán tập trung', 'Centralized billing'),
-        tr(language, 'Onboarding cho lớp học', 'Course onboarding'),
-        tr(language, 'Hỗ trợ ưu tiên', 'Priority support'),
+        tr(language, 'Bao gồm Pro Group cho cả lớp', 'Includes Pro Group for the whole class'),
+        tr(language, 'GV quản lý tất cả nhóm', 'Lecturer manages every team'),
+        tr(language, 'Xuất báo cáo và bảng điểm', 'Export reports and grade sheets'),
       ],
     },
   ];
@@ -614,13 +616,13 @@ const Landing = () => {
               {tr(language, 'Không gian chấm điểm nhóm công bằng', 'Fair teamwork grading workspace')}
             </p>
             <h1 className="text-balance font-display text-4xl font-semibold leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl">
-              {tr(language, 'Huyền tự điền', 'Not my job')}
+              {tr(language, 'Teamwork, but fair', 'Teamwork, but fair')}
             </h1>
             <p className="mt-7 max-w-2xl text-pretty text-lg leading-8 text-slate-200 md:text-xl">
               {tr(
                 language,
-                'TeamFair theo dõi nhiệm vụ, đánh giá đồng đội và tín hiệu AI để biến đóng góp nhóm thành bằng chứng rõ ràng.',
-                'TeamFair tracks tasks, peer feedback, and AI contribution signals so group work becomes clear evidence.',
+                'Teamfair giúp sinh viên và giảng viên theo dõi công việc, xác minh đóng góp của từng cá nhân và hạn chế những thành viên ỷ lại trong nhóm',
+                'TeamFair helps students and lecturers track task, validated contributions of each individuals, and limit free-rider within the project',
               )}
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -629,7 +631,7 @@ const Landing = () => {
                 onClick={() => navigate('/login')}
                 className="h-12 w-full rounded-md bg-cyan-300 px-7 text-base font-semibold text-[#070615] shadow-[0_0_30px_rgba(103,232,249,0.34)] hover:bg-cyan-200 sm:w-auto"
               >
-                {tr(language, 'Bắt đầu miễn phí', 'Start free')}
+                {tr(language, 'Tạo workspace miễn phí', 'Create free workspace')}
                 <ArrowRight className="h-5 w-5" />
               </Button>
               <Button
@@ -640,7 +642,7 @@ const Landing = () => {
               >
                 <a href="#workflow">
                   <PlayCircle className="h-5 w-5" />
-                  {tr(language, 'Xem cách hoạt động', 'See how it works')}
+                  {tr(language, 'Xem cách Teamfair hoạt động', 'See how Teamfair works')}
                 </a>
               </Button>
             </div>
@@ -658,22 +660,35 @@ const Landing = () => {
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200">{tr(language, 'Vấn đề thật', 'The real problem')}</p>
               <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-                {tr(language, 'Ai cũng cần nhìn thấy phần việc thật', 'Every role needs a clear record')}
+                {tr(language, 'Đừng để công sức biến mất trong dự án nhóm', "Don't let your hard work go to waste in a group project")}
               </h2>
               <p className="mt-5 max-w-xl text-pretty leading-7 text-slate-300">
                 {tr(
                   language,
-                  'TeamFair gom tín hiệu rời rạc thành một hồ sơ đóng góp dễ đọc cho sinh viên, nhóm trưởng và giảng viên.',
-                  'TeamFair turns scattered signals into a readable contribution record for students, team leaders, and lecturers.',
+                  'Teamfair tự động minh bạch hóa mọi đóng góp, giúp giảng viên đánh giá công bằng và chính xác hơn.',
+                  'Teamfair automatically makes all contributions transparent, helping lecturer to evaluate them more fairly and accurately.',
                 )}
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {painPoints.map((item) => (
-                <article key={item.title} className="rounded-lg border border-white/[0.12] bg-white/[0.07] p-5 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-cyan-200/[0.35] hover:bg-white/[0.1]">
-                  <item.icon className="mb-8 h-6 w-6 text-cyan-200" />
+                <article
+                  key={item.title}
+                  className="flex min-h-[21rem] flex-col rounded-lg border border-white/[0.12] bg-white/[0.07] p-5 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-cyan-200/[0.35] hover:bg-white/[0.1]"
+                >
+                  <div className="mb-7 flex items-center justify-between">
+                    <item.icon className="h-6 w-6 text-cyan-200" />
+                    <span className="h-px flex-1 bg-gradient-to-r from-cyan-200/40 to-transparent" />
+                  </div>
                   <h3 className="font-display text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">{item.desc}</p>
+                  <ul className="mt-4 flex-1 space-y-3">
+                    {item.desc.split('\n').map((point) => (
+                      <li key={point} className="grid grid-cols-[auto_1fr] gap-3 text-sm leading-6 text-slate-300">
+                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-cyan-200 shadow-[0_0_14px_rgba(103,232,249,0.75)]" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
                   <div className="mt-7 border-t border-white/10 pt-4">
                     <p className="font-display text-3xl font-semibold">{item.metric}</p>
                     <p className="text-xs text-slate-400">{item.metricLabel}</p>
