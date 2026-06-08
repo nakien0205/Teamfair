@@ -550,7 +550,7 @@ const ProjectManagement: React.FC = () => {
     setCurrentGroupIndex(groupIndex);
 
     const role = profile?.role || (sessionStorage.getItem("demo_session") === "lecturer" ? "lecturer" : "student");
-    const redirectPath = role === "lecturer" || role === "admin" ? "/dashboard-lecturer" : "/dashboard-student";
+    const redirectPath = role === "lecturer" || role === "admin" ? "/dashboard-lecturer" : "/student/dashboard";
 
     toast({
       title: tr(language, "Khởi chạy Workspace!", "Workspace Launched!"),
@@ -784,7 +784,12 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => signOut().then(() => navigate("/login"))}
+            onClick={() => {
+              void (async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              })();
+            }}
             variant="ghost"
             className="text-slate-500 hover:text-slate-300 gap-2 hover:bg-slate-900/30 rounded-xl"
           >
@@ -1134,7 +1139,12 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => signOut().then(() => navigate("/login"))}
+            onClick={() => {
+              void (async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              })();
+            }}
             variant="ghost"
             className="w-full text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 rounded-xl flex items-center gap-3.5 justify-start px-4 py-3 h-auto font-semibold text-sm"
           >

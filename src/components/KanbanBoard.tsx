@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, GripVertical, Upload, FileText, Clock, User } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
+import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/studentTaskProgress';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 const COLUMN_COLORS: Record<string, string> = {
@@ -76,6 +77,39 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
       if (task && task.status !== status) {
         if (!isLeader && task.assignedTo !== currentUser) {
           toast({
+            title: tr(language, 'Không thể cập nhật task', 'Cannot update task'),
+            description: STUDENT_TASK_PROGRESS_MESSAGES.unauthorized,
+            variant: 'destructive',
+          });
+          setDraggedTask(null);
+          return;
+        }
+
+        if (!isLeader && task.assignedTo === currentUser && status !== 'In Progress') {
+          toast({
+            title: tr(language, 'Không thể cập nhật task', 'Cannot update task'),
+            description: STUDENT_TASK_PROGRESS_MESSAGES.invalidTransition,
+            variant: 'destructive',
+          });
+          setDraggedTask(null);
+          return;
+        }
+
+        if (!isLeader && task.assignedTo === currentUser) {
+          const validation = canStudentStartTask(task, true);
+          if (!validation.ok) {
+            toast({
+              title: tr(language, 'Không thể cập nhật task', 'Cannot update task'),
+              description: validation.message,
+              variant: 'destructive',
+            });
+            setDraggedTask(null);
+            return;
+          }
+        }
+
+        if (!isLeader && task.assignedTo !== currentUser) {
+          toast({
             title: tr(language, 'Quyền truy cập bị từ chối', 'Access Denied'),
             description: tr(language, 'Bạn chỉ có thể di chuyển nhiệm vụ của chính mình', 'You can only move your own tasks'),
             variant: 'destructive',
@@ -114,6 +148,17 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     }
     const task = tasks.find(t => t.id === taskId);
     if (task) {
+      if (!isLeader && task.approved) {
+        toast({
+          title: tr(language, 'Không thể cập nhật task', 'Cannot update task'),
+          description: STUDENT_TASK_PROGRESS_MESSAGES.approvedLocked,
+          variant: 'destructive',
+        });
+        if (evidenceRef.current) evidenceRef.current.value = '';
+        setEvidenceTaskId(null);
+        return;
+      }
+
       const existing = task.evidence || [];
       updateTask(taskId, { evidence: [...existing, { fileName: cleanName, uploadTime: new Date() }] });
       toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${cleanName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
