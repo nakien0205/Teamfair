@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
+import { GroupDetailSkeleton } from "@/components/skeletons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam, type ActivityLogEntry, type MemberStat, type Task } from "@/context/TeamContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -446,7 +447,7 @@ const StudentMyGroup = () => {
       <>
         <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
           <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-            <LoadingPage />
+            <GroupDetailSkeleton />
           </div>
         </div>
       </>
