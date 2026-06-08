@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DashboardSkeleton } from "@/components/skeletons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
@@ -156,33 +157,6 @@ const EmptyBlock = ({
     </div>
     <p className="text-base font-semibold">{title}</p>
     <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
-  </div>
-);
-
-const LoadingDashboard = () => (
-  <div className="space-y-6">
-    <Card className="rounded-3xl border-0 shadow-card">
-      <CardContent className="space-y-4 p-6">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-10 w-80" />
-        <Skeleton className="h-20 w-full rounded-2xl" />
-      </CardContent>
-    </Card>
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <Card key={index} className="rounded-3xl border-0 shadow-card">
-          <CardContent className="space-y-3 p-5">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-3 w-36" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <Skeleton className="h-[360px] rounded-3xl" />
-      <Skeleton className="h-[360px] rounded-3xl" />
-    </div>
   </div>
 );
 
@@ -381,7 +355,7 @@ const StudentOverview = () => {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-          {dataLoading ? <LoadingDashboard /> : null}
+          {dataLoading ? <DashboardSkeleton /> : null}
 
           {!dataLoading && connectionError ? (
             <Card className="rounded-3xl border-0 shadow-card">

@@ -23,6 +23,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
 
@@ -144,7 +145,7 @@ const Login = () => {
     if (location.pathname !== "/login") return;
     const dest = from && from !== "/login"
       ? from
-      : (profile.profile_completed ? dashboardPathForRole(profile.role) : "/projects");
+      : dashboardPathForRole(profile.role);
     navigate(dest, { replace: true });
   }, [session, profile, authLoading, navigate, location.pathname, from]);
 
@@ -174,8 +175,7 @@ const Login = () => {
           await refreshProfile();
           const u = (await supabase.from("users").select("role, profile_completed").eq("id", data.user.id).maybeSingle()).data;
           const r = u?.role as AppUserRole | undefined;
-          const isCompleted = u?.profile_completed ?? false;
-          navigate(isCompleted ? dashboardPathForRole(r ?? "student") : "/projects", { replace: true });
+          navigate(dashboardPathForRole(r ?? "student"), { replace: true });
         } else {
           toast.message(t(language, "authSignUpConfirmEmail"));
         }
@@ -188,8 +188,7 @@ const Login = () => {
         await refreshProfile();
         const u = (await supabase.from("users").select("role, profile_completed").eq("id", data.user.id).maybeSingle()).data;
         const r = u?.role as AppUserRole | undefined;
-        const isCompleted = u?.profile_completed ?? false;
-        navigate(isCompleted ? dashboardPathForRole(r ?? "student") : "/projects", { replace: true });
+        navigate(dashboardPathForRole(r ?? "student"), { replace: true });
       }
     } finally {
       setLoading(false);
@@ -201,14 +200,14 @@ const Login = () => {
       toast.error(t(language, "authSupabaseNotConfigured"));
       return;
     }
-    setLoading(true);
+    setGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/login`,
       },
     });
-    setLoading(false);
+    setGoogleLoading(false);
     if (error) {
       toast.error(t(language, "authGoogleFailed"), { description: error.message });
     }
@@ -230,8 +229,8 @@ const Login = () => {
         </div>
 
         <div className="bg-card rounded-xl p-6 shadow-card space-y-4 border border-border">
-          <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={() => void handleGoogle()}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          <Button type="button" variant="outline" className="w-full" disabled={googleLoading || loading} onClick={() => void handleGoogle()}>
+            {googleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {t(language, "loginWithGoogle")}
           </Button>
 
@@ -272,7 +271,7 @@ const Login = () => {
                 minLength={6}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || googleLoading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {isSignUp ? t(language, "loginSubmitSignUp") : t(language, "loginSubmitSignIn")}
             </Button>

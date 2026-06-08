@@ -33,6 +33,7 @@ const LecturerLayout = () => {
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Compute Display Name fallback logic: full_name > email > short uuid
   const displayName = profile?.full_name 
@@ -111,6 +112,7 @@ const LecturerLayout = () => {
         <DashboardHeader
           roleLabel={t(language, "lecturer")}
           onExit={async () => {
+            setIsLoggingOut(true);
             await signOut();
             navigate("/login", { replace: true });
           }}
@@ -120,22 +122,18 @@ const LecturerLayout = () => {
         />
       }
     >
-      <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
-        {dataLoading ? (
-          <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <div className="h-8 w-48 animate-pulse rounded-xl bg-slate-200"></div>
-                <div className="h-4 w-72 animate-pulse rounded-xl bg-slate-200"></div>
-              </div>
-              <div className="h-10 w-32 animate-pulse rounded-xl bg-slate-200"></div>
-            </div>
-            <div className="h-[400px] w-full animate-pulse rounded-3xl border border-slate-200 bg-slate-50/50"></div>
+      {isLoggingOut ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3 text-slate-500">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <p className="text-sm">{language === "vi" ? "Đang đăng xuất..." : "Signing out..."}</p>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
           <Outlet />
-        )}
-      </div>
+        </div>
+      )}
       <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </DashboardShell>
   );

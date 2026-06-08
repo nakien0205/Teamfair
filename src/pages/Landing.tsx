@@ -22,7 +22,7 @@ const Landing = () => {
 
   const handleDashboardRedirect = () => {
     if (session && profile) {
-      navigate(profile.profile_completed ? dashboardPathForRole(profile.role) : '/projects');
+      navigate(dashboardPathForRole(profile.role));
     } else {
       navigate('/login');
     }
@@ -73,7 +73,7 @@ const Landing = () => {
                       <span>Vào Dashboard</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => { signOut(); navigate('/login'); }} className="cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                    <DropdownMenuItem onClick={() => { navigate('/login'); void signOut(); }} className="cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Đăng xuất</span>
                     </DropdownMenuItem>

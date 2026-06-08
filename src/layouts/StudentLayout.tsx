@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const StudentLayout = () => {
   const { pathname } = useLocation();
@@ -16,6 +16,7 @@ const StudentLayout = () => {
   const { signOut } = useAuth();
   const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isLeader = studentRole === "Leader";
 
@@ -97,6 +98,7 @@ const StudentLayout = () => {
         <DashboardHeader
           roleLabel={t(language, "student")}
           onExit={async () => {
+            setIsLoggingOut(true);
             await signOut();
             navigate("/login", { replace: true });
           }}
@@ -106,11 +108,11 @@ const StudentLayout = () => {
         />
       }
     >
-      {dataLoading ? (
-        <div className="flex min-h-[280px] items-center justify-center">
+      {isLoggingOut ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-3 text-slate-500">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-sm">{language === "vi" ? "Đang tải dữ liệu dự án..." : "Loading project data..."}</p>
+            <p className="text-sm">{language === "vi" ? "Đang đăng xuất..." : "Signing out..."}</p>
           </div>
         </div>
       ) : (
