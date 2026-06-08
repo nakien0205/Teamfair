@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, Outlet } from "react-router-dom";
-import { Sparkles, Users, FolderOpen, ClipboardPenLine, MessageSquareQuote, FileUp, BookOpenText, CheckCircle, Scale, Brain, ArrowRight, Loader2 } from "lucide-react";
+import { Sparkles, Users, FolderOpen, ClipboardPenLine, MessageSquareQuote, FileUp, BookOpenText, CheckCircle, Scale, Brain, ArrowRight } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardSidebar, { DashboardSidebarItem } from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -8,7 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
-import { useEffect, useState } from "react";
 
 const StudentLayout = () => {
   const { pathname } = useLocation();
@@ -16,7 +15,6 @@ const StudentLayout = () => {
   const { signOut } = useAuth();
   const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isLeader = studentRole === "Leader";
 
@@ -97,10 +95,9 @@ const StudentLayout = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, "student")}
-          onExit={async () => {
-            setIsLoggingOut(true);
-            await signOut();
+          onExit={() => {
             navigate("/login", { replace: true });
+            void signOut();
           }}
           onHomeClick={() => navigate("/")}
           leftSlot={<SidebarTrigger />}
@@ -108,16 +105,7 @@ const StudentLayout = () => {
         />
       }
     >
-      {isLoggingOut ? (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-3 text-slate-500">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-sm">{language === "vi" ? "Đang đăng xuất..." : "Signing out..."}</p>
-          </div>
-        </div>
-      ) : (
-        <Outlet />
-      )}
+      <Outlet />
     </DashboardShell>
   );
 };

@@ -23,7 +23,6 @@ import { useTeam } from "@/context/TeamContext";
 import { t, tr } from "@/lib/i18n";
 import { useState } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { Loader2 } from "lucide-react";
 
 const LecturerLayout = () => {
   const { pathname } = useLocation();
@@ -33,7 +32,6 @@ const LecturerLayout = () => {
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Compute Display Name fallback logic: full_name > email > short uuid
   const displayName = profile?.full_name 
@@ -111,10 +109,9 @@ const LecturerLayout = () => {
       header={
         <DashboardHeader
           roleLabel={t(language, "lecturer")}
-          onExit={async () => {
-            setIsLoggingOut(true);
-            await signOut();
+          onExit={() => {
             navigate("/login", { replace: true });
+            void signOut();
           }}
           onHomeClick={() => navigate("/")}
           leftSlot={<SidebarTrigger />}
@@ -122,18 +119,9 @@ const LecturerLayout = () => {
         />
       }
     >
-      {isLoggingOut ? (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-3 text-slate-500">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-sm">{language === "vi" ? "Đang đăng xuất..." : "Signing out..."}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
-          <Outlet />
-        </div>
-      )}
+      <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
+        <Outlet />
+      </div>
       <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </DashboardShell>
   );
