@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ClipboardPenLine,
   FileUp,
-  Loader2,
   PencilLine,
   ShieldAlert,
   Trash2,
@@ -609,12 +608,10 @@ const StudentAppeals = () => {
             </Button>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="outline" className="rounded-2xl" onClick={() => void handleSave(false)} disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Lưu bản nháp
+                {saving ? "Đang lưu..." : "Lưu bản nháp"}
               </Button>
               <Button className="rounded-2xl" onClick={() => void handleSave(true)} disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Gửi giải trình
+                {saving ? "Đang gửi..." : "Gửi giải trình"}
               </Button>
             </div>
           </DialogFooter>

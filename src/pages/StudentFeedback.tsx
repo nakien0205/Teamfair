@@ -4,7 +4,6 @@ import {
   AlertCircle,
   BellDot,
   CheckCircle2,
-  Loader2,
   MessageSquareQuote,
   ShieldAlert,
 } from "lucide-react";
@@ -392,8 +391,7 @@ const StudentFeedback = () => {
               Hủy
             </Button>
             <Button className="rounded-2xl" onClick={() => void handleReply()} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Gửi phản hồi
+              {saving ? "Đang gửi..." : "Gửi phản hồi"}
             </Button>
           </DialogFooter>
         </DialogContent>

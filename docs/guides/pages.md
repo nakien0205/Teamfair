@@ -9,6 +9,7 @@ See [index.md](index.md) for the docs routing map.
 - [src/pages/StudentMyGroup.tsx](src/pages/StudentMyGroup.tsx) - group management page for students.
 - [src/layouts/LecturerLayout.tsx](src/layouts/LecturerLayout.tsx) - Centralized layout for all lecturer pages (Overview, Rubrics, Evaluations, etc.).
 - [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx) - lecturer overview page displaying group metrics and AI analysis.
+- [src/pages/LecturerGroupsPage.tsx](src/pages/LecturerGroupsPage.tsx) - lecturer page to manage classes, projects, groups, and score grading with pagination.
 - [src/pages/LecturerReportsPage.tsx](src/pages/LecturerReportsPage.tsx) - lecturer page to view student peer review reports.
 - [src/pages/LecturerStudentEvaluationsPage.tsx](src/pages/LecturerStudentEvaluationsPage.tsx) - lecturer page to manage student badges and evaluation.
 - [src/pages/LecturerRubricsList.tsx](src/pages/LecturerRubricsList.tsx) - lecturer page to manage rubrics.

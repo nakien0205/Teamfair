@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Loader2, ShieldCheck, Star, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, ShieldCheck, Star, Users } from "lucide-react";
 import StudentShell from "@/components/student/StudentShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -402,8 +402,7 @@ const StudentPeerReview = () => {
                       Hủy
                     </Button>
                     <Button type="button" className="rounded-2xl" onClick={() => void handleSubmit()} disabled={submitting}>
-                      {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4" />}
-                      Gửi đánh giá
+                      {submitting ? "Đang gửi..." : <><Star className="mr-2 h-4 w-4" />Gửi đánh giá</>}
                     </Button>
                   </div>
                 </CardContent>

@@ -5,6 +5,7 @@ Primary entry: [src/layouts/LecturerLayout.tsx](../../src/layouts/LecturerLayout
 
 - Workspace Overview
   - [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx) - renders group members table, AI analysis, and links to evaluation metrics.
+  - [src/pages/LecturerGroupsPage.tsx](../../src/pages/LecturerGroupsPage.tsx) - lecturer page to manage classes, projects, groups, and score grading. Features client-side pagination for group listing.
 - Group overview and analytics
   - [src/pages/LecturerContributionPage.tsx](../../src/pages/LecturerContributionPage.tsx) -> renders [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx)
 - Reports and rubric

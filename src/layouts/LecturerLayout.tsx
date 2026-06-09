@@ -24,6 +24,8 @@ import { t, tr } from "@/lib/i18n";
 import { useState } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 
+const LOGOUT_TRANSITION_MS = 420;
+
 const LecturerLayout = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -32,15 +34,19 @@ const LecturerLayout = () => {
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    setIsFadingOut(true);
-    // Fade out animation (300ms) then navigate
-    setTimeout(() => {
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    await new Promise((resolve) => setTimeout(resolve, LOGOUT_TRANSITION_MS));
+
+    try {
+      await signOut();
+    } finally {
       navigate("/login", { replace: true });
-      void signOut();
-    }, 300);
+    }
   };
 
   // Compute Display Name fallback logic: full_name > email > short uuid
@@ -106,31 +112,45 @@ const LecturerLayout = () => {
   ];
 
   return (
-    <DashboardShell
-      sidebar={
-        <DashboardSidebar
-          title={t(language, "lecturer")}
-          subtitle={displayName}
-          items={sidebarItems}
-          activeKey={activeKey}
-          onSelect={handleSelect}
-        />
-      }
-      header={
-        <DashboardHeader
-          roleLabel={t(language, "lecturer")}
-          onExit={handleLogout}
-          onHomeClick={() => navigate("/")}
-          leftSlot={<SidebarTrigger />}
-          showRoleSelect={false}
-        />
-      }
-    >
-      <div className={`container mx-auto px-6 py-6 max-w-7xl space-y-6 transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-        <Outlet />
+    <div className="relative min-h-svh">
+      <div
+        className={`relative min-h-svh overflow-hidden transition-opacity duration-500 ease-out ${
+          isLoggingOut ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
+        <DashboardShell
+          sidebar={
+            <DashboardSidebar
+              title={t(language, "lecturer")}
+              subtitle={displayName}
+              items={sidebarItems}
+              activeKey={activeKey}
+              onSelect={handleSelect}
+            />
+          }
+          header={
+            <DashboardHeader
+              roleLabel={t(language, "lecturer")}
+              onExit={handleLogout}
+              onHomeClick={() => navigate("/")}
+              leftSlot={<SidebarTrigger />}
+              showRoleSelect={false}
+            />
+          }
+        >
+          <div className="container mx-auto max-w-7xl space-y-6 px-6 py-6 transition-opacity duration-300">
+            <Outlet />
+          </div>
+          <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        </DashboardShell>
       </div>
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
-    </DashboardShell>
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-0 z-50 bg-background/70 backdrop-blur-[2px] transition-opacity duration-500 ${
+          isLoggingOut ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
   );
 };
 

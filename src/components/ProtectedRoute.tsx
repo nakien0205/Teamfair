@@ -1,5 +1,4 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { useAuth, type AppUserRole } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import { dashboardPathForRole } from "@/lib/dashboardPath";
@@ -23,14 +22,8 @@ const ProtectedRoute = ({ children, allowedRoles }: Props) => {
   // Show loading spinner only for a short time
   // If loading takes too long, AuthContext will use fallback profile
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
-          <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    // Keep auth loading visually quiet so the page's own skeleton can own the loading state.
+    return <>{children}</>;
   }
 
   if (!session) {

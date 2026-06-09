@@ -1,30 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   BadgeCheck,
-  BookOpenText,
   CalendarClock,
   Crown,
   FolderOpen,
   Mail,
-  MessageSquareQuote,
   RefreshCcw,
   ShieldAlert,
-  Sparkles,
   TimerOff,
   Users,
 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { GroupDetailSkeleton } from "@/components/skeletons";
 import { useLanguage } from "@/context/LanguageContext";
@@ -32,6 +29,12 @@ import { useTeam, type ActivityLogEntry, type MemberStat, type Task } from "@/co
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import {
+  claimGroupEmailInvitesForCurrentUser,
+  listMyGroupEmailInvites,
+  respondToGroupEmailInvite,
+  type GroupEmailInvite,
+} from "@/lib/teamPersistence";
 
 type ActivityLevel = "normal" | "attention" | "risk";
 
@@ -275,6 +278,7 @@ const MemberRow = ({
 const StudentMyGroup = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const { profile, loading: authLoading, signOut } = useAuth();
   const {
     groups,
@@ -287,6 +291,9 @@ const StudentMyGroup = () => {
   const [profilesById, setProfilesById] = useState<Record<string, MemberProfile>>({});
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [emailInvites, setEmailInvites] = useState<GroupEmailInvite[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [inviteActionLoading, setInviteActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -296,6 +303,58 @@ const StudentMyGroup = () => {
   }, [authLoading, navigate, profile]);
 
   const group = groups[currentGroupIndex] || groups[0];
+
+  const loadEmailInvites = useCallback(async () => {
+    setInvitesLoading(true);
+    try {
+      const claimedCount = await claimGroupEmailInvitesForCurrentUser().catch(() => 0);
+      if (claimedCount) {
+        await loadPersistedState();
+      }
+      const rows = await listMyGroupEmailInvites();
+      setEmailInvites(rows);
+    } catch (error) {
+      console.error("Error loading email invites:", error);
+    } finally {
+      setInvitesLoading(false);
+    }
+  }, [loadPersistedState]);
+
+  const pendingEmailInvites = useMemo(
+    () => emailInvites.filter(invite => invite.status === "pending" || invite.status === "sent"),
+    [emailInvites],
+  );
+
+  const handleRespondInvite = async (inviteId: string, response: "accepted" | "rejected") => {
+    setInviteActionLoading(inviteId);
+    try {
+      await respondToGroupEmailInvite(inviteId, response);
+      await loadPersistedState();
+      await loadEmailInvites();
+      toast({
+        title: response === "accepted"
+          ? t(language, "Đã chấp nhận lời mời", "Invite accepted")
+          : t(language, "Đã từ chối lời mời", "Invite rejected"),
+        description: response === "accepted"
+          ? t(language, "Nhóm đã được cập nhật trong tài khoản của bạn.", "The group has been added to your account.")
+          : t(language, "Lời mời đã được cập nhật.", "The invite has been updated."),
+      });
+    } catch (error) {
+      console.error("Invite response failed:", error);
+      toast({
+        title: t(language, "Không thể xử lý lời mời", "Could not process invite"),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setInviteActionLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    if (authLoading || !profile || profile.role !== "student") return;
+    void loadEmailInvites();
+  }, [authLoading, loadEmailInvites, profile]);
 
   useEffect(() => {
     if (!group) return;
@@ -474,6 +533,66 @@ const StudentMyGroup = () => {
                     </div>
                   </AlertDescription>
                 </Alert>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {emailInvites.length > 0 ? (
+            <Card className="rounded-3xl border-0 shadow-card">
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>{t(language, "Lời mời nhóm", "Group invites")}</CardTitle>
+                  <CardDescription>
+                    {t(language, "Bạn có thể chấp nhận hoặc từ chối từng lời mời ngay tại đây.", "You can accept or reject each invite right here.")}
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => void loadEmailInvites()}>
+                  <RefreshCcw className={`mr-2 h-4 w-4 ${invitesLoading ? "animate-spin" : ""}`} />
+                  {t(language, "Làm mới", "Refresh")}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {pendingEmailInvites.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+                    {t(language, "Không còn lời mời đang chờ.", "No pending invites left.")}
+                  </div>
+                ) : (
+                  pendingEmailInvites.map(invite => {
+                    const inviteGroupName = groups.find(group => group.id === invite.group_id)?.name ?? t(language, "Nhóm chưa xác định", "Unknown group");
+                    return (
+                      <div key={invite.id} className="rounded-2xl border border-border/60 bg-background p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary">{inviteGroupName}</Badge>
+                              <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">{inviteStatusLabel(invite.status)}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{invite.note || t(language, "Không có ghi chú.", "No note provided.")}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t(language, "Mã tham gia", "Join code")}: <span className="font-mono">{invite.invite_code}</span>
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => void handleRespondInvite(invite.id, "accepted")}
+                              disabled={inviteActionLoading === invite.id}
+                            >
+                              <BadgeCheck className="mr-2 h-4 w-4" />
+                              {t(language, "Chấp nhận", "Accept")}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => void handleRespondInvite(invite.id, "rejected")}
+                              disabled={inviteActionLoading === invite.id}
+                            >
+                              {t(language, "Từ chối", "Reject")}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           ) : null}

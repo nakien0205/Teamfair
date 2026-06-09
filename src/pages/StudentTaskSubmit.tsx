@@ -9,7 +9,6 @@ import {
   FileUp,
   FolderOpen,
   Link2,
-  Loader2,
   Sparkles,
   TimerOff,
   Trash2,
@@ -616,8 +615,7 @@ const StudentTaskSubmit = () => {
                       Hủy
                     </Button>
                     <Button type="button" className="rounded-2xl" onClick={() => void handleSubmit()} disabled={!canSubmit || submitting}>
-                      {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                      Nộp bằng chứng
+                      {submitting ? "Đang nộp..." : <><CheckCircle2 className="mr-2 h-4 w-4" />Nộp bằng chứng</>}
                     </Button>
                   </div>
                 </CardContent>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Loader2, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox, Mail, MailOpen, Bell, Check, AlertTriangle, UserX, Shield, User as UserIcon } from "lucide-react";
+import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox, Mail, MailOpen, Bell, Check, AlertTriangle, UserX, Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -655,9 +655,11 @@ const ProjectManagement: React.FC = () => {
           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[150px]" />
           <div className="absolute top-[40%] right-[-10%] w-[40%] h-[50%] rounded-full bg-violet-600/10 blur-[120px]" />
         </div>
-        <div className="flex flex-col items-center gap-4 z-10 relative animate-pulse">
+        <div className="flex flex-col items-center gap-4 z-10 relative">
           <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-violet-600/20 border border-indigo-500/30 text-indigo-400">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="space-y-2">
+              <div className="h-8 w-8 rounded-xl bg-white/20 animate-pulse" />
+            </div>
           </div>
           <p className="text-slate-400 text-sm font-semibold tracking-wide">
             {tr(language, "Đang tải dự án...", "Loading projects...")}
@@ -840,14 +842,7 @@ const ProjectManagement: React.FC = () => {
                   className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/10"
                   id="submit-create-project-btn"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                      {tr(language, "Đang tạo...", "Creating...")}
-                    </>
-                  ) : (
-                    tr(language, "Tạo dự án", "Create Project")
-                  )}
+                  {isLoading ? tr(language, "Đang tạo...", "Creating...") : tr(language, "Tạo dự án", "Create Project")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -897,14 +892,7 @@ const ProjectManagement: React.FC = () => {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-emerald-600/10"
                   id="submit-join-project-btn"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                      {tr(language, "Đang tham gia...", "Joining...")}
-                    </>
-                  ) : (
-                    tr(language, "Tham gia dự án", "Join Project")
-                  )}
+                  {isLoading ? tr(language, "Đang tham gia...", "Joining...") : tr(language, "Tham gia dự án", "Join Project")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -946,7 +934,7 @@ const ProjectManagement: React.FC = () => {
                       disabled={searchLoading || !uidInput.trim()}
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
                     >
-                      {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr(language, "Tìm", "Search")}
+                      {searchLoading ? tr(language, "Đang tìm...", "Searching...") : tr(language, "Tìm", "Search")}
                     </Button>
                   </div>
                 </div>
@@ -968,7 +956,7 @@ const ProjectManagement: React.FC = () => {
                       disabled={searchLoading}
                       className="w-full bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 hover:border-indigo-500 text-indigo-300 hover:text-white font-bold rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      {searchLoading ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
+                      {searchLoading ? tr(language, "Đang thêm...", "Adding...") : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
                     </Button>
                   </div>
                 )}
@@ -1266,14 +1254,7 @@ const ProjectManagement: React.FC = () => {
                   disabled={wsNameLoading || isCooldownActive || wsName.trim() === profile?.full_name}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-6 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/15"
                 >
-                  {wsNameLoading ? (
-                    <>
-                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                      {tr(language, "Đang lưu...", "Saving...")}
-                    </>
-                  ) : (
-                    tr(language, "Lưu Thay Đổi", "Save Changes")
-                  )}
+                  {wsNameLoading ? tr(language, "Đang lưu...", "Saving...") : tr(language, "Lưu Thay Đổi", "Save Changes")}
                 </Button>
               </div>
 
@@ -1399,8 +1380,7 @@ const ProjectManagement: React.FC = () => {
                       disabled={deleteAccountLoading || deleteAccountNameInput !== profile?.full_name}
                       className="bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl px-5 border-0 shadow-lg shadow-rose-600/15 flex items-center gap-2"
                     >
-                      {deleteAccountLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {tr(language, "Tiếp tục", "Continue")}
+                      {deleteAccountLoading ? tr(language, "Đang tiếp tục...", "Continuing...") : tr(language, "Tiếp tục", "Continue")}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1491,8 +1471,7 @@ const ProjectManagement: React.FC = () => {
                       disabled={deleteAccountLoading || deleteAccountProceedInput !== "proceed"}
                       className="bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl px-5 border-0 shadow-lg shadow-rose-600/15 flex items-center gap-2"
                     >
-                      {deleteAccountLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {tr(language, "Tôi hiểu hệ quả, xóa tài khoản", "I understand, delete my account")}
+                      {deleteAccountLoading ? tr(language, "Đang xóa...", "Deleting...") : tr(language, "Tôi hiểu hệ quả, xóa tài khoản", "I understand, delete my account")}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1737,7 +1716,7 @@ const ProjectManagement: React.FC = () => {
                       className="bg-gradient-to-r from-amber-950/20 to-amber-900/10 backdrop-blur-sm border border-amber-500/20 rounded-2xl p-5 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300"
                     >
                       <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
-                        <Clock className="h-5 w-5 text-amber-400 animate-pulse" />
+                        <span className="inline-flex h-3 w-3 rounded-sm bg-amber-400/70 animate-pulse" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-amber-300">
@@ -1752,7 +1731,7 @@ const ProjectManagement: React.FC = () => {
                         </p>
                       </div>
                       <div className="shrink-0">
-                        <Loader2 className="h-4 w-4 text-amber-400 animate-spin" />
+                        <span className="inline-flex h-3 w-3 rounded-sm bg-amber-400/70 animate-pulse" />
                       </div>
                     </div>
                   ))}
@@ -1829,11 +1808,7 @@ const ProjectManagement: React.FC = () => {
                               className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all"
                               title={tr(language, "Phê duyệt", "Approve")}
                             >
-                              {approvalLoading === req.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-3.5 w-3.5" />
-                              )}
+                              <CheckCircle className={`h-3.5 w-3.5 ${approvalLoading === req.id ? "opacity-60 animate-pulse" : ""}`} />
                             </button>
                             <button
                               type="button"
@@ -1859,7 +1834,7 @@ const ProjectManagement: React.FC = () => {
                               className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-500 transition-all"
                               title={tr(language, "Từ chối", "Reject")}
                             >
-                              <XCircle className="h-3.5 w-3.5" />
+                              <XCircle className={`h-3.5 w-3.5 ${approvalLoading === req.id ? "opacity-60 animate-pulse" : ""}`} />
                             </button>
                           </div>
                         </div>
@@ -2045,14 +2020,7 @@ const ProjectManagement: React.FC = () => {
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-indigo-600/10"
               id="submit-create-project-btn"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                  {tr(language, "Đang tạo...", "Creating...")}
-                </>
-              ) : (
-                tr(language, "Tạo dự án", "Create Project")
-              )}
+              {isLoading ? tr(language, "Đang tạo...", "Creating...") : tr(language, "Tạo dự án", "Create Project")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2102,14 +2070,7 @@ const ProjectManagement: React.FC = () => {
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-5 transition-all flex items-center gap-2 border-0 shadow-lg shadow-emerald-600/10"
               id="submit-join-project-btn"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                  {tr(language, "Đang tham gia...", "Joining...")}
-                </>
-              ) : (
-                tr(language, "Tham gia dự án", "Join Project")
-              )}
+              {isLoading ? tr(language, "Đang tham gia...", "Joining...") : tr(language, "Tham gia dự án", "Join Project")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2151,7 +2112,7 @@ const ProjectManagement: React.FC = () => {
                   disabled={searchLoading || !uidInput.trim()}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
                 >
-                  {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr(language, "Tìm", "Search")}
+                  {searchLoading ? tr(language, "Đang tìm...", "Searching...") : tr(language, "Tìm", "Search")}
                 </Button>
               </div>
             </div>
@@ -2173,7 +2134,7 @@ const ProjectManagement: React.FC = () => {
                   disabled={searchLoading}
                   className="w-full bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 hover:border-indigo-500 text-indigo-300 hover:text-white font-bold rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
+                  {searchLoading ? tr(language, "Đang thêm...", "Adding...") : "+ " + tr(language, "Thêm vào dự án", "Add to Project")}
                 </Button>
               </div>
             )}

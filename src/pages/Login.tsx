@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Loader2 } from "lucide-react";
+import { Users, Loader2, Home } from "lucide-react";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth, type AppUserRole } from "@/context/AuthContext";
@@ -215,11 +215,23 @@ const Login = () => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6 relative">
-      <div className="absolute top-4 right-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(79,70,229,0.08),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.08),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,0.9),_rgba(255,255,255,1))]" />
+      <div className="absolute top-4 left-4 z-10">
+        <Button
+          type="button"
+          variant="ghost"
+          className="gap-2 rounded-full bg-white/80 px-4 text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white hover:text-indigo-600"
+          onClick={() => navigate("/")}
+        >
+          <Home className="h-4 w-4" />
+          {language === "vi" ? "Về trang chủ" : "Back to home"}
+        </Button>
+      </div>
+      <div className="absolute top-4 right-4 z-10">
         <LanguageSwitcherButton />
       </div>
-      <div className="w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Users className="h-7 w-7 text-primary" />

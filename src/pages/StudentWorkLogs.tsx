@@ -10,7 +10,6 @@ import {
   FileUp,
   FolderOpen,
   Link as LinkIcon,
-  Loader2,
   PencilLine,
   RefreshCcw,
   Sparkles,
@@ -713,8 +712,7 @@ const StudentWorkLogs = () => {
               Hủy
             </Button>
             <Button className="rounded-2xl" onClick={() => void handleSave()} disabled={submitting}>
-              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Lưu work log
+              {submitting ? "Đang lưu..." : "Lưu work log"}
             </Button>
           </DialogFooter>
         </DialogContent>

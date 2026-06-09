@@ -157,4 +157,37 @@
     animation: float-delayed 7s ease-in-out infinite;
     animation-delay: 2s;
   }
+
+  @keyframes liquid-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+      filter: blur(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes liquid-pop {
+    0% {
+      transform: scale(0.98);
+    }
+    65% {
+      transform: scale(1.015);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-liquid-rise {
+    animation: liquid-rise 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .animate-liquid-pop {
+    animation: liquid-pop 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }

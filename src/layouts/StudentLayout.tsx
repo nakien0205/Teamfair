@@ -10,23 +10,29 @@ import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
 import { useState } from "react";
 
+const LOGOUT_TRANSITION_MS = 420;
+
 const StudentLayout = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
-  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isLeader = studentRole === "Leader";
 
-  const handleLogout = () => {
-    setIsFadingOut(true);
-    // Fade out animation (300ms) then navigate
-    setTimeout(() => {
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    await new Promise((resolve) => setTimeout(resolve, LOGOUT_TRANSITION_MS));
+
+    try {
+      await signOut();
+    } finally {
       navigate("/login", { replace: true });
-      void signOut();
-    }, 300);
+    }
   };
 
   // Determine active key from pathname
@@ -93,30 +99,42 @@ const StudentLayout = () => {
   }
 
   return (
-    <DashboardShell
-      sidebar={
-        <DashboardSidebar
-          title={t(language, "student")}
-          subtitle={currentUserName}
-          items={sidebarItems}
-          activeKey={activeKey}
-          onSelect={handleSelect}
-        />
-      }
-      header={
-        <DashboardHeader
-          roleLabel={t(language, "student")}
-          onExit={handleLogout}
-          onHomeClick={() => navigate("/")}
-          leftSlot={<SidebarTrigger />}
-          showRoleSelect={false}
-        />
-      }
-    >
-      <div className={`transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-        <Outlet />
+    <div className="relative min-h-svh">
+      <div
+        className={`relative min-h-svh overflow-hidden transition-opacity duration-500 ease-out ${
+          isLoggingOut ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
+        <DashboardShell
+          sidebar={
+            <DashboardSidebar
+              title={t(language, "student")}
+              subtitle={currentUserName}
+              items={sidebarItems}
+              activeKey={activeKey}
+              onSelect={handleSelect}
+            />
+          }
+          header={
+            <DashboardHeader
+              roleLabel={t(language, "student")}
+              onExit={handleLogout}
+              onHomeClick={() => navigate("/")}
+              leftSlot={<SidebarTrigger />}
+              showRoleSelect={false}
+            />
+          }
+        >
+          <Outlet />
+        </DashboardShell>
       </div>
-    </DashboardShell>
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-0 z-50 bg-background/70 backdrop-blur-[2px] transition-opacity duration-500 ${
+          isLoggingOut ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
   );
 };
 

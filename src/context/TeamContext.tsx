@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import {
   approvePersistedTask,
+  claimGroupEmailInvitesForCurrentUser,
   deletePersistedMaterial,
   deletePersistedTask,
   insertLecturerStudentEvaluation,
@@ -26,6 +27,7 @@ import {
   createProjectInvite,
   getProjectInvites,
   revokeProjectInvite,
+  scopePersistedTeamSnapshotForUser,
   createJoinRequest,
   getJoinRequests,
   processJoinRequest,
@@ -84,6 +86,7 @@ export interface ActivityLogEntry {
 
 export interface StudentReport {
   id: string;
+  groupId?: string;
   from: string;
   to: string;
   reason: string;
@@ -188,6 +191,7 @@ interface TeamContextType {
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   deleteCalendarEvent: (id: string) => void;
   createProject: (projectName: string) => Promise<string>;
+  createProjects: (projectNames: string[]) => Promise<Array<{ id: string; name: string }>>;
   joinProject: (inviteCode: string) => Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }>;
   deleteProject: (id: string) => Promise<void>;
   currentUserName: string;
@@ -265,6 +269,19 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return isLeader ? (members[0]?.name || 'Nguyễn Văn A') : 'Trần Thị B';
   }, [profile, resolvedStudentRole, members]);
 
+  const scopeSnapshotForCurrentUser = useCallback((snapshot: Awaited<ReturnType<typeof loadPersistedTeamSnapshot>>) => {
+    if (!user?.id) return snapshot;
+
+    const role = profile?.role === 'lecturer' || profile?.role === 'admin'
+      ? profile.role
+      : 'student';
+
+    return scopePersistedTeamSnapshotForUser(snapshot, {
+      userId: user.id,
+      role,
+    });
+  }, [profile?.role, user?.id]);
+
   const handleSetCurrentGroupIndex = useCallback((idx: number) => {
     setCurrentGroupIndex(idx);
     if (user?.id && groups[idx]?.id) {
@@ -287,35 +304,39 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setDataLoading(true);
       const snapshot = await loadPersistedTeamSnapshot();
+      const scopedSnapshot = scopeSnapshotForCurrentUser(snapshot);
       if (user?.id) {
-        setGroups(snapshot.groups);
-        setReports(snapshot.reports);
-        setMaterialsByGroupId(snapshot.materialsByGroupId);
-        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
-        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
-        setStudentBadges(snapshot.studentBadges);
+        setGroups(scopedSnapshot.groups);
+        setReports(scopedSnapshot.reports);
+        setMaterialsByGroupId(scopedSnapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(scopedSnapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(scopedSnapshot.lecturerStudentReviews);
+        setStudentBadges(scopedSnapshot.studentBadges);
         
         let targetIndex = 0;
         const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
         if (lastProjId) {
-          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          const foundIdx = scopedSnapshot.groups.findIndex(g => g.id === lastProjId);
           if (foundIdx !== -1) targetIndex = foundIdx;
         }
         setCurrentGroupIndex(targetIndex);
         setDataSource('supabase');
         setConnectionError(false);
+        void claimGroupEmailInvitesForCurrentUser().catch(error => {
+          console.warn('Failed to claim email invites for current user:', error);
+        });
         return;
       }
-      if (snapshot.groups.length === 0) {
+      if (scopedSnapshot.groups.length === 0) {
         resetDemoState();
         return;
       }
-      setGroups(snapshot.groups);
-      setReports(snapshot.reports);
-      setMaterialsByGroupId(snapshot.materialsByGroupId);
-      setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
-      setLecturerStudentReviews(snapshot.lecturerStudentReviews);
-      setStudentBadges(snapshot.studentBadges);
+      setGroups(scopedSnapshot.groups);
+      setReports(scopedSnapshot.reports);
+      setMaterialsByGroupId(scopedSnapshot.materialsByGroupId);
+      setCalendarEventsByGroupId(scopedSnapshot.calendarEventsByGroupId || {});
+      setLecturerStudentReviews(scopedSnapshot.lecturerStudentReviews);
+      setStudentBadges(scopedSnapshot.studentBadges);
       setCurrentGroupIndex(0);
       setDataSource('supabase');
       setConnectionError(false);
@@ -327,7 +348,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setDataLoading(false);
     }
-  }, [resetDemoState, user?.id]);
+  }, [resetDemoState, scopeSnapshotForCurrentUser, user?.id]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -352,22 +373,26 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadPersistedTeamSnapshot()
       .then(snapshot => {
         if (cancelled) return;
-        setGroups(snapshot.groups);
-        setReports(snapshot.reports);
-        setMaterialsByGroupId(snapshot.materialsByGroupId);
-        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
-        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
-        setStudentBadges(snapshot.studentBadges);
+        const scopedSnapshot = scopeSnapshotForCurrentUser(snapshot);
+        setGroups(scopedSnapshot.groups);
+        setReports(scopedSnapshot.reports);
+        setMaterialsByGroupId(scopedSnapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(scopedSnapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(scopedSnapshot.lecturerStudentReviews);
+        setStudentBadges(scopedSnapshot.studentBadges);
         
         let targetIndex = 0;
         const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
         if (lastProjId) {
-          const foundIdx = snapshot.groups.findIndex(g => g.id === lastProjId);
+          const foundIdx = scopedSnapshot.groups.findIndex(g => g.id === lastProjId);
           if (foundIdx !== -1) targetIndex = foundIdx;
         }
         setCurrentGroupIndex(targetIndex);
         setDataSource('supabase');
         setConnectionError(false);
+        void claimGroupEmailInvitesForCurrentUser().catch(error => {
+          console.warn('Failed to claim email invites for current user:', error);
+        });
         setDataLoading(false);
       })
       .catch(error => {
@@ -383,7 +408,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       cancelled = true;
     };
-  }, [authLoading, resetDemoState, user?.id]);
+  }, [authLoading, resetDemoState, scopeSnapshotForCurrentUser, user?.id]);
 
   const fetchActiveInvites = useCallback(async (): Promise<ProjectInvite[]> => {
     const currentGroup = groups[currentGroupIndex];
@@ -629,7 +654,16 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addReport = useCallback((report: Omit<StudentReport, 'id' | 'timestamp' | 'reviewed'>) => {
     const currentGroup = groups[currentGroupIndex];
-    setReports(prev => [...prev, { ...report, id: Date.now().toString(), timestamp: new Date(), reviewed: false }]);
+    setReports(prev => [
+      ...prev,
+      {
+        ...report,
+        groupId: currentGroup?.id,
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        reviewed: false,
+      },
+    ]);
     if (currentGroup) persist(() => insertStudentReport(currentGroup.id, report));
   }, [currentGroupIndex, groups, persist]);
 
@@ -756,6 +790,59 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [canPersist, user?.id, loadPersistedState, currentUserName]);
 
+  const createProjects = useCallback(async (projectNames: string[]) => {
+    const normalizedNames = Array.from(
+      new Set(
+        projectNames
+          .map(name => name.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalizedNames.length === 0) return [];
+
+    if (canPersist && user?.id) {
+      const created: Array<{ id: string; name: string }> = [];
+      for (const projectName of normalizedNames) {
+        const newId = await createPersistedGroup(projectName, user.id);
+        created.push({ id: newId, name: projectName });
+      }
+
+      if (created[0]) {
+        localStorage.setItem(`teamfair_last_project_${user.id}`, created[0].id);
+      }
+      await loadPersistedState();
+      return created;
+    }
+
+    const created = normalizedNames.map((projectName, index) => ({
+      id: `mock-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+      name: projectName,
+    }));
+
+    const mockGroups: Group[] = created.map(({ id, name }) => ({
+      id,
+      name,
+      members: [
+        {
+          id: 'demo-user-id',
+          name: currentUserName || 'Nguyễn Văn A',
+          role: 'Leader',
+          completedTasks: 0,
+          contributionPercent: 0,
+          lecturerScore: null,
+        },
+      ],
+      tasks: [],
+      activityLog: [
+        { timestamp: new Date(), description: 'Nhóm được tạo' },
+      ],
+    }));
+
+    setGroups(prev => [...prev, ...mockGroups]);
+    return created;
+  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+
   const joinProject = useCallback(async (inviteCode: string): Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }> => {
     if (canPersist && user?.id) {
       const { group_id, approval_mode, group_name } = await validateInviteCode(inviteCode);
@@ -765,20 +852,21 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(`teamfair_last_project_${user.id}`, group_id);
         
         const snapshot = await loadPersistedTeamSnapshot();
-        setGroups(snapshot.groups);
-        setReports(snapshot.reports);
-        setMaterialsByGroupId(snapshot.materialsByGroupId);
-        setCalendarEventsByGroupId(snapshot.calendarEventsByGroupId || {});
-        setLecturerStudentReviews(snapshot.lecturerStudentReviews);
-        setStudentBadges(snapshot.studentBadges);
-        
-        const foundIdx = snapshot.groups.findIndex(g => g.id === group_id);
+        const scopedSnapshot = scopeSnapshotForCurrentUser(snapshot);
+        setGroups(scopedSnapshot.groups);
+        setReports(scopedSnapshot.reports);
+        setMaterialsByGroupId(scopedSnapshot.materialsByGroupId);
+        setCalendarEventsByGroupId(scopedSnapshot.calendarEventsByGroupId || {});
+        setLecturerStudentReviews(scopedSnapshot.lecturerStudentReviews);
+        setStudentBadges(scopedSnapshot.studentBadges);
+
+        const foundIdx = scopedSnapshot.groups.findIndex(g => g.id === group_id);
         const targetIndex = foundIdx !== -1 ? foundIdx : 0;
         setCurrentGroupIndex(targetIndex);
         setDataSource('supabase');
         setConnectionError(false);
-        
-        const joinedGroup = snapshot.groups[targetIndex];
+
+        const joinedGroup = scopedSnapshot.groups[targetIndex];
         return { status: "success", groupIndex: targetIndex, groupName: joinedGroup?.name || group_name };
       } else {
         await createJoinRequest(group_id, inviteCode, user.id);
@@ -856,7 +944,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentGroupIndex(newIdx);
       return { status: "success", groupIndex: newIdx, groupName: newName };
     }
-  }, [canPersist, user?.id, profile?.full_name, currentUserName]);
+  }, [canPersist, currentUserName, profile?.full_name, scopeSnapshotForCurrentUser, user?.email, user?.id]);
 
   const deleteProject = useCallback(async (projectId: string) => {
     if (canPersist && user?.id) {
@@ -943,6 +1031,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateCalendarEvent,
       deleteCalendarEvent,
       createProject,
+      createProjects,
       joinProject,
       deleteProject,
       currentUserName,
@@ -989,6 +1078,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateCalendarEvent,
       deleteCalendarEvent,
       createProject,
+      createProjects,
       joinProject,
       deleteProject,
       currentUserName,
