@@ -245,3 +245,5 @@ supabase/*
 
 note_to_self.txt
 .vercel
+.codex
+dist/

@@ -20,7 +20,8 @@ Primary entry: [src/layouts/LecturerLayout.tsx](../../src/layouts/LecturerLayout
       - [src/pages/LecturerRubricGrade.tsx](../../src/pages/LecturerRubricGrade.tsx): A 45/55 split-screen grader sheet. 
         - **Left Panel (Evidence Viewer)**: `LecturerGradingEvidenceView.tsx` serves as a document/evidence viewer with filtering, dropdown selection, and embedded previews for PDF, images, videos, code, tasks, contribution summaries, and AI summaries.
         - **Right Panel (Rubric Table)**: Interactive checkmark rating cells, overall group feedback input (saved to `__overall_feedback` in `selected_cells_json`), score summing, validation, drafts, locking, and final score cascading. Header is sticky.
-    - Parsing Utility: Uses `src/lib/rubricParser.ts` (with custom CSV parser and dynamic import of SheetJS `xlsx` via CDN) and `src/lib/rubricPersistence.ts` for database operations.
+    - Parsing Utility: Uses `src/lib/rubricParser.ts` (with custom CSV parser and locked local SheetJS `xlsx` parsing) and `src/lib/rubricPersistence.ts` for database operations.
+    - Private task evidence previews resolve short-lived Supabase signed URLs from stored `storagePath` metadata inside `LecturerGradingEvidenceView.tsx`; private buckets should not use public URLs.
 - Lecturer student review and badges
   - [src/components/feature-groups/LecturerStudentEvaluationPanel.tsx](src/components/feature-groups/LecturerStudentEvaluationPanel.tsx)
     - **Evaluation Notifications**: Publishing a student's performance review (rating/comments/badges) automatically dispatches a target-student notification. If the review awards a "Verified contribution badge", the notification specifically highlights this reward.

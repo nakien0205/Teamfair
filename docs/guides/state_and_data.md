@@ -54,6 +54,8 @@ In plain terms:
 
 Policies are defined in SQL migrations under [supabase/migrations](../../supabase/migrations/). Lecturers are scoped to groups they own; students have read access to dashboard data in their groups and can insert/update their own `contribution_logs` rows. Student reports are visible to lecturers/admins, not group peers. Admins retain broad access where defined in SQL.
 
+Student module security repair lives in [20260609135826_repair_pr7_security_policies.sql](../../supabase/migrations/20260609135826_repair_pr7_security_policies.sql). It keeps `student-appeals` and `task-evidence` private, scopes object access by path metadata and group membership, requires task submissions to match the assigned student and task group, prevents peer-review duplicate-policy misbinding, and restores `rubric_grades` RLS policies in production.
+
 ### Change History & Debugging Logs
 
 - **2026-05-29 (TDZ Bugfix in TeamContext):** Fixed a client-side crash (blank page in dev mode) caused by a Temporal Dead Zone (TDZ) `ReferenceError` when calling/initializing `updateGroup` in `approveJoinRequest` dependencies before the hook was defined. The `updateGroup` callback was moved to the very top of `TeamProvider` so it initializes before other hooks. Tested and verified on Network gate with zero console errors.

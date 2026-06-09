@@ -61,6 +61,7 @@ Order matters; examples in this repo:
 14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
 15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
 16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
+17. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.

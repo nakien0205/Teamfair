@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam } from "@/context/TeamContext";
 import { tr } from "@/lib/i18n";
+import { createTaskEvidenceSignedUrl } from "@/lib/taskSubmissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,9 +31,10 @@ type EvidenceItem = {
   type: "submission" | "doc" | "code" | "evidence" | "task" | "contribution" | "peerreview" | "ai";
   title: string;
   subtitle?: string;
-  date?: string;
+  date?: string | Date;
   url?: string;
-  data?: any;
+  storagePath?: string;
+  data?: unknown;
 };
 
 const ItemIcon = ({ type, className }: { type: string; className?: string }) => {
@@ -54,6 +56,8 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
 
   const [filter, setFilter] = useState("all");
   const [selectedItem, setSelectedItem] = useState<EvidenceItem | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [signedUrlError, setSignedUrlError] = useState<string | null>(null);
 
   const group = useMemo(() => groups.find((g) => g.id === groupId), [groups, groupId]);
 
@@ -85,13 +89,18 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
         if (name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".ppt") || name.endsWith(".pptx")) type = "doc";
         else if (name.endsWith(".zip") || name.endsWith(".js") || name.endsWith(".ts") || name.endsWith(".py")) type = "code";
 
+        const uploadTime =
+          ev.uploadTime instanceof Date ? ev.uploadTime.toISOString() : String(ev.uploadTime || "");
+        const fallbackId = [task.id, ev.storagePath || ev.fileName, uploadTime].filter(Boolean).join("-");
+
         list.push({
-          id: ev.id || `ev-${Math.random()}`,
+          id: ev.storagePath || ev.id || fallbackId,
           type,
           title: ev.fileName,
           subtitle: `Task: ${task.name}`,
           date: ev.uploadTime,
           url: ev.publicUrl,
+          storagePath: ev.storagePath,
           data: ev
         });
       });
@@ -139,6 +148,29 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
     return items.filter(item => filter === "all" || item.type === filter);
   }, [items, filter]);
 
+  useEffect(() => {
+    if (!selectedItem?.storagePath || selectedItem.url || signedUrls[selectedItem.storagePath]) {
+      return;
+    }
+
+    let cancelled = false;
+    setSignedUrlError(null);
+
+    createTaskEvidenceSignedUrl(selectedItem.storagePath, 600)
+      .then((url) => {
+        if (cancelled || !url) return;
+        setSignedUrls((current) => ({ ...current, [selectedItem.storagePath as string]: url }));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSignedUrlError(error instanceof Error ? error.message : "Không thể tạo liên kết tải file.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItem, signedUrls]);
+
   if (!group) return (
     <div className="flex h-full items-center justify-center p-6 text-slate-500">
       Đang tải dữ liệu nhóm...
@@ -148,26 +180,27 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
   const renderPreview = () => {
     if (!selectedItem) return null;
     const { type, data, url } = selectedItem;
+    const resolvedUrl = selectedItem.storagePath ? signedUrls[selectedItem.storagePath] || url : url;
 
     if (type === "doc" || type === "evidence") {
       const isPdf = selectedItem.title.toLowerCase().endsWith(".pdf");
       const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedItem.title);
       const isVideo = /\.(mp4|webm|ogg)$/i.test(selectedItem.title);
 
-      if (isPdf && url) {
-        return <iframe src={url} className="w-full h-full rounded-xl border border-slate-200" title={selectedItem.title} />;
+      if (isPdf && resolvedUrl) {
+        return <iframe src={resolvedUrl} className="w-full h-full rounded-xl border border-slate-200" title={selectedItem.title} />;
       }
-      if (isImg && url) {
+      if (isImg && resolvedUrl) {
         return (
           <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 p-4">
-            <img src={url} alt={selectedItem.title} className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
+            <img src={resolvedUrl} alt={selectedItem.title} className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
           </div>
         );
       }
-      if (isVideo && url) {
+      if (isVideo && resolvedUrl) {
         return (
           <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-xl overflow-hidden">
-            <video src={url} controls className="max-w-full max-h-full" />
+            <video src={resolvedUrl} controls className="max-w-full max-h-full" />
           </div>
         );
       }
@@ -176,10 +209,12 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
         <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-xl border border-slate-200 shadow-sm p-8">
           <FileText className="w-16 h-16 text-slate-300 mb-4" />
           <h3 className="font-semibold text-slate-900 text-lg mb-1">{selectedItem.title}</h3>
-          <p className="text-slate-500 text-sm mb-6">Không thể xem trước định dạng file này.</p>
+          <p className="text-slate-500 text-sm mb-6">
+            {signedUrlError || "Không thể xem trước định dạng file này."}
+          </p>
           <div className="flex gap-3">
-            {url && (
-              <Button onClick={() => window.open(url, "_blank")} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+            {resolvedUrl && (
+              <Button onClick={() => window.open(resolvedUrl, "_blank")} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
                 <Download className="w-4 h-4 mr-2" /> Tải xuống file
               </Button>
             )}
@@ -194,8 +229,8 @@ export const LecturerGradingEvidenceView: React.FC<LecturerGradingEvidenceViewPr
           <FileCode2 className="w-16 h-16 text-slate-300 mb-4" />
           <h3 className="font-semibold text-slate-900 text-lg mb-1">{selectedItem.title}</h3>
           <p className="text-slate-500 text-sm mb-6">File mã nguồn hoặc tập tin nén ZIP.</p>
-          {url && (
-            <Button onClick={() => window.open(url, "_blank")} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          {resolvedUrl && (
+            <Button onClick={() => window.open(resolvedUrl, "_blank")} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
               <Download className="w-4 h-4 mr-2" /> Tải source code
             </Button>
           )}

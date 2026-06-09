@@ -46,6 +46,33 @@ import { LecturerGradingEvidenceView } from "@/components/rubrics/LecturerGradin
 type GradeRow = Record<string, string>;
 type SelectedCellsState = Record<string, { selectedRatingColumn: string }>;
 
+function normalizeStoredSelectedCells(value: unknown): {
+  selectedCells: SelectedCellsState;
+  overallFeedback: string;
+} {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { selectedCells: {}, overallFeedback: "" };
+  }
+
+  const raw = value as Record<string, unknown>;
+  const selectedCells: SelectedCellsState = {};
+
+  Object.entries(raw).forEach(([key, cell]) => {
+    if (key === "__overall_feedback") return;
+    if (!cell || typeof cell !== "object" || Array.isArray(cell)) return;
+
+    const selectedRatingColumn = (cell as Record<string, unknown>).selectedRatingColumn;
+    if (typeof selectedRatingColumn === "string") {
+      selectedCells[key] = { selectedRatingColumn };
+    }
+  });
+
+  return {
+    selectedCells,
+    overallFeedback: typeof raw.__overall_feedback === "string" ? raw.__overall_feedback : "",
+  };
+}
+
 const LecturerRubricGrade = () => {
   const { projectId, groupId, rubricId } = useParams<{ projectId: string; groupId: string; rubricId: string }>();
   const { groups, loadPersistedState } = useTeam();
@@ -131,11 +158,9 @@ const LecturerRubricGrade = () => {
             : [];
 
           setRows(gradeRows);
-          const cells = (existingGrade.selected_cells_json as any) || {};
-          setOverallFeedback(cells.__overall_feedback || "");
-          const cleanCells = { ...cells };
-          delete cleanCells.__overall_feedback;
-          setSelectedCells(cleanCells);
+          const normalizedCells = normalizeStoredSelectedCells(existingGrade.selected_cells_json);
+          setOverallFeedback(normalizedCells.overallFeedback);
+          setSelectedCells(normalizedCells.selectedCells);
           setStatus(normalizeRubricGradeStatus(existingGrade.status));
           setSubmittedAt(existingGrade.submitted_at);
           setLockedAt(existingGrade.locked_at);

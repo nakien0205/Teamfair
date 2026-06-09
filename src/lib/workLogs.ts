@@ -174,7 +174,11 @@ export async function softDeleteStudentWorkLog(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function uploadWorkLogAttachment(params: {
+export async function uploadWorkLogAttachment({
+  groupId,
+  studentId,
+  file,
+}: {
   groupId: string;
   studentId: string;
   file: File;
@@ -190,7 +194,7 @@ export async function uploadWorkLogAttachment(params: {
     };
   }
 
-  const storagePath = `${params.groupId}/${params.studentId}/${Date.now()}-${fileName}`;
+  const storagePath = `${groupId}/${studentId}/${Date.now()}-${fileName}`;
   const { error } = await supabase.storage.from(WORK_LOG_BUCKET).upload(storagePath, file, {
     cacheControl: "3600",
     upsert: false,
