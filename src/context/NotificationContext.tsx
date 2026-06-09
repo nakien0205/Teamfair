@@ -2,15 +2,17 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import {
+  applyNotificationUpdate,
+  mapNotificationRow,
+  mergeNotificationInsert,
+  removeNotificationById,
+  type DbNotificationRow,
+  type Notification,
+} from "@/lib/notificationState";
 
-export interface Notification {
-  id: string;
-  recipientId: string;
-  senderName: string;
-  content: string;
-  isRead: boolean;
-  createdAt: Date;
-}
+export type { Notification } from "@/lib/notificationState";
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -29,6 +31,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const canPersist = isSupabaseConfigured && Boolean(user?.id);
 
+  const showNotificationToast = useCallback((notification: Notification) => {
+    toast({
+      title: `Notification from ${notification.senderName}`,
+      description: notification.content,
+    });
+  }, [toast]);
+
   // Load and seed notifications
   useEffect(() => {
     if (canPersist && user?.id) {
@@ -41,24 +50,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             .order("created_at", { ascending: false });
 
           if (error) throw error;
-
-          interface DbNotificationRow {
-            id: string;
-            recipient_id: string;
-            sender_name: string;
-            content: string;
-            is_read: boolean;
-            created_at: string;
-          }
-
-          const mapped: Notification[] = (data || []).map((row: DbNotificationRow) => ({
-            id: row.id,
-            recipientId: row.recipient_id,
-            senderName: row.sender_name,
-            content: row.content,
-            isRead: row.is_read,
-            createdAt: new Date(row.created_at),
-          }));
+          const mapped: Notification[] = (data || []).map((row: DbNotificationRow) => mapNotificationRow(row));
 
           setNotifications(mapped);
         } catch (err) {
@@ -92,6 +84,46 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [canPersist, user?.id]);
 
+  useRealtimeSubscription<DbNotificationRow>({
+    enabled: canPersist && Boolean(user?.id),
+    table: "notifications",
+    filter: user?.id ? `recipient_id=eq.${user.id}` : undefined,
+    requireFilter: true,
+    events: ["INSERT", "UPDATE", "DELETE"],
+    onPayload: payload => {
+      if (payload.eventType === "INSERT") {
+        const notification = mapNotificationRow(payload.new);
+        let shouldToast = false;
+
+        setNotifications(prev => {
+          const result = mergeNotificationInsert(prev, notification);
+          shouldToast = result.inserted && !notification.isRead;
+          return result.notifications;
+        });
+
+        if (shouldToast) {
+          showNotificationToast(notification);
+        }
+        return;
+      }
+
+      if (payload.eventType === "UPDATE") {
+        setNotifications(prev => applyNotificationUpdate(prev, mapNotificationRow(payload.new)));
+        return;
+      }
+
+      const deletedId = typeof payload.old?.id === "string" ? payload.old.id : undefined;
+      if (deletedId) {
+        setNotifications(prev => removeNotificationById(prev, deletedId));
+      }
+    },
+    onStatus: (status, error) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("Notification realtime subscription degraded:", status, error);
+      }
+    },
+  });
+
   const unreadCount = useMemo(() => {
     return notifications.filter(n => !n.isRead).length;
   }, [notifications]);
@@ -113,18 +145,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (error) throw error;
 
         if (data) {
-          const newNotif: Notification = {
-            id: data.id,
-            recipientId: data.recipient_id,
-            senderName: data.sender_name,
-            content: data.content,
-            isRead: data.is_read,
-            createdAt: new Date(data.created_at),
-          };
+          const newNotif = mapNotificationRow(data as DbNotificationRow);
 
           // Only update state if the current user is the recipient
           if (newNotif.recipientId === user?.id) {
-            setNotifications(prev => [newNotif, ...prev]);
+            let shouldToast = false;
+            setNotifications(prev => {
+              const result = mergeNotificationInsert(prev, newNotif);
+              shouldToast = result.inserted && !newNotif.isRead;
+              return result.notifications;
+            });
+            if (shouldToast) {
+              showNotificationToast(newNotif);
+            }
+          } else {
+            showNotificationToast(newNotif);
           }
         }
       } else {
@@ -144,20 +179,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         const currentUserId = user?.id || "demo-recipient-id";
         if (recipientId === currentUserId) {
-          setNotifications(prev => [newNotif, ...prev]);
+          let shouldToast = false;
+          setNotifications(prev => {
+            const result = mergeNotificationInsert(prev, newNotif);
+            shouldToast = result.inserted && !newNotif.isRead;
+            return result.notifications;
+          });
+          if (shouldToast) {
+            showNotificationToast(newNotif);
+          }
+        } else {
+          showNotificationToast(newNotif);
         }
       }
-
-      // Trigger Toast notification
-      toast({
-        title: `Notification from ${senderName}`,
-        description: content,
-      });
 
     } catch (err) {
       console.error("Error sending notification:", err);
     }
-  }, [canPersist, user?.id, toast]);
+  }, [canPersist, user?.id, showNotificationToast]);
 
   const markAsRead = useCallback(async (id: string) => {
     try {

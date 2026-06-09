@@ -1,4 +1,13 @@
 import { supabase } from "@/lib/supabaseClient";
+import {
+  createInviteViaApi,
+  invokeTeamApi,
+  joinWithInviteViaApi,
+  listInvitesViaApi,
+  revokeInviteViaApi,
+  type ContributionSnapshotMember,
+  type JoinInviteResult,
+} from "@/lib/teamApi";
 import type {
   ActivityLogEntry,
   Group,
@@ -65,9 +74,12 @@ type DbStudentReport = {
 type DbMaterial = {
   id: string;
   group_id: string;
+  uploader_id?: string | null;
   file_name: string;
   file_size: number;
   uploaded_by_name: string;
+  storage_path?: string | null;
+  storage_bucket?: string | null;
   created_at: string;
 };
 
@@ -158,6 +170,9 @@ function normalizeEvidence(evidence: unknown): NonNullable<Task["evidence"]> {
       mimeType?: unknown;
       storagePath?: unknown;
       publicUrl?: unknown;
+      storageBucket?: unknown;
+      size?: unknown;
+      uploadedById?: unknown;
     };
     if (typeof candidate.fileName !== "string") return [];
     return [{
@@ -167,6 +182,9 @@ function normalizeEvidence(evidence: unknown): NonNullable<Task["evidence"]> {
       mimeType: typeof candidate.mimeType === "string" ? candidate.mimeType : undefined,
       storagePath: typeof candidate.storagePath === "string" ? candidate.storagePath : undefined,
       publicUrl: typeof candidate.publicUrl === "string" ? candidate.publicUrl : undefined,
+      storageBucket: candidate.storageBucket === "evidence" ? "evidence" : undefined,
+      size: typeof candidate.size === "number" ? candidate.size : undefined,
+      uploadedById: typeof candidate.uploadedById === "string" ? candidate.uploadedById : undefined,
     }];
   });
 }
@@ -178,6 +196,9 @@ function serializeEvidence(evidence: Task["evidence"] | undefined): Array<{
   mimeType?: string;
   storagePath?: string;
   publicUrl?: string;
+  storageBucket?: "evidence";
+  size?: number;
+  uploadedById?: string;
 }> {
   return (evidence ?? []).map(item => ({
     fileName: item.fileName,
@@ -186,6 +207,9 @@ function serializeEvidence(evidence: Task["evidence"] | undefined): Array<{
     mimeType: item.mimeType,
     storagePath: item.storagePath,
     publicUrl: item.publicUrl,
+    storageBucket: item.storageBucket,
+    size: item.size,
+    uploadedById: item.uploadedById,
   }));
 }
 
@@ -322,6 +346,9 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
         size: material.file_size,
         uploadedBy: material.uploaded_by_name,
         uploadTime: new Date(material.created_at),
+        storagePath: material.storage_path ?? undefined,
+        storageBucket: material.storage_bucket === "materials" ? "materials" : undefined,
+        uploadedById: material.uploader_id ?? undefined,
       },
     ],
   }), {});
@@ -406,7 +433,7 @@ export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot
     selectOrThrow<DbMaterial[]>(
       supabase
         .from("materials")
-        .select("id,group_id,file_name,file_size,uploaded_by_name,created_at")
+        .select("id,group_id,uploader_id,file_name,file_size,uploaded_by_name,storage_path,storage_bucket,created_at")
         .order("created_at", { ascending: false }),
     ),
     selectOrThrow<DbLecturerStudentReview[]>(
@@ -485,9 +512,7 @@ export async function updatePersistedTaskStatus(
 
 export async function approvePersistedTask(groupId: string, task: Task | undefined): Promise<void> {
   if (!task) return;
-  const { error } = await supabase.from("tasks").update({ approved: true }).eq("id", task.id);
-  if (error) throw new Error(error.message);
-  await insertActivityLog(groupId, `Task "${task.name}" đã được duyệt`);
+  await invokeTeamApi<{ task_id: string }>("approve_task", { groupId, taskId: task.id });
 }
 
 export async function updatePersistedTask(taskId: string, updates: Partial<Task>, groupMembers: Group["members"]): Promise<void> {
@@ -505,14 +530,12 @@ export async function upsertLecturerScore(groupId: string, studentName: string, 
 }
 
 export async function insertStudentReport(groupId: string, report: Omit<StudentReport, "id" | "timestamp" | "reviewed">): Promise<void> {
-  const { error } = await supabase.from("student_reports").insert({
-    group_id: groupId,
-    from_name: report.from,
-    to_name: report.to,
+  await invokeTeamApi<{ group_id: string }>("submit_student_report", {
+    groupId,
+    toName: report.to,
     reason: report.reason,
     notes: report.notes || null,
   });
-  if (error) throw new Error(error.message);
 }
 
 export async function markStudentReportReviewed(id: string): Promise<void> {
@@ -523,9 +546,12 @@ export async function markStudentReportReviewed(id: string): Promise<void> {
 export async function insertMaterial(groupId: string, file: Omit<MaterialFile, "id" | "uploadTime">): Promise<void> {
   const { error } = await supabase.from("materials").insert({
     group_id: groupId,
+    uploader_id: file.uploadedById,
     file_name: file.fileName,
     file_size: file.size,
     uploaded_by_name: file.uploadedBy,
+    storage_path: file.storagePath,
+    storage_bucket: file.storageBucket ?? "materials",
   });
   if (error) throw new Error(error.message);
 }
@@ -539,24 +565,13 @@ export async function insertLecturerStudentEvaluation(
   groupId: string,
   input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">,
 ): Promise<void> {
-  const { error } = await supabase.from("lecturer_student_reviews").insert({
-    group_id: groupId,
-    student_name: input.studentName,
+  await invokeTeamApi<{ group_id: string }>("save_lecturer_evaluation", {
+    groupId,
+    studentName: input.studentName,
     rating: input.rating,
     comment: input.comment || null,
-    award_badge: input.awardBadge,
+    awardBadge: input.awardBadge,
   });
-  if (error) throw new Error(error.message);
-
-  if (!input.awardBadge) return;
-  const { error: badgeError } = await supabase.from("verified_badges").insert({
-    group_id: groupId,
-    student_name: input.studentName,
-    rating: input.rating,
-    comment: input.comment || null,
-    link: "https://www.linkedin.com/",
-  });
-  if (badgeError) throw new Error(badgeError.message);
 }
 
 export async function writeBackAgentSnapshot(
@@ -608,7 +623,7 @@ export async function writeBackAgentSnapshot(
           approved: boolean;
           deadline: string | null;
           priority: Task["priority"] | null;
-          evidence: Array<{ fileName: string; uploadTime: string }>;
+          evidence: ReturnType<typeof serializeEvidence>;
         } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapTask.id)
           ? { id: snapTask.id, ...dbTaskPayload }
           : dbTaskPayload;
@@ -640,6 +655,9 @@ export async function writeBackAgentSnapshot(
           file_name: string;
           file_size: number;
           uploaded_by_name: string;
+          uploader_id?: string;
+          storage_path?: string;
+          storage_bucket?: "materials";
           created_at: string;
         } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapMat.id)
           ? {
@@ -648,6 +666,9 @@ export async function writeBackAgentSnapshot(
               file_name: snapMat.fileName,
               file_size: snapMat.size,
               uploaded_by_name: snapMat.uploadedBy,
+              uploader_id: snapMat.uploadedById,
+              storage_path: snapMat.storagePath,
+              storage_bucket: snapMat.storageBucket,
               created_at: snapMat.uploadTime.toISOString(),
             }
           : {
@@ -655,6 +676,9 @@ export async function writeBackAgentSnapshot(
               file_name: snapMat.fileName,
               file_size: snapMat.size,
               uploaded_by_name: snapMat.uploadedBy,
+              uploader_id: snapMat.uploadedById,
+              storage_path: snapMat.storagePath,
+              storage_bucket: snapMat.storageBucket,
               created_at: snapMat.uploadTime.toISOString(),
             };
         const { error } = await supabase.from("materials").insert(insertPayload);
@@ -845,69 +869,26 @@ export async function deletePersistedGroup(groupId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-function generateInviteCodeString(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return `IV-${code}`;
-}
-
 export async function createProjectInvite(
   groupId: string,
   expiresAt: Date | null,
   maxUses: number | null,
   approvalMode: "auto" | "requires_approval"
 ): Promise<ProjectInvite> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("User not authenticated");
-
-  let attempts = 0;
-  while (attempts < 5) {
-    const inviteId = generateInviteCodeString();
-    const { data, error } = await supabase
-      .from("project_invites")
-      .insert({
-        id: inviteId,
-        group_id: groupId,
-        created_by: user.id,
-        expires_at: expiresAt ? expiresAt.toISOString() : null,
-        max_uses: maxUses,
-        approval_mode: approvalMode,
-      })
-      .select()
-      .single();
-
-    if (!error) {
-      return data as ProjectInvite;
-    }
-    
-    if (error.code === "23505") {
-      attempts++;
-      continue;
-    }
-    throw new Error(error.message);
-  }
-  throw new Error("Failed to generate a unique invite code after 5 attempts");
+  return createInviteViaApi({
+    groupId,
+    expiresAt: expiresAt ? expiresAt.toISOString() : null,
+    maxUses,
+    approvalMode,
+  });
 }
 
 export async function getProjectInvites(groupId: string): Promise<ProjectInvite[]> {
-  const { data, error } = await supabase
-    .from("project_invites")
-    .select("*")
-    .eq("group_id", groupId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data || []) as ProjectInvite[];
+  return listInvitesViaApi(groupId);
 }
 
 export async function revokeProjectInvite(inviteId: string): Promise<void> {
-  const { error } = await supabase
-    .from("project_invites")
-    .delete()
-    .eq("id", inviteId);
-  if (error) throw new Error(error.message);
+  await revokeInviteViaApi(inviteId);
 }
 
 export async function createJoinRequest(groupId: string, inviteId: string, userId: string): Promise<JoinRequest> {
@@ -937,59 +918,18 @@ export async function getJoinRequests(groupId: string): Promise<JoinRequest[]> {
 }
 
 export async function processJoinRequest(requestId: string, status: "approved" | "rejected"): Promise<void> {
-  const { data: request, error: updateError } = await supabase
-    .from("join_requests")
-    .update({ status })
-    .eq("id", requestId)
-    .select()
-    .single();
-
-  if (updateError) throw new Error(updateError.message);
-  if (!request) throw new Error("Join request not found");
-
-  if (status === "approved") {
-    await joinPersistedGroup(request.group_id, request.user_id, "Member");
-  }
+  await invokeTeamApi<{ request_id: string; status: "approved" | "rejected" }>("process_join_request", {
+    requestId,
+    status,
+  });
 }
 
-export async function validateInviteCode(inviteCode: string): Promise<{ group_id: string; approval_mode: "auto" | "requires_approval"; group_name: string }> {
-  const { data: invite, error } = await supabase
-    .from("project_invites")
-    .select("*, groups(project_name)")
-    .eq("id", inviteCode)
-    .maybeSingle();
-
-  if (error || !invite) {
-    throw new Error("Mã mời không tồn tại hoặc không hợp lệ");
-  }
-
-  if (invite.expires_at) {
-    if (new Date(invite.expires_at) <= new Date()) {
-      throw new Error("Mã mời đã hết hạn");
-    }
-  }
-
-  if (invite.max_uses !== null && invite.max_uses !== undefined) {
-    if (invite.uses_count >= invite.max_uses) {
-      throw new Error("Mã mời đã đạt số lượt sử dụng tối đa");
-    }
-  }
-
-  const { error: updateError } = await supabase
-    .rpc("increment_invite_use", { p_invite_code: inviteCode });
-
-  if (updateError) {
-    throw new Error("Lỗi khi cập nhật số lượt sử dụng mã mời");
-  }
-
-  const groupName = (invite as unknown as { groups?: { project_name: string } }).groups?.project_name;
-
-  return {
-    group_id: invite.group_id as string,
-    approval_mode: invite.approval_mode as "auto" | "requires_approval",
-    group_name: groupName || "Nhóm dự án",
-  };
+export async function validateInviteCode(inviteCode: string): Promise<JoinInviteResult> {
+  return joinWithInviteViaApi(inviteCode);
 }
 
+export async function calculateContributionSnapshot(groupId: string): Promise<ContributionSnapshotMember[]> {
+  return invokeTeamApi<ContributionSnapshotMember[]>("calculate_contribution_snapshot", { groupId });
+}
 
 

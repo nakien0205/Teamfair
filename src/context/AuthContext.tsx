@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { identifyUser, resetAnalytics } from "@/lib/analytics";
 
 export type AppUserRole = "student" | "lecturer" | "admin";
 
@@ -328,7 +329,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
+  useEffect(() => {
+    if (!user?.id || !profile) return;
+
+    identifyUser(user.id, {
+      email: profile.email,
+      role: profile.role,
+      name: profile.full_name,
+      profile_completed: profile.profile_completed,
+    });
+  }, [profile, user?.id]);
+
   const signOut = useCallback(async () => {
+    resetAnalytics();
     if (!isSupabaseConfigured) return;
 
     const signOutPromise = supabase.auth.signOut();

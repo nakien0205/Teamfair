@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 import { AlertTriangle, Info, TrendingUp } from 'lucide-react';
+import { calculateContributionScore } from '@/lib/teamApi';
 
 interface Props {
   members: MemberStat[];
@@ -24,17 +25,11 @@ const COLORS = [
 
 const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase();
 
-const calcContributionScore = (m: MemberStat) => {
-  const taskScore = Math.min(m.completedTasks * 20, 40);
-  const contribScore = Math.min(m.contributionPercent * 0.6, 60);
-  return Math.round(taskScore + contribScore);
-};
-
 const ContributionAnalytics = ({ members, showScoreCard, currentUserName, showFreeriderWarning }: Props) => {
   const [explainOpen, setExplainOpen] = useState(false);
   const sorted = [...members].sort((a, b) => b.contributionPercent - a.contributionPercent);
   const currentUser = members.find(m => m.name === currentUserName);
-  const personalScore = currentUser ? calcContributionScore(currentUser) : 0;
+  const personalScore = currentUser ? calculateContributionScore(currentUser) : 0;
 
   const barData = sorted.map(m => ({ name: m.name.split(' ').slice(-1)[0], contribution: m.contributionPercent, tasks: m.completedTasks }));
 
@@ -146,11 +141,8 @@ const ContributionAnalytics = ({ members, showScoreCard, currentUserName, showFr
           <div className="space-y-3 text-sm">
             <p className="text-muted-foreground">Contribution Score is calculated from:</p>
             <ul className="space-y-2 ml-4">
-              <li className="flex items-start gap-2"><span className="font-semibold text-primary">40%</span> Tasks completed — number of approved tasks</li>
-              <li className="flex items-start gap-2"><span className="font-semibold text-primary">20%</span> Deadlines met — tasks finished before deadline</li>
-              <li className="flex items-start gap-2"><span className="font-semibold text-primary">15%</span> Task participation — engagement across project</li>
-              <li className="flex items-start gap-2"><span className="font-semibold text-primary">15%</span> Evidence uploads — supporting documentation</li>
-              <li className="flex items-start gap-2"><span className="font-semibold text-primary">10%</span> Peer interaction — peer evaluations given/received</li>
+              <li className="flex items-start gap-2"><span className="font-semibold text-primary">40%</span> Approved tasks completed — capped at two approved tasks</li>
+              <li className="flex items-start gap-2"><span className="font-semibold text-primary">60%</span> Contribution share — capped at 100% contribution</li>
             </ul>
             <div className="rounded-lg bg-muted p-3 mt-3">
               <p className="font-medium">Your current score: <span className="text-primary">{personalScore}/100</span></p>

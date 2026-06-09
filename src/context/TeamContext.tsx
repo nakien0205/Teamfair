@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import {
   approvePersistedTask,
   deletePersistedMaterial,
@@ -21,18 +22,18 @@ import {
   updatePersistedCalendarEvent,
   deletePersistedCalendarEvent,
   createPersistedGroup,
-  joinPersistedGroup,
   deletePersistedGroup,
   createProjectInvite,
   getProjectInvites,
   revokeProjectInvite,
-  createJoinRequest,
   getJoinRequests,
   processJoinRequest,
   validateInviteCode,
 } from '@/lib/teamPersistence';
 import type { WorkspaceSnapshotJson } from '@/lib/workspaceSnapshot';
 import { deserializeSnapshotToTeamState } from '@/lib/workspaceSnapshot';
+import { deleteStorageFile } from '@/lib/storage';
+import { trackEvent } from '@/lib/analytics';
 
 export type EventType = 'Meeting' | 'Task Deadline' | 'Milestone';
 
@@ -46,6 +47,18 @@ export interface CalendarEvent {
   createdBy: string;
 }
 
+export interface TaskEvidence {
+  fileName: string;
+  uploadTime: Date;
+  fileSize?: number;
+  mimeType?: string;
+  storagePath?: string;
+  publicUrl?: string;
+  storageBucket?: 'evidence';
+  size?: number;
+  uploadedById?: string;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -57,14 +70,7 @@ export interface Task {
   deadline: string;
   description?: string;
   priority?: 'Low' | 'Medium' | 'High';
-  evidence?: {
-    fileName: string;
-    uploadTime: Date;
-    fileSize?: number;
-    mimeType?: string;
-    storagePath?: string;
-    publicUrl?: string;
-  }[];
+  evidence?: TaskEvidence[];
 }
 
 export interface MemberStat {
@@ -98,6 +104,9 @@ export interface MaterialFile {
   size: number;
   uploadedBy: string;
   uploadTime: Date;
+  storagePath?: string;
+  storageBucket?: 'materials';
+  uploadedById?: string;
 }
 
 export type BadgeAwarder = "lecturer";
@@ -178,6 +187,9 @@ interface TeamContextType {
   materials: MaterialFile[];
   addMaterial: (file: Omit<MaterialFile, 'id' | 'uploadTime'>) => void;
   deleteMaterial: (id: string) => void;
+  addStoredMaterial: (file: Omit<MaterialFile, 'id' | 'uploadTime'>) => Promise<void>;
+  deleteStoredMaterial: (file: MaterialFile) => Promise<void>;
+  appendTaskEvidence: (taskId: string, evidence: TaskEvidence) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => void;
   lecturerStudentReviews: LecturerStudentReview[];
   studentBadges: VerifiedBadge[];
@@ -233,6 +245,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [connectionError, setConnectionError] = useState(false);
   const [dataLoading, setDataLoading] = useState<boolean>(true);
+  const teamRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const teamRefreshInFlightRef = useRef(false);
+  const teamRefreshPendingRef = useRef(false);
+  const runRealtimeTeamRefreshRef = useRef<() => void>(() => undefined);
+  const joinRequestsRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchPendingJoinRequestsRef = useRef<() => Promise<JoinRequest[]>>(async () => []);
 
   const updateGroup = useCallback((idx: number, updater: (g: Group) => Group) => {
     setGroups(prev => prev.map((g, i) => i === idx ? updater({ ...g }) : g));
@@ -457,6 +475,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [groups, currentGroupIndex, canPersist]);
 
+  useEffect(() => {
+    fetchPendingJoinRequestsRef.current = fetchPendingJoinRequests;
+  }, [fetchPendingJoinRequests]);
+
   const approveJoinRequest = useCallback(async (requestId: string): Promise<void> => {
     const request = pendingJoinRequests.find(r => r.id === requestId);
     if (!request) return;
@@ -520,6 +542,125 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [group?.id, canPersist, fetchActiveInvites, fetchPendingJoinRequests]);
 
+  const runRealtimeTeamRefresh = useCallback(() => {
+    if (teamRefreshInFlightRef.current) {
+      teamRefreshPendingRef.current = true;
+      return;
+    }
+
+    teamRefreshInFlightRef.current = true;
+    void loadPersistedState()
+      .catch(error => {
+        console.warn("Realtime team refresh failed:", error);
+      })
+      .finally(() => {
+        teamRefreshInFlightRef.current = false;
+        if (teamRefreshPendingRef.current) {
+          teamRefreshPendingRef.current = false;
+          runRealtimeTeamRefreshRef.current();
+        }
+      });
+  }, [loadPersistedState]);
+
+  useEffect(() => {
+    runRealtimeTeamRefreshRef.current = runRealtimeTeamRefresh;
+  }, [runRealtimeTeamRefresh]);
+
+  const scheduleTeamRealtimeRefresh = useCallback(() => {
+    if (teamRealtimeTimerRef.current) {
+      clearTimeout(teamRealtimeTimerRef.current);
+    }
+
+    teamRealtimeTimerRef.current = setTimeout(() => {
+      teamRealtimeTimerRef.current = null;
+      runRealtimeTeamRefresh();
+    }, 250);
+  }, [runRealtimeTeamRefresh]);
+
+  const scheduleJoinRequestsRealtimeRefresh = useCallback(() => {
+    if (joinRequestsRealtimeTimerRef.current) {
+      clearTimeout(joinRequestsRealtimeTimerRef.current);
+    }
+
+    joinRequestsRealtimeTimerRef.current = setTimeout(() => {
+      joinRequestsRealtimeTimerRef.current = null;
+      void fetchPendingJoinRequestsRef.current();
+    }, 250);
+  }, []);
+
+  const handleRealtimeStatus = useCallback((table: string, status: string, error?: Error) => {
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn(`Team realtime subscription degraded for ${table}:`, status, error);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (teamRealtimeTimerRef.current) {
+        clearTimeout(teamRealtimeTimerRef.current);
+        teamRealtimeTimerRef.current = null;
+      }
+      if (joinRequestsRealtimeTimerRef.current) {
+        clearTimeout(joinRequestsRealtimeTimerRef.current);
+        joinRequestsRealtimeTimerRef.current = null;
+      }
+      teamRefreshPendingRef.current = false;
+    };
+  }, [group?.id, user?.id]);
+
+  const realtimeEnabled = canPersist && Boolean(user?.id && group?.id);
+  const realtimeGroupFilter = group?.id ? `group_id=eq.${group.id}` : undefined;
+
+  useRealtimeSubscription({
+    enabled: realtimeEnabled,
+    table: "tasks",
+    filter: realtimeGroupFilter,
+    requireFilter: true,
+    events: ["*"],
+    onPayload: scheduleTeamRealtimeRefresh,
+    onStatus: (status, error) => handleRealtimeStatus("tasks", status, error),
+  });
+
+  useRealtimeSubscription({
+    enabled: realtimeEnabled,
+    table: "activity_logs",
+    filter: realtimeGroupFilter,
+    requireFilter: true,
+    events: ["*"],
+    onPayload: scheduleTeamRealtimeRefresh,
+    onStatus: (status, error) => handleRealtimeStatus("activity_logs", status, error),
+  });
+
+  useRealtimeSubscription({
+    enabled: realtimeEnabled,
+    table: "materials",
+    filter: realtimeGroupFilter,
+    requireFilter: true,
+    events: ["*"],
+    onPayload: scheduleTeamRealtimeRefresh,
+    onStatus: (status, error) => handleRealtimeStatus("materials", status, error),
+  });
+
+  useRealtimeSubscription({
+    enabled: realtimeEnabled,
+    table: "group_members",
+    filter: realtimeGroupFilter,
+    requireFilter: true,
+    events: ["*"],
+    onPayload: scheduleTeamRealtimeRefresh,
+    onStatus: (status, error) => handleRealtimeStatus("group_members", status, error),
+  });
+
+  useRealtimeSubscription({
+    enabled: realtimeEnabled,
+    table: "join_requests",
+    filter: realtimeGroupFilter,
+    requireFilter: true,
+    events: ["*"],
+    onPayload: scheduleJoinRequestsRealtimeRefresh,
+    onStatus: (status, error) => handleRealtimeStatus("join_requests", status, error),
+  });
+
   const persist = useCallback((operation: () => Promise<void>) => {
     if (!canPersist) return;
     void operation()
@@ -561,6 +702,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tasks: [...g.tasks, { ...task, id, status: 'Todo', approved: false }],
       activityLog: [{ timestamp: new Date(), description: `Task "${task.name}" được tạo và giao cho ${task.assignedTo}` }, ...g.activityLog],
     }));
+    if (currentGroup) {
+      trackEvent("task_created", {
+        group_id: currentGroup.id,
+        status: "Todo",
+      });
+    }
     if (currentGroup) persist(() => insertTask(currentGroup, task));
   }, [currentGroupIndex, groups, persist, updateGroup]);
 
@@ -591,6 +738,13 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activityLog: [{ timestamp: new Date(), description: `${actor} đã ${statusLabel} task "${task?.name}"` }, ...g.activityLog],
       };
     });
+    if (currentGroup && persistedTask?.status !== status) {
+      trackEvent("task_status_changed", {
+        group_id: currentGroup.id,
+        from_status: persistedTask?.status,
+        to_status: status,
+      });
+    }
     if (currentGroup) persist(() => updatePersistedTaskStatus(currentGroup.id, persistedTask, status, actor));
   }, [currentGroupIndex, groups, persist, updateGroup]);
 
@@ -630,6 +784,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addReport = useCallback((report: Omit<StudentReport, 'id' | 'timestamp' | 'reviewed'>) => {
     const currentGroup = groups[currentGroupIndex];
     setReports(prev => [...prev, { ...report, id: Date.now().toString(), timestamp: new Date(), reviewed: false }]);
+    if (currentGroup) {
+      trackEvent("report_submitted", {
+        group_id: currentGroup.id,
+      });
+    }
     if (currentGroup) persist(() => insertStudentReport(currentGroup.id, report));
   }, [currentGroupIndex, groups, persist]);
 
@@ -645,6 +804,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...prev,
       [currentGroup.id]: [...(prev[currentGroup.id] ?? []), { ...file, id: Date.now().toString(), uploadTime: new Date() }],
     }));
+    trackEvent("material_uploaded", {
+      group_id: currentGroup.id,
+      file_type: file.fileName.split(".").pop()?.toLowerCase() || "unknown",
+    });
     persist(() => insertMaterial(currentGroup.id, file));
   }, [currentGroupIndex, groups, persist]);
 
@@ -657,6 +820,73 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     persist(() => deletePersistedMaterial(id));
   }, [currentGroupIndex, groups, persist]);
+
+  const addStoredMaterial = useCallback(async (file: Omit<MaterialFile, 'id' | 'uploadTime'>) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) throw new Error("No active group selected");
+
+    if (!canPersist) {
+      setMaterialsByGroupId(prev => ({
+        ...prev,
+        [currentGroup.id]: [...(prev[currentGroup.id] ?? []), { ...file, id: Date.now().toString(), uploadTime: new Date() }],
+      }));
+      trackEvent("material_uploaded", {
+        group_id: currentGroup.id,
+        file_type: file.fileName.split(".").pop()?.toLowerCase() || "unknown",
+      });
+      return;
+    }
+
+    await insertMaterial(currentGroup.id, file);
+    await loadPersistedState();
+    trackEvent("material_uploaded", {
+      group_id: currentGroup.id,
+      file_type: file.fileName.split(".").pop()?.toLowerCase() || "unknown",
+    });
+  }, [canPersist, currentGroupIndex, groups, loadPersistedState]);
+
+  const deleteStoredMaterial = useCallback(async (file: MaterialFile) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) throw new Error("No active group selected");
+
+    if (canPersist) {
+      await deletePersistedMaterial(file.id);
+      if (file.storagePath) {
+        void deleteStorageFile(file.storageBucket ?? "materials", file.storagePath);
+      }
+      await loadPersistedState();
+      return;
+    }
+
+    setMaterialsByGroupId(prev => ({
+      ...prev,
+      [currentGroup.id]: (prev[currentGroup.id] ?? []).filter(m => m.id !== file.id),
+    }));
+  }, [canPersist, currentGroupIndex, groups, loadPersistedState]);
+
+  const appendTaskEvidence = useCallback(async (taskId: string, evidence: TaskEvidence) => {
+    const currentGroup = groups[currentGroupIndex];
+    if (!currentGroup) throw new Error("No active group selected");
+
+    const task = currentGroup.tasks.find(t => t.id === taskId);
+    if (!task) throw new Error("Task not found");
+
+    const nextEvidence = [...(task.evidence ?? []), evidence];
+    updateGroup(currentGroupIndex, g => ({
+      ...g,
+      tasks: g.tasks.map(t => t.id === taskId ? { ...t, evidence: nextEvidence } : t),
+    }));
+
+    if (!canPersist) return;
+
+    try {
+      await updatePersistedTask(taskId, { evidence: nextEvidence }, currentGroup.members);
+      await loadPersistedState();
+    } catch (error) {
+      await loadPersistedState();
+      throw error;
+    }
+  }, [canPersist, currentGroupIndex, groups, loadPersistedState, updateGroup]);
 
   const addLecturerStudentEvaluation = useCallback(
     (input: Omit<LecturerStudentReview, "id" | "timestamp" | "lecturer">) => {
@@ -684,6 +914,13 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
             link: "https://www.linkedin.com/",
           },
         ]);
+        if (currentGroup) {
+          trackEvent("badge_awarded", {
+            group_id: currentGroup.id,
+            badge_type: "verified_contribution",
+            rating: input.rating,
+          });
+        }
       }
       if (currentGroup) persist(() => insertLecturerStudentEvaluation(currentGroup.id, input));
     },
@@ -730,6 +967,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newId = await createPersistedGroup(projectName, user.id);
       localStorage.setItem(`teamfair_last_project_${user.id}`, newId);
       await loadPersistedState();
+      trackEvent("group_created", {
+        group_id: newId,
+        role: profile?.role ?? "student",
+      });
       return newId;
     } else {
       const mockId = `mock-${Date.now()}`;
@@ -752,16 +993,19 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ],
       };
       setGroups(prev => [...prev, mockG]);
+      trackEvent("group_created", {
+        group_id: mockId,
+        role: profile?.role ?? "student",
+      });
       return mockId;
     }
-  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+  }, [canPersist, user?.id, loadPersistedState, currentUserName, profile?.role]);
 
   const joinProject = useCallback(async (inviteCode: string): Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }> => {
     if (canPersist && user?.id) {
-      const { group_id, approval_mode, group_name } = await validateInviteCode(inviteCode);
+      const { group_id, group_name, status } = await validateInviteCode(inviteCode);
 
-      if (approval_mode === "auto") {
-        await joinPersistedGroup(group_id, user.id, "Member");
+      if (status === "success") {
         localStorage.setItem(`teamfair_last_project_${user.id}`, group_id);
         
         const snapshot = await loadPersistedTeamSnapshot();
@@ -779,47 +1023,24 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setConnectionError(false);
         
         const joinedGroup = snapshot.groups[targetIndex];
+        trackEvent("group_joined", {
+          group_id,
+          method: "invite",
+        });
         return { status: "success", groupIndex: targetIndex, groupName: joinedGroup?.name || group_name };
       } else {
-        await createJoinRequest(group_id, inviteCode, user.id);
-
-        const senderName = profile?.full_name || user.email || "Hệ thống";
-        const notificationContent = `Sinh viên ${senderName} đang yêu cầu tham gia dự án "${group_name}".`;
-
-        const { data: groupData } = await supabase
-          .from("groups")
-          .select("lecturer_id")
-          .eq("id", group_id)
-          .single();
-
-        const { data: leaderData } = await supabase
-          .from("group_members")
-          .select("student_id")
-          .eq("group_id", group_id)
-          .eq("role", "Leader")
-          .maybeSingle();
-
-        if (groupData?.lecturer_id) {
-          await supabase.from("notifications").insert({
-            recipient_id: groupData.lecturer_id,
-            sender_name: senderName,
-            content: notificationContent,
-            is_read: false,
-          });
-        }
-        if (leaderData?.student_id && leaderData.student_id !== groupData?.lecturer_id) {
-          await supabase.from("notifications").insert({
-            recipient_id: leaderData.student_id,
-            sender_name: senderName,
-            content: notificationContent,
-            is_read: false,
-          });
-        }
-
+        trackEvent("group_join_requested", {
+          group_id,
+          method: "request",
+        });
         return { status: "pending_approval", groupName: group_name };
       }
     } else {
       if (inviteCode.endsWith("-REQ") || inviteCode.includes("APPROVAL")) {
+        trackEvent("group_join_requested", {
+          group_id: inviteCode,
+          method: "request",
+        });
         return { status: "pending_approval", groupName: `Dự án Yêu cầu Duyệt - ${inviteCode}` };
       }
 
@@ -854,9 +1075,13 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [...prev, mockG];
       });
       setCurrentGroupIndex(newIdx);
+      trackEvent("group_joined", {
+        group_id: inviteCode,
+        method: "invite",
+      });
       return { status: "success", groupIndex: newIdx, groupName: newName };
     }
-  }, [canPersist, user?.id, profile?.full_name, currentUserName]);
+  }, [canPersist, user?.id, currentUserName]);
 
   const deleteProject = useCallback(async (projectId: string) => {
     if (canPersist && user?.id) {
@@ -934,6 +1159,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       materials,
       addMaterial,
       deleteMaterial,
+      addStoredMaterial,
+      deleteStoredMaterial,
+      appendTaskEvidence,
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,
@@ -980,6 +1208,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       materials,
       addMaterial,
       deleteMaterial,
+      addStoredMaterial,
+      deleteStoredMaterial,
+      appendTaskEvidence,
       lecturerStudentReviews,
       studentBadges,
       addLecturerStudentEvaluation,

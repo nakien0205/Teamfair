@@ -18,10 +18,25 @@ The app reads Supabase from **Vite** env vars (must be prefixed with `VITE_` to 
 | `VITE_SUPABASE_URL` | Project URL, e.g. `https://<project-ref>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Supabase **anon** public key (Dashboard → Settings → API) |
 | `VITE_STUDENT_AGENT_URL` | Optional. Base URL of the **Python FastAPI** student agent (no trailing slash). Leave unset in local dev to use the Vite proxy to `127.0.0.1:8010`. **Required for production** on Vercel if the sidebar should call a hosted agent (see [student_workspace_agent.md](student_workspace_agent.md)). |
+| `VITE_POSTHOG_KEY` | Optional. PostHog project API key. Analytics only initializes in production builds when this value is present. |
+| `VITE_POSTHOG_HOST` | Optional. PostHog ingestion host; defaults to `https://us.i.posthog.com`. Use your EU/self-hosted URL if applicable. |
 
-Copy [.env.example](../../.env.example) to `.env` and fill in the values. Since demo mode has been completely removed, these environment variables are strictly required to initialize the Supabase client and run the application.
+Copy [.env.example](../../.env.example) to `.env` and fill in the values. Since demo mode has been completely removed, the Supabase environment variables are strictly required to initialize the Supabase client and run the application.
 
 **Do not** put the Google OAuth **client secret** in any `VITE_*` variable (it would be exposed in the client bundle). Configure Google under **Supabase Dashboard → Authentication → Providers → Google**.
+
+## Supabase Edge Function secrets
+The `team-api` and `delete-user-auth` Edge Functions run server-side and read secrets from Supabase Edge Function secrets, not from Vite/browser env vars:
+
+| Variable | Purpose |
+|----------|---------|
+| `SUPABASE_URL` | Supabase project URL for Edge Functions. |
+| `SUPABASE_ANON_KEY` or `SUPABASE_PUBLISHABLE_KEY` | Used server-side to validate incoming user JWTs. |
+| `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY` | Admin key used only inside Edge Functions for privileged operations. Never expose it to Vite. |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint for API rate limiting. |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token for API rate limiting. |
+
+Local function testing can use `supabase functions serve --env-file <file>`. Never commit Edge Function env files.
 
 ## Google Cloud Console (Web OAuth client)
 Use these when creating or editing the OAuth 2.0 **Web application** client that you attach to Supabase Google provider.
@@ -61,16 +76,24 @@ Order matters; examples in this repo:
 14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
 15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
 16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
-17. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
+17. `20260604120000_storage_buckets.sql` - private Supabase Storage buckets for materials/evidence, material storage metadata columns, and Storage RLS policies.
+18. `20260604130000_enable_realtime.sql` - Supabase Realtime publication setup for dashboard-core Postgres Changes subscriptions.
+19. `20260604140000_api_layer_invite_security.sql` - tightens invite row visibility and adds service-only RPC helpers for atomic invite consumption and approval-required invite usage.
+20. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
 
 ### Simple deploy checklist
+See [deployment_workflow.md](deployment_workflow.md) for the full Vercel/GitHub deployment model, required repository settings, branch protection, and rollback guidance.
+
 1. Run every SQL migration above in Supabase, in order, if the database does not already have them.
 2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel project environment variables.
-3. Push the code to GitHub.
-4. Let Vercel redeploy from GitHub.
+3. Add `VITE_POSTHOG_KEY` and, if needed, `VITE_POSTHOG_HOST` to Vercel project environment variables to enable production analytics.
+4. Add the Edge Function secrets listed above in Supabase before deploying `team-api` and `delete-user-auth`.
+5. Deploy Supabase Edge Functions: `supabase functions deploy team-api --project-ref <project-ref>` and `supabase functions deploy delete-user-auth --project-ref <project-ref>`.
+6. Push the code to GitHub.
+7. Let Vercel redeploy from GitHub.
 
 If the SQL migration is skipped, Vercel can still render the app, but real logged-in dashboard data may fail to load/save because the database tables/columns are missing.
 

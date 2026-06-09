@@ -28,7 +28,14 @@ type SerializedGroup = {
 };
 
 type SerializedTask = Omit<Task, "evidence"> & {
-  evidence?: { fileName: string; uploadTime: string }[];
+  evidence?: {
+    fileName: string;
+    uploadTime: string;
+    storagePath?: string;
+    storageBucket?: "evidence";
+    size?: number;
+    uploadedById?: string;
+  }[];
 };
 
 type SerializedActivityLogEntry = {
@@ -52,6 +59,9 @@ type SerializedMaterialFile = {
   size: number;
   uploadedBy: string;
   uploadTime: string;
+  storagePath?: string;
+  storageBucket?: "materials";
+  uploadedById?: string;
 };
 
 type SerializedLecturerReview = {
@@ -80,6 +90,10 @@ function serializeTask(t: Task): SerializedTask {
     out.evidence = evidence.map(e => ({
       fileName: e.fileName,
       uploadTime: e.uploadTime instanceof Date ? e.uploadTime.toISOString() : String(e.uploadTime),
+      storagePath: e.storagePath,
+      storageBucket: e.storageBucket,
+      size: e.size,
+      uploadedById: e.uploadedById,
     }));
   }
   return out;
@@ -117,6 +131,9 @@ function serializeMaterial(m: MaterialFile): SerializedMaterialFile {
     size: m.size,
     uploadedBy: m.uploadedBy,
     uploadTime: m.uploadTime instanceof Date ? m.uploadTime.toISOString() : String(m.uploadTime),
+    storagePath: m.storagePath,
+    storageBucket: m.storageBucket,
+    uploadedById: m.uploadedById,
   };
 }
 
@@ -173,7 +190,14 @@ function toDate(v: unknown): Date {
 function deserializeTask(s: SerializedTask): Task {
   return {
     ...s,
-    evidence: s.evidence?.map(e => ({ fileName: e.fileName, uploadTime: toDate(e.uploadTime) })),
+    evidence: s.evidence?.map(e => ({
+      fileName: e.fileName,
+      uploadTime: toDate(e.uploadTime),
+      storagePath: e.storagePath,
+      storageBucket: e.storageBucket,
+      size: e.size,
+      uploadedById: e.uploadedById,
+    })),
   };
 }
 

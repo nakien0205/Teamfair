@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { tr } from "@/lib/i18n";
 import { buildWorkspaceSnapshotFromTeam, type WorkspaceSnapshotJson } from "@/lib/workspaceSnapshot";
+import { trackEvent } from "@/lib/analytics";
 import { useToast } from "@/hooks/use-toast";
 import { loadChatHistory, insertChatMessage, clearChatHistory, type ChatMessageRow } from "@/lib/chatHistory";
 import { Button } from "@/components/ui/button";
@@ -226,6 +227,11 @@ const StudentAgentSidebar = ({ open, onOpenChange, onLockedSectionChange }: Stud
       const trimmed = text.trim();
       if (!trimmed || loading) return;
 
+      trackEvent("ai_chat_sent", {
+        group_id: currentGroupId,
+        source: "student_agent_sidebar",
+        use_heavy: heavyTask,
+      });
       pushMessage("user", trimmed);
       setInput("");
       setLoading(true);
