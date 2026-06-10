@@ -80,6 +80,7 @@ Order matters; examples in this repo:
 18. `20260604130000_enable_realtime.sql` - Supabase Realtime publication setup for dashboard-core Postgres Changes subscriptions.
 19. `20260604140000_api_layer_invite_security.sql` - tightens invite row visibility and adds service-only RPC helpers for atomic invite consumption and approval-required invite usage.
 20. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
+21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite visibility, service-only invite RPC grants, lecturer project scoping, and guarded signup role/name completion.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.

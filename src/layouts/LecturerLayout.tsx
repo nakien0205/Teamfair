@@ -21,9 +21,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam } from "@/context/TeamContext";
 import { t, tr } from "@/lib/i18n";
-import { useState } from "react";
+import { useState, useMemo } from "react"; 
 import { SettingsModal } from "@/components/SettingsModal";
-import { Loader2 } from "lucide-react";
+
+const LOGOUT_TRANSITION_MS = 420;
 
 const LecturerLayout = () => {
   const { pathname } = useLocation();
@@ -33,6 +34,20 @@ const LecturerLayout = () => {
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    await new Promise((resolve) => setTimeout(resolve, LOGOUT_TRANSITION_MS));
+
+    try {
+      await signOut();
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  };
 
   // Compute Display Name fallback logic: full_name > email > short uuid
   const displayName = profile?.full_name 
@@ -74,71 +89,74 @@ const LecturerLayout = () => {
     }
   };
 
-  const sidebarItems: DashboardSidebarItem[] = [
-    // Workspace
-    { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <LayoutDashboard className="h-4 w-4" />, section: "workspace" },
-    { key: "groups", label: tr(language, "Nhóm sinh viên", "Student Groups"), icon: <Users className="h-4 w-4" />, section: "workspace" },
-    { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
-    { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
+  // 🌟 Bản sao hoàn hảo theo cấu trúc của StudentLayout
+  const processedSidebarItems = useMemo<DashboardSidebarItem[]>(() => {
+    const items: DashboardSidebarItem[] = [
+      // Workspace
+      { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <LayoutDashboard className="h-4 w-4" />, section: "workspace" },
+      { key: "groups", label: tr(language, "Nhóm sinh viên", "Student Groups"), icon: <Users className="h-4 w-4" />, section: "workspace" },
+      { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
+      { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
 
-    // Evaluation (Đánh giá)
-    { key: "rubrics", label: tr(language, "Thang chấm điểm", "Rubrics"), icon: <ClipboardList className="h-4 w-4" />, section: "evaluation" },
-    { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "evaluation" },
-    { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "evaluation" },
-    { key: "export-reports", label: tr(language, "Xuất báo cáo", "Export Reports"), icon: <Download className="h-4 w-4" />, section: "evaluation" },
+      // Evaluation (Đánh giá)
+      { key: "rubrics", label: tr(language, "Thang chấm điểm", "Rubrics"), icon: <ClipboardList className="h-4 w-4" />, section: "workspace" },
+      { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "workspace" },
+      { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
+      { key: "export-reports", label: tr(language, "Xuất báo cáo", "Export Reports"), icon: <Download className="h-4 w-4" />, section: "workspace" },
 
-    // Resources
-    { key: "documents", label: tr(language, "Tài liệu", "Documents"), icon: <FileText className="h-4 w-4" />, section: "resources" },
-    { key: "activity", label: tr(language, "Hoạt động", "Activity"), icon: <Activity className="h-4 w-4" />, section: "resources" },
+      // Resources
+      { key: "documents", label: tr(language, "Tài liệu", "Documents"), icon: <FileText className="h-4 w-4" />, section: "resources" },
+      { key: "activity", label: tr(language, "Hoạt động", "Activity"), icon: <Activity className="h-4 w-4" />, section: "resources" },
 
-    // Settings (Other)
-    { key: "settings", label: tr(language, "Cấu hình", "Settings"), icon: <Settings className="h-4 w-4" />, section: "other" },
-    { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <Folder className="h-4 w-4" />, section: "other" },
-  ];
+      // Settings (Other)
+      { key: "settings", label: tr(language, "Cấu hình", "Settings"), icon: <Settings className="h-4 w-4" />, section: "other" },
+      { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <Folder className="h-4 w-4" />, section: "other" },
+    ];
+
+    // Vì Giảng viên hiển thị cố định không phân quyền leader nên ta return thẳng items luôn
+    return items;
+  }, [language]); 
 
   return (
-    <DashboardShell
-      sidebar={
-        <DashboardSidebar
-          title={t(language, "lecturer")}
-          subtitle={displayName}
-          items={sidebarItems}
-          activeKey={activeKey}
-          onSelect={handleSelect}
-        />
-      }
-      header={
-        <DashboardHeader
-          roleLabel={t(language, "lecturer")}
-          onExit={() => {
-            void (async () => {
-              await signOut();
-              navigate("/login", { replace: true });
-            })();
-          }}
-          leftSlot={<SidebarTrigger />}
-          showRoleSelect={false}
-        />
-      }
-    >
-      <div className="container mx-auto px-6 py-6 max-w-7xl space-y-6">
-        {dataLoading ? (
-          <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <div className="h-8 w-48 animate-pulse rounded-xl bg-slate-200"></div>
-                <div className="h-4 w-72 animate-pulse rounded-xl bg-slate-200"></div>
-              </div>
-              <div className="h-10 w-32 animate-pulse rounded-xl bg-slate-200"></div>
-            </div>
-            <div className="h-[400px] w-full animate-pulse rounded-3xl border border-slate-200 bg-slate-50/50"></div>
+    <div className="relative min-h-svh">
+      <div
+        className={`relative min-h-svh overflow-hidden transition-opacity duration-500 ease-out ${
+          isLoggingOut ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
+        <DashboardShell
+          sidebar={
+            <DashboardSidebar
+              title={t(language, "lecturer")}
+              subtitle={displayName}
+              items={processedSidebarItems}
+              activeKey={activeKey}
+              onSelect={handleSelect}
+            />
+          }
+          header={
+            <DashboardHeader
+              roleLabel={t(language, "lecturer")}
+              onExit={handleLogout}
+              onHomeClick={() => navigate("/")}
+              leftSlot={<SidebarTrigger />}
+              showRoleSelect={false}
+            />
+          }
+        >
+          <div className="container mx-auto max-w-7xl space-y-6 px-6 py-6 transition-opacity duration-300">
+            <Outlet />
           </div>
-        ) : (
-          <Outlet />
-        )}
+          <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        </DashboardShell>
       </div>
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
-    </DashboardShell>
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-0 z-50 bg-background/70 backdrop-blur-[2px] transition-opacity duration-500 ${
+          isLoggingOut ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
   );
 };
 

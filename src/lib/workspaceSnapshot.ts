@@ -45,6 +45,7 @@ type SerializedActivityLogEntry = {
 
 type SerializedStudentReport = {
   id: string;
+  groupId?: string;
   from: string;
   to: string;
   reason: string;
@@ -115,6 +116,7 @@ function serializeGroup(g: Group): SerializedGroup {
 function serializeReport(r: StudentReport): SerializedStudentReport {
   return {
     id: r.id,
+    groupId: r.groupId,
     from: r.from,
     to: r.to,
     reason: r.reason,

@@ -28,13 +28,14 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DashboardSkeleton } from "@/components/skeletons";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam, type LecturerStudentReview, type Task } from "@/context/TeamContext";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { tr, } from "@/lib/i18n";
 
 type RiskLevel = "normal" | "attention" | "high";
 
@@ -159,33 +160,6 @@ const EmptyBlock = ({
   </div>
 );
 
-const LoadingDashboard = () => (
-  <div className="space-y-6">
-    <Card className="rounded-3xl border-0 shadow-card">
-      <CardContent className="space-y-4 p-6">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-10 w-80" />
-        <Skeleton className="h-20 w-full rounded-2xl" />
-      </CardContent>
-    </Card>
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <Card key={index} className="rounded-3xl border-0 shadow-card">
-          <CardContent className="space-y-3 p-5">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-3 w-36" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <Skeleton className="h-[360px] rounded-3xl" />
-      <Skeleton className="h-[360px] rounded-3xl" />
-    </div>
-  </div>
-);
-
 const StudentOverview = () => {
   const navigate = useNavigate();
   const contributionRef = useRef<HTMLDivElement | null>(null);
@@ -268,65 +242,65 @@ const StudentOverview = () => {
     let riskReason = "";
 
     if (total === 0) {
-      riskReason = "Chưa có task được giao trong giai đoạn hiện tại.";
+      riskReason = tr(language, "Chưa có task được giao trong giai đoạn hiện tại.", "No tasks assigned in the current phase.");
     } else if (overdue >= 2 || contributionScore < 40 || (feedbackAverage !== null && feedbackAverage <= 2.5)) {
       riskLevel = "high";
       if (overdue >= 2) {
-        riskReason = `Có ${overdue} task đang trễ hạn, cần cập nhật ngay.`;
+        riskReason = tr(language, `Có ${overdue} task đang trễ hạn, cần cập nhật ngay.`, `There are ${overdue} overdue tasks that need immediate attention.`);
       } else if (feedbackAverage !== null && feedbackAverage <= 2.5) {
-        riskReason = "Bạn đang nhận phản hồi thấp từ giảng viên hoặc trưởng nhóm.";
+        riskReason = tr(language, "Bạn đang nhận phản hồi thấp từ giảng viên hoặc trưởng nhóm.", "You are receiving low feedback from your instructor or team leader.");
       } else {
-        riskReason = "Tỷ lệ task được duyệt còn thấp so với khối lượng được giao.";
+        riskReason = tr(language, "Tỷ lệ task được duyệt còn thấp so với khối lượng được giao.", "The rate of approved tasks is still low compared to the assigned workload.");
       }
     } else if (overdue > 0 || contributionScore < 70 || (feedbackAverage !== null && feedbackAverage < 4)) {
       riskLevel = "attention";
       if (overdue > 0) {
-        riskReason = `Có ${overdue} task sắp hoặc đã quá hạn cần xử lý.`;
+        riskReason = tr(language, `Có ${overdue} task sắp hoặc đã quá hạn cần xử lý.`, `There are ${overdue} tasks that are due or overdue and need to be addressed.`);
       } else if (feedbackAverage !== null && feedbackAverage < 4) {
-        riskReason = "Có phản hồi cần cải thiện trong đợt đánh giá gần đây.";
+        riskReason = tr(language, "Có phản hồi cần cải thiện trong đợt đánh giá gần đây.", "There is feedback that needs improvement in the recent evaluation period.");
       } else {
-        riskReason = "Tiến độ hoàn thành và minh chứng cần được bổ sung thêm.";
+        riskReason = tr(language, "Tiến độ hoàn thành và minh chứng cần được bổ sung thêm.", "Completion progress and evidence need to be supplemented.");
       }
     }
 
     const cards: SummaryCard[] = [
       {
-        label: "Tổng task được giao",
+        label: tr(language, "Tổng task được giao", "Total Assigned Tasks"),
         value: String(total),
-        hint: total === 0 ? "Chưa có task" : "Task thuộc phạm vi của bạn",
+        hint: total === 0 ? tr(language, "Chưa có task", "No tasks") : tr(language, "Task thuộc phạm vi của bạn", "Tasks within your scope"),
         icon: FolderOpen,
       },
       {
-        label: "Task đang làm",
+        label: tr(language, "Task đang làm", "Tasks In Progress"),
         value: String(inProgress),
-        hint: "Đang cập nhật tiến độ",
+        hint: tr(language, "Đang cập nhật tiến độ", "Updating progress"),
         icon: Clock3,
       },
       {
-        label: "Task chờ duyệt",
+        label: tr(language, "Task chờ duyệt", "Tasks Waiting for Review"),
         value: String(waitingReview),
-        hint: "Đã nộp, chờ trưởng nhóm duyệt",
+        hint: tr(language, "Đã nộp, chờ trưởng nhóm duyệt", "Submitted, waiting for team leader approval"),
         icon: CalendarClock,
         tone: "warning",
       },
       {
-        label: "Task đã được duyệt",
+        label: tr(language, "Task đã được duyệt", "Approved Tasks"),
         value: String(approved),
-        hint: "Đã được ghi nhận đóng góp",
+        hint: tr(language, "Đã được ghi nhận đóng góp", "Contribution recognized"),
         icon: BadgeCheck,
         tone: "success",
       },
       {
-        label: "Task trễ hạn",
+        label: tr(language, "Task trễ hạn", "Overdue Tasks"),
         value: String(overdue),
-        hint: overdue > 0 ? "Cần xử lý ưu tiên" : "Không có task trễ hạn",
+        hint: overdue > 0 ? tr(language, "Cần xử lý ưu tiên", "Need priority handling") : tr(language, "Không có task trễ hạn", "No overdue tasks"),
         icon: TimerOff,
         tone: overdue > 0 ? "destructive" : "default",
       },
       {
-        label: "Contribution Score tham khảo",
+        label: tr(language, "Contribution Score tham khảo", "Reference Contribution Score"),
         value: `${contributionScore}/100`,
-        hint: "Chỉ dùng để tham khảo nội bộ",
+        hint: tr(language, "Chỉ dùng để tham khảo nội bộ", "For internal reference only"),
         icon: Sparkles,
         tone: riskLevel === "high" ? "destructive" : riskLevel === "attention" ? "warning" : "default",
       },
@@ -344,7 +318,7 @@ const StudentOverview = () => {
       cards,
       completionPercent: total === 0 ? 0 : Math.round((approved / total) * 100),
     };
-  }, [feedbackEntries, myTasks]);
+  }, [feedbackEntries, myTasks, language]);
 
   const canWriteWorkLog = Boolean(group);
 
@@ -355,7 +329,7 @@ const StudentOverview = () => {
   const handleSubmitWorkLog = () => {
     const trimmed = workLogText.trim();
     if (trimmed.length < 10) {
-      setWorkLogError("Vui lòng nhập nội dung work log tối thiểu 10 ký tự.");
+      setWorkLogError(tr(language, "Vui lòng nhập nội dung work log tối thiểu 10 ký tự.", "Please enter at least 10 characters for the work log content."));
       return;
     }
     addLog(`Work log: ${trimmed}`);
@@ -381,20 +355,20 @@ const StudentOverview = () => {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-          {dataLoading ? <LoadingDashboard /> : null}
+          {dataLoading ? <DashboardSkeleton /> : null}
 
           {!dataLoading && connectionError ? (
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="p-6">
                 <Alert className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Không thể tải dữ liệu dashboard</AlertTitle>
+                  <AlertTitle>{tr(language, "Không thể tải dữ liệu dashboard", "Unable to load dashboard data")}</AlertTitle>
                   <AlertDescription className="mt-2 flex flex-col gap-4 text-amber-900/80">
-                    <p>Đã có lỗi khi đồng bộ dữ liệu cá nhân của bạn. Vui lòng thử tải lại.</p>
+                    <p>{tr(language, "Đã có lỗi khi đồng bộ dữ liệu cá nhân của bạn. Vui lòng thử tải lại.", "There was an error while syncing your personal data. Please try reloading.")}</p>
                     <div>
                       <Button variant="outline" className="border-amber-300 bg-white" onClick={() => void loadPersistedState()}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
-                        Tải lại dữ liệu
+                        {tr(language, "Tải lại dữ liệu", "Reload Data")}
                       </Button>
                     </div>
                   </AlertDescription>
@@ -407,13 +381,13 @@ const StudentOverview = () => {
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="p-6">
                 <EmptyBlock
-                  title="Bạn chưa được phân vào nhóm nào."
-                  description="Hãy vào mục dự án để tham gia nhóm hoặc chờ trưởng nhóm thêm bạn vào workspace."
+                  title={tr(language, "Bạn chưa được phân vào nhóm nào.", "You are not assigned to any group.")}
+                  description={tr(language, "Hãy vào mục dự án để tham gia nhóm hoặc chờ trưởng nhóm thêm bạn vào workspace.", "Please go to the projects section to join a group or wait for your group leader to add you to the workspace.")}
                   icon={FolderOpen}
                 />
                 <div className="mt-4 flex justify-center">
                   <Button onClick={() => navigate("/projects")}>
-                    Đi tới quản lý dự án
+                    {tr(language, "Đi tới quản lý dự án", "Go to Project Management")}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -423,46 +397,52 @@ const StudentOverview = () => {
 
           {!dataLoading && !connectionError && group ? (
             <>
-              <Card className="overflow-hidden rounded-[28px] border-0 shadow-card">
-                <CardContent className="p-0">
-                  <div className="border-b border-border/70 bg-card/80 px-6 py-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
-                            Sinh viên
-                          </Badge>
-                          <Badge variant="outline" className="border-border/80 bg-background/80 text-muted-foreground">
-                            {group.name}
-                          </Badge>
-                        </div>
+              <Card className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+  <CardContent className="p-0">
+    <div className="bg-slate-50/80 px-6 py-6 border-b border-slate-200">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-4">
+          {/* Khu vực Badge */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="border-0 bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs tracking-wide">
+  {tr(language, "Thành viên", "User")}
+</Badge>
+            <Badge variant="outline" className="border-slate-200 bg-slate-50/70 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg text-[11px]">
+              {group.name}
+            </Badge>
+          </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Chào mừng quay lại</p>
-                          <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">{currentUserName}</h1>
-                        </div>
-                        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                          Theo dõi task được giao, deadline sắp tới, điểm đóng góp tham khảo và phản hồi gần đây trong một màn hình đơn giản, dễ theo dõi.
-                        </p>
+            <p className="text-xs font-black text-amber-600 uppercase tracking-widest">
+  {tr(language, "Chào mừng quay lại", "Welcome back")}
+</p>
+            <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-slate-800 md:text-5xl flex items-center gap-2.5">
+  {currentUserName}
+  <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active" />
+</h1>
+          </div>
+                        {/* <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                          "{tr(language, "Theo dõi task được giao, deadline sắp tới, điểm đóng góp tham khảo và phản hồi gần đây trong một màn hình đơn giản, dễ theo dõi.", "Track assigned tasks, upcoming deadlines, reference contribution points, and recent feedback in a simple, easy-to-follow screen.")}"
+                        </p> */}
                       </div>
 
-                      <div className="grid min-w-[280px] gap-3 rounded-[24px] border border-border/70 bg-background/80 p-4 sm:grid-cols-2">
+                      {/* <div className="grid min-w-[280px] gap-3 rounded-[24px] border border-border/70 bg-background/80 p-4 sm:grid-cols-2">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Nhóm / dự án</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Nhóm / dự án", "Group / Project")}</p>
                           <p className="mt-1 text-sm font-medium">{group.name}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Task đang theo dõi</p>
-                          <p className="mt-1 text-sm font-medium">{summary.total} task cá nhân</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Task đang theo dõi", "Tasks Being Tracked")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language,`${summary.total} task cá nhân`, `${summary.total} personal tasks`)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Mức rủi ro hiện tại</p>
-                          <p className="mt-1 text-sm font-medium">{riskMeta[summary.riskLevel].label}</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Mức rủi ro hiện tại", "Current Risk Level")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language, `${riskMeta[summary.riskLevel].label}`, `${riskMeta[summary.riskLevel].label}`)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Lưu ý</p>
-                          <p className="mt-1 text-sm font-medium">Chỉ hiển thị dữ liệu của bạn</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Lưu ý", "Note")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language, "Chỉ hiển thị dữ liệu của bạn", "Only displaying your data")}</p>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </CardContent>
@@ -493,14 +473,14 @@ const StudentOverview = () => {
               <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Deadline sắp tới</CardTitle>
-                    <CardDescription>Hiển thị 5 task gần hạn nhất trong phạm vi bạn được phép xem.</CardDescription>
+                    <CardTitle className="text-xl">{tr(language, "Deadline sắp tới", "Upcoming Deadlines")}</CardTitle>
+                    <CardDescription>{tr(language, "Hiển thị 5 task gần hạn nhất trong phạm vi bạn được phép xem.", "Display the 5 nearest upcoming tasks within your viewing permissions.")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {upcomingDeadlines.length === 0 ? (
                       <EmptyBlock
-                        title="Chưa có deadline nào cần theo dõi."
-                        description="Khi có task được giao cho bạn, thời hạn gần nhất sẽ xuất hiện tại đây."
+                        title={tr(language, "Chưa có deadline nào cần theo dõi.", "No upcoming deadlines to track.")}
+                        description={tr(language, "Khi có task được giao cho bạn, thời hạn gần nhất sẽ xuất hiện tại đây.", "When tasks are assigned to you, the nearest deadlines will appear here.")}
                         icon={CalendarClock}
                       />
                     ) : (
@@ -523,14 +503,14 @@ const StudentOverview = () => {
                                     <p className="text-sm font-semibold md:text-base">{task.name}</p>
                                     {overdue ? (
                                       <Badge className="border border-rose-200 bg-rose-100 text-rose-700 hover:bg-rose-100">
-                                        Quá hạn
+                                        {tr(language, "Quá hạn", "Overdue")}
                                       </Badge>
                                     ) : null}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                    <span>Hạn nộp: {formatDate(task.deadline)}</span>
+                                    <span>{tr(language, "Hạn nộp:", "Deadline:")} {formatDate(task.deadline)}</span>
                                     <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:inline-block" />
-                                    <span>{task.description?.trim() ? task.description : "Chưa có mô tả chi tiết."}</span>
+                                    <span>{task.description?.trim() ? task.description : tr(language, "Chưa có mô tả chi tiết.", "No detailed description.")}</span>
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -549,21 +529,21 @@ const StudentOverview = () => {
                 <div className="space-y-6">
                   <Card className="rounded-3xl border-0 shadow-card">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Tiến độ task của tôi</CardTitle>
-                      <CardDescription>Tiến độ tính theo số task đã được duyệt trên tổng task được giao.</CardDescription>
+                      <CardTitle className="text-xl">{tr(language, "Tiến độ task của tôi", "My Task Progress")}</CardTitle>
+                      <CardDescription>{tr(language, "Tiến độ tính theo số task đã được duyệt trên tổng task được giao.", "Progress is calculated based on the number of approved tasks out of the total assigned tasks.")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {summary.total === 0 ? (
                         <EmptyBlock
-                          title="Chưa có task để tính tiến độ."
-                          description="Tiến độ sẽ hiển thị khi bạn được phân công task trong nhóm."
+                          title={tr(language, "Chưa có task để tính tiến độ.", "No tasks available to calculate progress.")}
+                          description={tr(language, "Tiến độ sẽ hiển thị khi bạn được phân công task trong nhóm.", "Progress will be displayed when you are assigned tasks in the group.")}
                           icon={Clock3}
                         />
                       ) : (
                         <>
                           <div className="flex items-end justify-between gap-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Task đã duyệt / tổng task</p>
+                              <p className="text-sm text-muted-foreground">{tr(language, "Task đã duyệt / tổng task", "Approved Tasks / Total Tasks")}</p>
                               <p className="mt-1 text-3xl font-semibold">
                                 {summary.approved}/{summary.total}
                               </p>
@@ -574,7 +554,7 @@ const StudentOverview = () => {
                           </div>
                           <Progress value={summary.completionPercent} className="h-3 bg-muted" />
                           <p className="text-sm leading-6 text-muted-foreground">
-                            Task đã duyệt phản ánh phần công việc đã được trưởng nhóm ghi nhận. Bạn không thể tự duyệt task của mình.
+                            {tr(language, "Task đã duyệt phản ánh phần công việc đã được trưởng nhóm ghi nhận. Bạn không thể tự duyệt task của mình.", "Approved tasks reflect the work recognized by the team leader. You cannot approve your own tasks.")}
                           </p>
                         </>
                       )}
@@ -583,13 +563,13 @@ const StudentOverview = () => {
 
                   <Card ref={contributionRef} className="rounded-3xl border-0 shadow-card">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Điểm đóng góp tham khảo</CardTitle>
-                      <CardDescription>Chỉ hiển thị dữ liệu cá nhân của bạn, không hiển thị chi tiết riêng tư của thành viên khác.</CardDescription>
+                      <CardTitle className="text-xl">{tr(language, "Điểm đóng góp tham khảo", "Reference Contribution Score")}</CardTitle>
+                      <CardDescription>{tr(language, "Chỉ hiển thị dữ liệu cá nhân của bạn, không hiển thị chi tiết riêng tư của thành viên khác.", "Only displays your personal data, not the private details of other members.")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">Contribution Score</p>
+                          <p className="text-sm text-muted-foreground">{tr(language, "Điểm đóng góp", "Contribution Score")}</p>
                           <p className="mt-1 text-4xl font-semibold tracking-tight">{summary.contributionScore}</p>
                         </div>
                         <Badge className={cn("border", riskMeta[summary.riskLevel].className)}>
@@ -601,15 +581,15 @@ const StudentOverview = () => {
                         <div className="flex items-start gap-3">
                           <ShieldAlert className="mt-0.5 h-4 w-4 text-muted-foreground" />
                           <div className="space-y-2 text-sm">
-                            <p className="font-medium">Nhận định hiện tại</p>
-                            <p className="leading-6 text-muted-foreground">{summary.riskReason || "Dữ liệu đóng góp của bạn đang ở mức ổn định."}</p>
+                            <p className="font-medium">{tr(language, "Nhận định hiện tại", "Current Assessment")}</p>
+                            <p className="leading-6 text-muted-foreground">{summary.riskReason || tr(language, "Dữ liệu đóng góp của bạn đang ở mức ổn định.", "Your contribution data is currently at a stable level.")}</p>
                           </div>
                         </div>
                       </div>
 
                       <div className="rounded-2xl bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">
-                        <p>Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.</p>
-                        <p className="mt-2">Cờ rủi ro chỉ là cảnh báo để giảng viên xem xét, không phải hình thức kỷ luật tự động.</p>
+                        <p>{tr(language, "Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.", "The contribution score is for reference only. The final decision belongs to the instructor.")}</p>
+                        <p className="mt-2">{tr(language, "Cờ rủi ro chỉ là cảnh báo để giảng viên xem xét, không phải hình thức kỷ luật tự động.", "The risk flag is only a warning for instructors to consider, not an automatic disciplinary measure.")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -619,14 +599,14 @@ const StudentOverview = () => {
               <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Phản hồi gần đây</CardTitle>
-                    <CardDescription>Phản hồi mới nhất từ giảng viên hoặc người phụ trách đánh giá dành riêng cho bạn.</CardDescription>
+                    <CardTitle className="text-xl">{tr(language, "Phản hồi gần đây", "Recent Feedback")}</CardTitle>
+                    <CardDescription>{tr(language, "Phản hồi mới nhất từ giảng viên hoặc người phụ trách đánh giá dành riêng cho bạn.", "The latest feedback from your instructor or course coordinator, tailored specifically for you.")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {feedbackEntries.length === 0 ? (
                       <EmptyBlock
-                        title="Chưa có phản hồi nào."
-                        description="Khi có nhận xét mới từ trưởng nhóm hoặc giảng viên, bạn sẽ thấy tại đây."
+                        title={tr(language, "Chưa có phản hồi nào.", "No feedback available.")}
+                        description={tr(language, "Khi có nhận xét mới từ trưởng nhóm hoặc giảng viên, bạn sẽ thấy tại đây.", "When new comments are available from your team leader or instructor, you will see them here.")}
                         icon={MessageSquareQuote}
                       />
                     ) : (
@@ -636,7 +616,7 @@ const StudentOverview = () => {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <Badge className="border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100">
-                                  Giảng viên
+                                  {tr(language, "Giảng viên", "Instructor")}
                                 </Badge>
                                 <span className="text-sm text-muted-foreground">{formatDate(feedback.timestamp.toISOString())}</span>
                               </div>
@@ -656,8 +636,8 @@ const StudentOverview = () => {
 
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Thao tác nhanh</CardTitle>
-                    <CardDescription>Đi tới đúng khu vực bạn cần mà không phải mở nhiều tab.</CardDescription>
+                    <CardTitle className="text-xl">{tr(language, "Thao tác nhanh", "Quick Actions")}</CardTitle>
+                    <CardDescription>{tr(language, "Đi tới đúng khu vực bạn cần mà không phải mở nhiều tab.", "Navigate to the exact area you need without opening multiple tabs.")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -666,8 +646,8 @@ const StudentOverview = () => {
                           <FolderOpen className="h-4 w-4" />
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">Xem task của tôi</div>
-                          <div className="text-xs text-primary-foreground/80">Theo dõi tiến độ và deadline</div>
+                          <div className="font-medium">{tr(language, "Xem task của tôi", "View My Tasks")}</div>
+                          <div className="text-xs text-primary-foreground/80">{tr(language, "Theo dõi tiến độ và deadline", "Track progress and deadlines")}</div>
                         </div>
                       </Button>
 
@@ -681,8 +661,8 @@ const StudentOverview = () => {
                           <FileUp className="h-4 w-4" />
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">Nộp bằng chứng</div>
-                          <div className="text-xs text-muted-foreground">Chỉ áp dụng cho task được giao cho bạn</div>
+                          <div className="font-medium">{tr(language, "Nộp bằng chứng", "Submit Evidence")}</div>
+                          <div className="text-xs text-muted-foreground">{tr(language, "Chỉ áp dụng cho task được giao cho bạn", "Only applicable for tasks assigned to you")}</div>
                         </div>
                       </Button>
 
@@ -696,8 +676,8 @@ const StudentOverview = () => {
                           <ClipboardPenLine className="h-4 w-4" />
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">Viết work log</div>
-                          <div className="text-xs text-muted-foreground">Lưu nhanh một ghi chú công việc quan trọng</div>
+                          <div className="font-medium">{tr(language, "Viết work log", "Write Work Log")}</div>
+                          <div className="text-xs text-muted-foreground">{tr(language, "Lưu nhanh một ghi chú công việc quan trọng", "Quickly save important work notes")}</div>
                         </div>
                       </Button>
 
@@ -706,8 +686,8 @@ const StudentOverview = () => {
                           <MessageSquareQuote className="h-4 w-4" />
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">Đánh giá thành viên</div>
-                          <div className="text-xs text-muted-foreground">Mỗi đợt đánh giá chỉ được gửi một lần</div>
+                          <div className="font-medium">{tr(language, "Đánh giá thành viên", "Peer Review")}</div>
+                          <div className="text-xs text-muted-foreground">{tr(language, "Mỗi đợt đánh giá chỉ được gửi một lần", "Each review period can only be submitted once")}</div>
                         </div>
                       </Button>
 
@@ -720,9 +700,9 @@ const StudentOverview = () => {
                           <Sparkles className="h-4 w-4" />
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">Xem điểm đóng góp</div>
+                          <div className="font-medium">{tr(language, "Xem điểm đóng góp", "View My Contributions")}</div>
                           <div className="text-xs text-muted-foreground">
-                            Mở nhanh khu vực điểm tham khảo và cảnh báo rủi ro của riêng bạn
+                            {tr(language, "Mở nhanh khu vực điểm tham khảo và cảnh báo rủi ro của riêng bạn", "Quickly access your reference points and risk warnings")}
                           </div>
                         </div>
                       </Button>
@@ -743,13 +723,13 @@ const StudentOverview = () => {
       }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Viết work log</DialogTitle>
+            <DialogTitle>{tr(language, "Viết work log", "Write Work Log")}</DialogTitle>
             <DialogDescription>
-              Ghi lại phần việc bạn vừa làm để hỗ trợ theo dõi đóng góp và tạo nhật ký hoạt động minh bạch.
+              {tr(language, "Ghi lại phần việc bạn vừa làm để hỗ trợ theo dõi đóng góp và tạo nhật ký hoạt động minh bạch.", "Record the work you've just completed to support tracking contributions and creating transparent activity logs.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="student-work-log">Nội dung work log</Label>
+            <Label htmlFor="student-work-log">{tr(language, "Nội dung work log", "Work Log Content")}</Label>
             <Textarea
               id="student-work-log"
               value={workLogText}
@@ -757,19 +737,19 @@ const StudentOverview = () => {
                 setWorkLogText(event.target.value);
                 if (workLogError) setWorkLogError("");
               }}
-              placeholder="Ví dụ: Hôm nay tôi hoàn thành phần wireframe màn hình dashboard và cập nhật minh chứng trong task UI-12."
+              placeholder={tr(language, "Ví dụ: Hôm nay tôi hoàn thành phần wireframe màn hình dashboard và cập nhật minh chứng trong task UI-12.", "Example: Today I completed the dashboard screen wireframe and updated the evidence in task UI-12.")}
               className="min-h-[160px]"
             />
             {workLogError ? <p className="text-sm text-destructive">{workLogError}</p> : null}
             <p className="text-xs text-muted-foreground">
-              Work log này sẽ được ghi vào lịch sử hoạt động để phục vụ đối chiếu đóng góp khi cần.
+              {tr(language, "Work log này sẽ được ghi vào lịch sử hoạt động để phục vụ đối chiếu đóng góp khi cần.", "This work log will be recorded in the activity history to support contribution review when needed.")}
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWorkLogOpen(false)}>
-              Hủy
+              {tr(language, "Hủy", "Cancel")}
             </Button>
-            <Button onClick={handleSubmitWorkLog}>Lưu work log</Button>
+            <Button onClick={handleSubmitWorkLog}>{tr(language, "Lưu work log", "Save Work Log")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
