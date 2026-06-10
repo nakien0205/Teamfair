@@ -532,9 +532,9 @@ export async function duplicateRubric(params: {
     if (safeRubricError || !safeNewRubric) {
       logRubricSupabaseError("Failed to duplicate rubric", safeRubricError);
       if (isPermissionError(safeRubricError)) {
-        throw new Error("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o rubric cho dá»± Ã¡n nÃ y.");
+        throw new Error("Bạn không có quyền tạo rubric cho dự án này.");
       }
-      throw toRubricUserError("KhÃ´ng thá»ƒ nhÃ¢n báº£n rubric.", safeRubricError);
+      throw toRubricUserError("Không thể nhân bản rubric.", safeRubricError);
     }
 
     const { error: safeTemplateError } = await supabase.from("rubric_templates").insert({
@@ -546,7 +546,7 @@ export async function duplicateRubric(params: {
 
     if (safeTemplateError) {
       logRubricSupabaseError("Failed to duplicate rubric template", safeTemplateError);
-      throw new Error("KhÃ´ng thá»ƒ sao chÃ©p cáº¥u trÃºc rubric.");
+      throw new Error("Không thể sao chép cấu trúc rubric.");
     }
 
     await insertRubricAuditLog(userId, "duplicate_rubric", "rubrics", safeNewRubric.id, {
@@ -559,54 +559,6 @@ export async function duplicateRubric(params: {
 
     return safeNewRubric.id;
   }
-  const duplicatedName = rubric.name.includes("Bản sao") ? `${rubric.name} v2` : `${rubric.name} - Bản sao`;
-
-  const { data: newRubric, error: rubricError } = await supabase
-    .from("rubrics")
-    .insert({
-      project_id: targetProjectId,
-      course_id: rubric.course_id,
-      name: normalizedName,
-      description: rubric.description,
-      original_file_name: rubric.original_file_name,
-      file_type: rubric.file_type,
-      status: "active",
-      visibility: rubric.visibility || "project",
-      created_by: userId,
-      source_rubric_id: rubric.id,
-    })
-    .select("id")
-    .single();
-
-  if (rubricError || !newRubric) {
-    logRubricSupabaseError("Failed to duplicate rubric", rubricError);
-    if (isPermissionError(rubricError)) {
-      throw new Error("Bạn không có quyền tạo rubric cho dự án này.");
-    }
-    throw toRubricUserError("Không thể nhân bản rubric.", rubricError);
-  }
-
-  const { error: templateError } = await supabase.from("rubric_templates").insert({
-    rubric_id: newRubric.id,
-    table_json: template.table_json,
-    columns_json: template.columns_json,
-    settings_json: template.settings_json,
-  });
-
-  if (templateError) {
-    logRubricSupabaseError("Failed to duplicate rubric template", templateError);
-    throw new Error("Không thể sao chép cấu trúc rubric.");
-  }
-
-  await insertRubricAuditLog(userId, "duplicate_rubric", "rubrics", newRubric.id, {
-    source_rubric_id: rubricId,
-    target_rubric_id: newRubric.id,
-    target_project_id: targetProjectId,
-    source_name: rubric.name,
-    name: normalizedName,
-  });
-
-  return newRubric.id;
 }
 
 export async function updateRubricArchiveState(rubricId: string, archived: boolean, userId: string | null): Promise<void> {

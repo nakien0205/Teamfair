@@ -1,0 +1,20 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:8080",
+      "localStorage": [
+        {
+          "name": "sb-urrjiprpyqdedpvrzolt-auth-token",
+          "value": "{\"access_token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6IjYyMzFhNzNkLWRhY2UtNDk1Ny05ODhiLTAxZGJlMDgzZWE2ZiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3VycmppcHJweXFkZWRwdnJ6b2x0LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJjODhjMTJjYi0zMjIwLTQ2MGUtOGQ1Ni1iNTYxNWE2ZDEzMjQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzgxMDYxMDMzLCJpYXQiOjE3ODEwNTc0MzMsImVtYWlsIjoic3R1ZGVudDJfMTcxNzI1NzI0MEBleGFtcGxlLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJzdHVkZW50Ml8xNzE3MjU3MjQwQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZ1bGxfbmFtZSI6InN0dWRlbnQyXzE3MTcyNTcyNDAiLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImM4OGMxMmNiLTMyMjAtNDYwZS04ZDU2LWI1NjE1YTZkMTMyNCJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzgxMDU3NDMzfV0sInNlc3Npb25faWQiOiJiYTRlMzdjMy1hOWMyLTRjYTctODZjMy0zZWJmMmZkMTk1OTQiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.JDCXcDBq4osEARUhXCuOqXAWNxxL6obDdIAKwYSpxdrDR9eyKkuGBGlRBuOUG1jbcjdu4r3RJoSwqBcsr69Zaw\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1781061033,\"refresh_token\":\"2xwmgp7vjtl6\",\"user\":{\"id\":\"c88c12cb-3220-460e-8d56-b5615a6d1324\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"student2_1717257240@example.com\",\"email_confirmed_at\":\"2026-06-01T09:20:26.49866Z\",\"phone\":\"\",\"confirmed_at\":\"2026-06-01T09:20:26.49866Z\",\"last_sign_in_at\":\"2026-06-10T02:10:33.271222097Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email\":\"student2_1717257240@example.com\",\"email_verified\":true,\"full_name\":\"student2_1717257240\",\"phone_verified\":false,\"sub\":\"c88c12cb-3220-460e-8d56-b5615a6d1324\"},\"identities\":[{\"identity_id\":\"fee2232f-5342-4232-9c94-24ecf8042c87\",\"id\":\"c88c12cb-3220-460e-8d56-b5615a6d1324\",\"user_id\":\"c88c12cb-3220-460e-8d56-b5615a6d1324\",\"identity_data\":{\"email\":\"student2_1717257240@example.com\",\"email_verified\":false,\"full_name\":\"student2_1717257240\",\"phone_verified\":false,\"sub\":\"c88c12cb-3220-460e-8d56-b5615a6d1324\"},\"provider\":\"email\",\"last_sign_in_at\":\"2026-06-01T09:20:26.494303Z\",\"created_at\":\"2026-06-01T09:20:26.494832Z\",\"updated_at\":\"2026-06-01T09:20:26.494832Z\",\"email\":\"student2_1717257240@example.com\"}],\"created_at\":\"2026-06-01T09:20:26.443408Z\",\"updated_at\":\"2026-06-10T02:10:33.318535Z\",\"is_anonymous\":false},\"weak_password\":null}"
+        }
+      ],
+      "sessionStorage": [
+        {
+          "name": "sentryReplaySession",
+          "value": "{\"id\":\"a7d8c0b5bd19442eb520087442d5c530\",\"started\":1781057429116,\"lastActivity\":1781057433745,\"segmentId\":0,\"sampled\":\"buffer\",\"dirty\":false}"
+        }
+      ]
+    }
+  ]
+}

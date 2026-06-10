@@ -193,3 +193,17 @@ export async function uploadTaskEvidenceFiles(params: {
 
   return uploads;
 }
+
+export async function createTaskEvidenceSignedUrl(storagePath: string, expiresInSeconds = 600): Promise<string> {
+  if (!isSupabaseConfigured) return "";
+
+  const { data, error } = await supabase.storage
+    .from(TASK_EVIDENCE_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data.signedUrl;
+}

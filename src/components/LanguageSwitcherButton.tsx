@@ -7,7 +7,7 @@ const LanguageSwitcherButton = ({ className }: { className?: string }) => {
   const label = language === "vi" ? "EN" : "VI";
 
   return (
-    <Button variant="outline" size="sm" className={className} onClick={toggleLanguage}>
+    <Button variant="outline" size="sm" className={`bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900 ${className || ''}`} onClick={toggleLanguage}>
       {label}
     </Button>
   );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTaskInsert,
+  buildTaskUpdate,
   mapTeamRowsToSnapshot,
   taskStatusFromDb,
   taskStatusToDb,
@@ -45,6 +46,39 @@ describe("teamPersistence", () => {
     });
   });
 
+  it("serializes task evidence storage metadata in task updates", () => {
+    const uploadedAt = new Date("2026-05-01T00:00:00.000Z");
+
+    expect(
+      buildTaskUpdate(
+        {
+          evidence: [
+            {
+              fileName: "demo.pdf",
+              uploadTime: uploadedAt,
+              storagePath: "group-1/student-1/1_demo.pdf",
+              storageBucket: "evidence",
+              size: 2048,
+              uploadedById: "student-1",
+            },
+          ],
+        },
+        [],
+      ),
+    ).toEqual({
+      evidence: [
+        {
+          fileName: "demo.pdf",
+          uploadTime: "2026-05-01T00:00:00.000Z",
+          storagePath: "group-1/student-1/1_demo.pdf",
+          storageBucket: "evidence",
+          size: 2048,
+          uploadedById: "student-1",
+        },
+      ],
+    });
+  });
+
   it("maps persisted rows into the TeamContext snapshot shape", () => {
     const snapshot = mapTeamRowsToSnapshot({
       groups: [{ id: "group-1", project_name: "Capstone" }],
@@ -73,7 +107,17 @@ describe("teamPersistence", () => {
           approved: true,
           deadline: "2026-06-10",
           priority: "Medium",
-          evidence: [{ fileName: "demo.pdf", uploadTime: "2026-05-01T00:00:00.000Z" }],
+          evidence: [
+            {
+              fileName: "demo.pdf",
+              uploadTime: "2026-05-01T00:00:00.000Z",
+              storagePath: "group-1/student-1/1_demo.pdf",
+              storageBucket: "evidence",
+              size: 2048,
+              uploadedById: "student-1",
+            },
+            { fileName: "legacy.txt", uploadTime: "2026-05-01T01:00:00.000Z" },
+          ],
         },
         {
           id: "task-2",
@@ -114,10 +158,21 @@ describe("teamPersistence", () => {
         {
           id: "material-1",
           group_id: "group-1",
+          uploader_id: "student-1",
           file_name: "Rubric.pdf",
           file_size: 1024,
           uploaded_by_name: "Lecturer",
+          storage_path: "group-1/student-1/1_Rubric.pdf",
+          storage_bucket: "materials",
           created_at: "2026-05-04T00:00:00.000Z",
+        },
+        {
+          id: "material-legacy",
+          group_id: "group-1",
+          file_name: "Legacy.txt",
+          file_size: 512,
+          uploaded_by_name: "Ada Lovelace",
+          created_at: "2026-05-04T01:00:00.000Z",
         },
       ],
       lecturerStudentReviews: [
@@ -164,9 +219,28 @@ describe("teamPersistence", () => {
         globalRole: "student",
       },
     ]);
+    expect(snapshot.groups[0].tasks[0].evidence?.[0]).toMatchObject({
+      fileName: "demo.pdf",
+      storagePath: "group-1/student-1/1_demo.pdf",
+      storageBucket: "evidence",
+      size: 2048,
+      uploadedById: "student-1",
+    });
     expect(snapshot.groups[0].tasks[0].evidence?.[0].uploadTime).toBeInstanceOf(Date);
+    expect(snapshot.groups[0].tasks[0].evidence?.[1]).toMatchObject({ fileName: "legacy.txt" });
     expect(snapshot.reports[0].timestamp).toBeInstanceOf(Date);
-    expect(snapshot.materialsByGroupId["group-1"][0].fileName).toBe("Rubric.pdf");
+    expect(snapshot.materialsByGroupId["group-1"][0]).toMatchObject({
+      fileName: "Rubric.pdf",
+      storagePath: "group-1/student-1/1_Rubric.pdf",
+      storageBucket: "materials",
+      uploadedById: "student-1",
+    });
+    expect(snapshot.materialsByGroupId["group-1"][1]).toMatchObject({
+      fileName: "Legacy.txt",
+      storagePath: undefined,
+      storageBucket: undefined,
+      uploadedById: undefined,
+    });
     expect(snapshot.lecturerStudentReviews[0].lecturer).toBe("lecturer");
     expect(snapshot.studentBadges[0].awardedAt).toBeInstanceOf(Date);
   });

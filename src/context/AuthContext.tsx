@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { identifyUser, resetAnalytics } from "@/lib/analytics";
 
 export type AppUserRole = "student" | "lecturer" | "admin";
 
@@ -53,7 +54,7 @@ function getFallbackProfile(userObject: User): AppUserProfile {
   return {
     id: userObject.id,
     email,
-    role: (userObject.user_metadata?.app_role || "student") as AppUserRole,
+    role: "student",
     full_name: fallbackName,
     profile_completed: false,
     last_name_change_at: null,
@@ -328,7 +329,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
+  useEffect(() => {
+    if (!user?.id || !profile) return;
+
+    identifyUser(user.id, {
+      email: profile.email,
+      role: profile.role,
+      name: profile.full_name,
+      profile_completed: profile.profile_completed,
+    });
+  }, [profile, user?.id]);
+
   const signOut = useCallback(async () => {
+    resetAnalytics();
     if (!isSupabaseConfigured) return;
 
     const signOutPromise = supabase.auth.signOut();
@@ -355,16 +368,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (newName: string) => {
       if (!isSupabaseConfigured || !user?.id) return;
 
-      const { error } = await supabase.from(PROFILE_TABLE_NAME).upsert({
-        id: user.id,
-        email: user.email || "",
-        role: profile?.role || ((user.user_metadata?.app_role || "student") as AppUserRole),
-        full_name: newName,
-        profile_completed: true,
-      });
+      const { error } = await supabase
+        .from(PROFILE_TABLE_NAME)
+        .update({ full_name: newName })
+        .eq("id", user.id);
 
       if (error) {
-        logProfileQueryError("Failed to upsert profile name", user.id, error);
+        logProfileQueryError("Failed to update profile name", user.id, error);
         throw error;
       }
 
@@ -372,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileCache.delete(user.id);
       await refreshProfile();
     },
-    [user, profile?.role, refreshProfile],
+    [user, refreshProfile],
   );
 
   const value = useMemo(

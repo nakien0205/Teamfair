@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
 import { t } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 import { MessageSquare, SendHorizontal } from "lucide-react";
 
 type ChatRole = "user" | "ai";
@@ -22,7 +23,7 @@ const getDeadlineTs = (deadline: string): number => {
 const normalize = (v: string): string => v.trim().toLowerCase();
 
 const AIChatWidget = () => {
-  const { tasks, members, materials } = useTeam();
+  const { groups, currentGroupIndex, tasks, members, materials } = useTeam();
   const { language } = useLanguage();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -215,6 +216,10 @@ const AIChatWidget = () => {
   const handleSend = () => {
     const text = input.trim();
     if (!text || loading) return;
+    trackEvent("ai_chat_sent", {
+      group_id: groups[currentGroupIndex]?.id,
+      source: "dashboard_widget",
+    });
     pushMessage("user", text);
     setInput("");
     setLoading(true);

@@ -2,7 +2,7 @@ See [index.md](index.md) for the docs routing map.
 
 ## Entry points and routing
 - [index.html](../../index.html) - root HTML, mounts `#root` and loads the main bundle.
-- [src/main.tsx](../../src/main.tsx) - React root with `createRoot`.
+- [src/main.tsx](../../src/main.tsx) - React root with `createRoot`; imports Sentry instrumentation and initializes production-only PostHog analytics before rendering.
 - [src/App.tsx](../../src/App.tsx) - app providers + routing.
 
 Provider nesting in [src/App.tsx](../../src/App.tsx) (outer to inner):

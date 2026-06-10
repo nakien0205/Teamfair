@@ -9,11 +9,9 @@ type Props = {
 };
 
 const ProtectedRoute = ({ children, allowedRoles }: Props) => {
-  const { session, user, profile, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   const location = useLocation();
-  const effectiveRole =
-    profile?.role ||
-    ((user?.user_metadata?.app_role || user?.user_metadata?.role || user?.app_metadata?.role) as AppUserRole | undefined);
+  const effectiveRole = profile?.role;
 
   if (!isSupabaseConfigured) {
     return <>{children}</>;

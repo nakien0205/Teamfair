@@ -7,10 +7,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, GripVertical, Upload, FileText, Clock, User } from 'lucide-react';
+import { Plus, GripVertical, Upload, FileText, Clock, User, Download } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/studentTaskProgress';
+import { useAuth } from '@/context/AuthContext';
+import {
+  createSignedFileUrl,
+  deleteStorageFile,
+  uploadTeamFile,
+  validateStorageFile,
+} from '@/lib/storage';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 const COLUMN_COLORS: Record<string, string> = {
@@ -31,7 +38,16 @@ interface Props {
 }
 
 const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
-  const { tasks, members, addTask, updateTaskStatus, updateTask } = useTeam();
+  const {
+    groups,
+    currentGroupIndex,
+    tasks,
+    members,
+    addTask,
+    updateTaskStatus,
+    appendTaskEvidence,
+  } = useTeam();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { language } = useLanguage();
   const [createOpen, setCreateOpen] = useState(false);
@@ -39,6 +55,9 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const evidenceRef = useRef<HTMLInputElement>(null);
   const [evidenceTaskId, setEvidenceTaskId] = useState<string | null>(null);
+  const [uploadingEvidenceTaskId, setUploadingEvidenceTaskId] = useState<string | null>(null);
+  const [downloadingEvidencePath, setDownloadingEvidencePath] = useState<string | null>(null);
+  const currentGroup = groups[currentGroupIndex];
 
   const getStatusLabel = (status: Task["status"]): string => {
     if (language === "vi") {
@@ -124,27 +143,31 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     }
   };
 
-  const handleEvidenceUpload = (taskId: string) => {
+  const handleEvidenceUpload = async (taskId: string) => {
     const file = evidenceRef.current?.files?.[0];
     if (!file) return;
-    // Limit file size to 50 MB
-    if (file.size > 50 * 1024 * 1024) {
+
+    if (!currentGroup?.id || !user?.id) {
       toast({
-        title: tr(language, 'Lỗi kích thước', 'Size Error'),
-        description: tr(language, 'Dung lượng file tối đa là 50MB', 'Max file size is 50MB'),
+        title: tr(language, 'Lỗi', 'Error'),
+        description: tr(language, 'Vui lòng đăng nhập và chọn dự án trước khi tải file', 'Please sign in and select a project before uploading'),
         variant: 'destructive',
       });
       if (evidenceRef.current) evidenceRef.current.value = '';
       setEvidenceTaskId(null);
       return;
     }
-    // Sanitize filename to prevent directory traversal and handle weird characters safely
-    let cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    if (cleanName.length > 100) {
-      const parts = cleanName.split('.');
-      const ext = parts.length > 1 ? parts.pop() : '';
-      const base = parts.join('.');
-      cleanName = base.substring(0, 95 - (ext ? ext.length + 1 : 0)) + (ext ? '.' + ext : '');
+
+    const validation = validateStorageFile("evidence", file);
+    if (!validation.valid) {
+      toast({
+        title: validation.reason === "size" ? tr(language, 'Lỗi kích thước', 'Size Error') : tr(language, 'Định dạng không hỗ trợ', 'Unsupported file type'),
+        description: validation.message,
+        variant: 'destructive',
+      });
+      if (evidenceRef.current) evidenceRef.current.value = '';
+      setEvidenceTaskId(null);
+      return;
     }
     const task = tasks.find(t => t.id === taskId);
     if (task) {
@@ -158,13 +181,61 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
         setEvidenceTaskId(null);
         return;
       }
-
-      const existing = task.evidence || [];
-      updateTask(taskId, { evidence: [...existing, { fileName: cleanName, uploadTime: new Date() }] });
-      toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${cleanName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
     }
-    if (evidenceRef.current) evidenceRef.current.value = '';
-    setEvidenceTaskId(null);
+
+    setUploadingEvidenceTaskId(taskId);
+    let uploadedPath: string | null = null;
+    try {
+      const uploaded = await uploadTeamFile("evidence", currentGroup.id, user.id, file);
+      uploadedPath = uploaded.path;
+      await appendTaskEvidence(taskId, {
+        fileName: uploaded.fileName,
+        uploadTime: new Date(),
+        storagePath: uploaded.path,
+        storageBucket: "evidence",
+        size: uploaded.size,
+        uploadedById: user.id,
+      });
+      toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${uploaded.fileName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
+    } catch (error) {
+      if (uploadedPath) {
+        void deleteStorageFile("evidence", uploadedPath);
+      }
+      toast({
+        title: tr(language, 'Upload thất bại', 'Upload failed'),
+        description: error instanceof Error ? error.message : String(error),
+        variant: 'destructive',
+      });
+    } finally {
+      if (evidenceRef.current) evidenceRef.current.value = '';
+      setEvidenceTaskId(null);
+      setUploadingEvidenceTaskId(null);
+    }
+  };
+
+  const handleEvidenceDownload = async (evidence: NonNullable<Task["evidence"]>[number]) => {
+    if (!evidence.storagePath) {
+      toast({
+        title: tr(language, 'Không có file', 'File unavailable'),
+        description: tr(language, 'Bằng chứng cũ này chỉ có metadata, không có file để tải xuống.', 'This legacy evidence only has metadata and no downloadable file.'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDownloadingEvidencePath(evidence.storagePath);
+    try {
+      const signedUrl = await createSignedFileUrl(evidence.storageBucket ?? "evidence", evidence.storagePath);
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast({
+        title: tr(language, 'Tải xuống thất bại', 'Download failed'),
+        description: error instanceof Error ? error.message : String(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingEvidencePath(null);
+    }
   };
 
   const visibleTasks = tasks;
@@ -242,7 +313,13 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
       </div>
 
       {/* Hidden evidence file input */}
-      <input type="file" ref={evidenceRef} className="hidden" onChange={() => evidenceTaskId && handleEvidenceUpload(evidenceTaskId)} />
+      <input
+        type="file"
+        ref={evidenceRef}
+        accept=".png,.jpg,.jpeg,.gif,.pdf,.txt"
+        className="hidden"
+        onChange={() => evidenceTaskId && void handleEvidenceUpload(evidenceTaskId)}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map(col => (
@@ -289,9 +366,22 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                     {t.evidence && t.evidence.length > 0 && (
                       <div className="space-y-1 mb-1">
                         {t.evidence.map(e => (
-                          <p key={`${e.fileName}-${e.uploadTime.getTime()}`} className="text-xs text-muted-foreground flex items-center gap-1">
-                            <FileText className="h-3 w-3" /> {e.fileName}
-                          </p>
+                          <Button
+                            key={`${e.fileName}-${e.uploadTime.getTime()}`}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto min-h-6 w-full justify-start px-1 py-0.5 text-xs text-muted-foreground"
+                            disabled={downloadingEvidencePath === e.storagePath}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleEvidenceDownload(e);
+                            }}
+                          >
+                            <FileText className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{e.fileName}</span>
+                            {e.storagePath && <Download className="ml-auto h-3 w-3 shrink-0" />}
+                          </Button>
                         ))}
                       </div>
                     )}
@@ -300,7 +390,9 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                         size="sm"
                         variant="ghost"
                         className="h-6 text-xs px-2"
-                        onClick={() => {
+                        disabled={uploadingEvidenceTaskId === t.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setEvidenceTaskId(t.id);
                           evidenceRef.current?.click();
                         }}

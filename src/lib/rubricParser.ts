@@ -80,10 +80,9 @@ export function parseCSVText(text: string): string[][] {
 
 export async function parseExcelFileAllSheets(file: File): Promise<{ sheetName: string; rawGrid: string[][] }[]> {
   const arrayBuffer = await file.arrayBuffer();
-  const xlsxUrl = "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs";
 
   try {
-    const XLSX = await import(/* @vite-ignore */ xlsxUrl);
+    const XLSX = await import("xlsx");
     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: "array" });
 
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {

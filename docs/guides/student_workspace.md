@@ -5,7 +5,7 @@ See [index.md](index.md) for the docs routing map.
 Primary entry: [src/layouts/StudentLayout.tsx](../../src/layouts/StudentLayout.tsx) wrapping all student routes (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx); see [state_and_data.md](state_and_data.md)). Student pages now render within this layout.
 
 - Task work and status flow
-  - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, evidence uploads.
+  - [src/components/KanbanBoard.tsx](src/components/KanbanBoard.tsx) - drag and drop Kanban, Supabase Storage-backed evidence uploads, and signed-url evidence downloads.
   - **Dynamic Identity & Role Mapping**: The dashboard dynamically maps the student's name and role based on their active session. `currentUserName` is bound to the logged-in profile's `full_name`. The active student's role (`Leader` vs `Member`) is fetched directly from their row in the `group_members` table in Supabase, and the student's name is dynamically displayed in the sidebar's top-left corner subtitle.
   - **Leader Workspace Settings & Danger Zone**: Student Leaders have access to a dedicated collapsible "Danger Zone" section in their [Workspace Settings](src/components/SettingsModal.tsx). The Danger Zone features two key controls:
     - **Share my Project**: A placeholder action (currently inactive) designed to handle future public project mapping and guest collaborations.
@@ -20,7 +20,7 @@ Primary entry: [src/layouts/StudentLayout.tsx](../../src/layouts/StudentLayout.t
     - **Lecturer Alerts**: Submitting a peer review report automatically triggers an alert to the `"lecturer"` inbox, ensuring immediate visibility into peer conflicts.
   - [src/components/feature-groups/StudentAgentSidebar.tsx](src/components/feature-groups/StudentAgentSidebar.tsx) - AI assistant sidebar (OpenRouter agent server); triggered from the dashboard header Sparkles/AI button (global, visible on all tabs). Chat history persists via Supabase `chat_messages` table (scoped per group). After agent calls, a diff panel shows added/removed/modified tasks with Apply/Discard buttons. An auto-apply toggle (localStorage `agentAutoApply`) skips the panel. While the agent works, the touched section (KanbanBoard or ProjectCalendar) is locked via a `locked` prop with an overlay badge. See [student_workspace_agent.md](student_workspace_agent.md) and [state_and_data.md](state_and_data.md).
 - Materials
-  - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload and list materials (student view).
+  - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload, list, download, and delete authorized materials using private Supabase Storage (student view).
     - **Upload Alerts**: Provides a "Notify team members" checkbox during uploads. If selected, it alerts all other team peers via mail notification about the new document.
 - Verified badges
   - [src/components/feature-groups/VerifiedBadgesSection.tsx](src/components/feature-groups/VerifiedBadgesSection.tsx) - show awarded badges.
