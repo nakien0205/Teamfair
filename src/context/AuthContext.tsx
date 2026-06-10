@@ -54,7 +54,7 @@ function getFallbackProfile(userObject: User): AppUserProfile {
   return {
     id: userObject.id,
     email,
-    role: (userObject.user_metadata?.app_role || "student") as AppUserRole,
+    role: "student",
     full_name: fallbackName,
     profile_completed: false,
     last_name_change_at: null,
@@ -368,16 +368,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (newName: string) => {
       if (!isSupabaseConfigured || !user?.id) return;
 
-      const { error } = await supabase.from(PROFILE_TABLE_NAME).upsert({
-        id: user.id,
-        email: user.email || "",
-        role: profile?.role || ((user.user_metadata?.app_role || "student") as AppUserRole),
-        full_name: newName,
-        profile_completed: true,
-      });
+      const { error } = await supabase
+        .from(PROFILE_TABLE_NAME)
+        .update({ full_name: newName })
+        .eq("id", user.id);
 
       if (error) {
-        logProfileQueryError("Failed to upsert profile name", user.id, error);
+        logProfileQueryError("Failed to update profile name", user.id, error);
         throw error;
       }
 
@@ -385,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileCache.delete(user.id);
       await refreshProfile();
     },
-    [user, profile?.role, refreshProfile],
+    [user, refreshProfile],
   );
 
   const value = useMemo(

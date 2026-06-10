@@ -29,7 +29,7 @@ const StudentLayout = () => {
   else if (pathname.includes("/student/feedback")) activeKey = "feedback";
   else if (pathname.includes("/student/appeals")) activeKey = "appeals";
   else if (pathname.includes("/student/documents")) activeKey = "materials";
-  else if (pathname.includes("/leader/tasks")) activeKey = "leader-tasks";
+  else if (pathname.includes("/student/workspace") || pathname.includes("/leader/tasks")) activeKey = "leader-tasks";
   else if (pathname.includes("/leader/submissions")) activeKey = "leader-submissions";
   else if (pathname.includes("/leader/member-evaluations")) activeKey = "leader-evaluations";
   else if (pathname.includes("/leader/progress-report")) activeKey = "leader-progress";
@@ -48,7 +48,7 @@ const StudentLayout = () => {
       case "appeals": navigate("/student/appeals"); break;
       case "materials": navigate("/student/documents"); break;
       case "switch-projects": navigate("/projects"); break;
-      case "leader-tasks": navigate("/leader/tasks"); break;
+      case "leader-tasks": navigate("/student/workspace"); break;
       case "leader-submissions": navigate("/leader/submissions"); break;
       case "leader-evaluations": navigate("/leader/member-evaluations"); break;
       case "leader-progress": navigate("/leader/progress-report"); break;

@@ -7,6 +7,7 @@ import { isTaskAssignedToStudent } from "@/lib/studentTaskProgress";
 import { createTaskSubmission, uploadTaskEvidenceFiles } from "@/lib/taskSubmissions";
 import { uploadWorkLogAttachment } from "@/lib/workLogs";
 import { createStudentAppeal, uploadAppealAttachment } from "@/lib/studentAppeals";
+import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 
 vi.mock("@/lib/supabaseClient", () => ({
   isSupabaseConfigured: false,
@@ -64,6 +65,56 @@ describe("student module integration guards", () => {
     expect(canAccessRubricProject("group-owned", groups, "lecturer-1", "lecturer")).toBe(true);
     expect(canAccessRubricProject("group-other", groups, "lecturer-1", "lecturer")).toBe(false);
     expect(canAccessRubricProject(null, groups, "admin-1", "admin")).toBe(false);
+  });
+
+  it("scopes project access to explicit memberships and lecturer assignments", () => {
+    const groups = [
+      makeGroup({ id: "owned", lecturer_id: "lecturer-1" }),
+      makeGroup({
+        id: "member",
+        lecturer_id: "lecturer-2",
+        members: [
+          {
+            id: "lecturer-1",
+            name: "Lecturer One",
+            role: "Member",
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+      }),
+      makeGroup({
+        id: "student-member",
+        lecturer_id: "lecturer-2",
+        members: [
+          {
+            id: "student-1",
+            name: "Student One",
+            role: "Member",
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+          },
+        ],
+      }),
+      makeGroup({ id: "unrelated", lecturer_id: "lecturer-3" }),
+    ];
+
+    expect(getAccessibleProjectGroups(groups, "admin-1", "admin").map((group) => group.id)).toEqual([
+      "owned",
+      "member",
+      "student-member",
+      "unrelated",
+    ]);
+    expect(getAccessibleProjectGroups(groups, "lecturer-1", "lecturer").map((group) => group.id)).toEqual([
+      "owned",
+      "member",
+    ]);
+    expect(getAccessibleProjectGroups(groups, "student-1", "student").map((group) => group.id)).toEqual([
+      "student-member",
+    ]);
+    expect(getAccessibleProjectGroups(groups, "lecturer-4", "lecturer")).toEqual([]);
   });
 
   it("classifies task workflow and review status without marking approved or invalid-date tasks overdue", () => {

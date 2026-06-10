@@ -34,7 +34,7 @@ Routes (summary):
 See [state_and_data.md](state_and_data.md) for `TeamContext`, `AuthContext`, Supabase client, and database RLS notes.
 
 ## Backend (Supabase)
-- [supabase/migrations](../../supabase/migrations/) - Postgres schema, triggers on `auth.users`, RLS policies, RPC `set_signup_role`.
+- [supabase/migrations](../../supabase/migrations/) - Postgres schema, triggers on `auth.users`, RLS policies, and guarded onboarding/invite RPCs such as `set_signup_role`, `complete_signup_profile`, and `consume_project_invite`.
 - [.env.example](../../.env.example) - `VITE_SUPABASE_*` and Google / Supabase URL configuration notes.
 
 ## Pages (top-level views)

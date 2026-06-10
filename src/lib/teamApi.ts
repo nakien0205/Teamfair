@@ -1,3 +1,4 @@
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import type { MemberStat, ProjectInvite } from "@/context/TeamContext";
 
@@ -54,6 +55,25 @@ export async function invokeTeamApi<T>(action: TeamApiAction, payload: Record<st
   });
 
   if (error) {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const response = (await error.context.json()) as TeamApiResponse<T>;
+        if (response && !response.ok) {
+          throw new TeamApiError(response.error.code, response.error.message);
+        }
+      } catch (parseError) {
+        if (parseError instanceof TeamApiError) throw parseError;
+      }
+    }
+
+    if (error instanceof FunctionsFetchError) {
+      throw new TeamApiError("invoke_failed", "Không thể kết nối đến API dự án. Vui lòng thử lại sau.");
+    }
+
+    if (error instanceof FunctionsRelayError) {
+      throw new TeamApiError("invoke_failed", "API dự án chưa sẵn sàng. Vui lòng thử lại sau.");
+    }
+
     throw new TeamApiError("invoke_failed", error.message);
   }
 

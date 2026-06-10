@@ -1,27 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTeam } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, Save } from 'lucide-react';
+import { Brain, Save, Plus, Trash2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { tr } from '@/lib/i18n';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { getAccessibleProjectEntries } from '@/lib/projectAccess';
 
 const LecturerDashboard = () => {
-  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, currentUserName } = useTeam();
+  const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, currentUserName, addTask, deleteTask, approveTask } = useTeam();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { language } = useLanguage();
 
   const [editedScores, setEditedScores] = useState<Record<string, number>>({});
   const [unsaved, setUnsaved] = useState<Set<string>>(new Set());
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    name: '',
+    description: '',
+    assignedTo: '',
+    deadline: '',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    contributionPercent: 10
+  });
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -30,8 +45,78 @@ const LecturerDashboard = () => {
     }
   }, [profile, authLoading, navigate]);
 
-  const group = groups[currentGroupIndex];
-  if (!group) return null;
+  const handleCreateTask = () => {
+    if (!newTask.name || !newTask.assignedTo) {
+      toast({
+        title: tr(language, 'Lỗi', 'Error'),
+        description: tr(language, 'Vui lòng điền tên task và người thực hiện', 'Please enter task name and assignee'),
+        variant: 'destructive'
+      });
+      return;
+    }
+    addTask(newTask);
+    setNewTask({
+      name: '',
+      description: '',
+      assignedTo: '',
+      deadline: '',
+      priority: 'Medium',
+      contributionPercent: 10
+    });
+    setModalOpen(false);
+    toast({
+      title: tr(language, 'Task đã tạo', 'Task created'),
+      description: tr(language, `"${newTask.name}" đã được tạo thành công`, `"${newTask.name}" created successfully`)
+    });
+  };
+
+  const handleDeleteTask = (taskId: string, name: string) => {
+    deleteTask(taskId);
+    toast({
+      title: tr(language, 'Đã xóa', 'Deleted'),
+      description: tr(language, `Task "${name}" đã bị xóa`, `Task "${name}" has been deleted`)
+    });
+  };
+
+  const handleApproveTask = (taskId: string, name: string) => {
+    approveTask(taskId);
+    toast({
+      title: tr(language, 'Đã duyệt', 'Approved'),
+      description: tr(language, `Task "${name}" đã được duyệt thành công`, `Task "${name}" approved successfully`)
+    });
+  };
+
+  const accessibleEntries = useMemo(
+    () => getAccessibleProjectEntries(groups, user?.id, profile?.role, !user?.id),
+    [groups, profile?.role, user?.id],
+  );
+  const activeEntry = accessibleEntries.find((entry) => entry.index === currentGroupIndex) ?? accessibleEntries[0];
+
+  useEffect(() => {
+    if (activeEntry && activeEntry.index !== currentGroupIndex) {
+      setCurrentGroupIndex(activeEntry.index);
+    }
+  }, [activeEntry, currentGroupIndex, setCurrentGroupIndex]);
+
+  const group = activeEntry?.group;
+  const groupIndex = activeEntry?.index ?? currentGroupIndex;
+
+  if (!group) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+        <h2 className="font-display text-lg font-semibold">
+          {tr(language, 'Chưa có dự án được phân công', 'No assigned projects')}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {tr(
+            language,
+            'Bạn chỉ có thể xem các dự án mà bạn được phân công hoặc là thành viên.',
+            'You can only view projects where you are assigned or listed as a member.',
+          )}
+        </p>
+      </div>
+    );
+  }
 
   const baseScore = 10;
 
@@ -43,7 +128,7 @@ const LecturerDashboard = () => {
 
   const saveScore = (name: string) => {
     const score = editedScores[name] ?? 0;
-    updateLecturerScore(name, score, currentGroupIndex);
+    updateLecturerScore(name, score, groupIndex);
     setUnsaved(p => { const s = new Set(p); s.delete(name); return s; });
     toast({ title: tr(language, 'Đã lưu điểm', 'Saved score'), description: tr(language, `${name}: ${score} điểm`, `${name}: ${score} points`) });
   };
@@ -84,22 +169,6 @@ const LecturerDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-3 flex-wrap">
-        {groups.map((g, i) => (
-          <button
-            key={g.id}
-            onClick={() => { setCurrentGroupIndex(i); setAiResult(null); setUnsaved(new Set()); setEditedScores({}); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
-              i === currentGroupIndex
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card text-foreground border-border hover:border-primary'
-            }`}
-          >
-            {g.name}
-          </button>
-        ))}
-      </div>
-
       <section className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
         <div className="p-6 border-b border-border">
           <h2 className="font-display text-lg font-semibold">{tr(language, 'Bảng thành viên', 'Members table')} — {group.name}</h2>
@@ -157,6 +226,129 @@ const LecturerDashboard = () => {
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Group Task Management Section */}
+      <section className="bg-card rounded-xl shadow-card border border-border overflow-hidden p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div>
+            <h2 className="font-display text-lg font-semibold">{tr(language, 'Quản lý task nhóm', 'Group tasks management')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{tr(language, 'Xem và quản lý tất cả nhiệm vụ của nhóm', 'View and manage all tasks for this group')}</p>
+          </div>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4 mr-1" /> {tr(language, 'Tạo Task', 'Create Task')}</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{tr(language, 'Tạo Task mới', 'Create a new task')}</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-1">
+                  <Label>{tr(language, 'Tên task', 'Task name')}</Label>
+                  <Input value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} placeholder="Nhập tên task" />
+                </div>
+                <div className="space-y-1">
+                  <Label>{tr(language, 'Mô tả', 'Description')}</Label>
+                  <Textarea value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} placeholder="Nhập mô tả" />
+                </div>
+                <div className="space-y-1">
+                  <Label>{tr(language, 'Giao cho', 'Assign to')}</Label>
+                  <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
+                    <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Pick a member')} /></SelectTrigger>
+                    <SelectContent>
+                      {group.members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>{tr(language, 'Deadline', 'Deadline')}</Label>
+                    <Input type="date" value={newTask.deadline} onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>{tr(language, 'Ưu tiên', 'Priority')}</Label>
+                    <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Low">{tr(language, 'Thấp', 'Low')}</SelectItem>
+                        <SelectItem value="Medium">{tr(language, 'Trung bình', 'Medium')}</SelectItem>
+                        <SelectItem value="High">{tr(language, 'Cao', 'High')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>{tr(language, 'Đóng góp (%)', 'Contribution (%)')}</Label>
+                  <Input type="number" min={1} max={100} value={newTask.contributionPercent} onChange={e => setNewTask(p => ({ ...p, contributionPercent: Number(e.target.value) }))} />
+                </div>
+                <Button className="w-full" onClick={handleCreateTask}>{tr(language, 'Tạo Task', 'Create task')}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {(!group.tasks || group.tasks.length === 0) ? (
+          <p className="text-muted-foreground text-sm text-center py-8">{tr(language, 'Chưa có task nào', 'No tasks yet')}</p>
+        ) : (
+          <div className="space-y-3">
+            {group.tasks.map(t => {
+              const statusLabel = t.status === 'Done' ? (t.approved ? tr(language, 'Đã duyệt', 'Approved') : tr(language, 'Chờ duyệt', 'Waiting review')) : (t.status === 'In Progress' ? tr(language, 'Đang làm', 'In Progress') : tr(language, 'Chưa làm', 'Todo'));
+              const isApproved = t.approved;
+              const isWaitingReview = t.status === 'Done' && !t.approved;
+              
+              const statusBadgeColor = isApproved 
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
+                : (isWaitingReview ? 'border-amber-200 bg-amber-50 text-amber-700' : (t.status === 'In Progress' ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-100 text-slate-700'));
+              
+              const priorityColor = t.priority === 'High' 
+                ? 'border-rose-200 bg-rose-50 text-rose-700' 
+                : (t.priority === 'Medium' ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
+
+              return (
+                <div key={t.id} className="border border-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors bg-card">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm truncate">{t.name}</p>
+                      {t.priority && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${priorityColor}`}>
+                          {t.priority === 'High' ? tr(language, 'Cao', 'High') : (t.priority === 'Medium' ? tr(language, 'Trung bình', 'Medium') : tr(language, 'Thấp', 'Low'))}
+                        </span>
+                      )}
+                    </div>
+                    {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>}
+                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium text-foreground">{t.assignedTo}</span>
+                      <span>·</span>
+                      <span>{tr(language, 'Đóng góp', 'Contribution')}: {t.contributionPercent}%</span>
+                      {t.deadline && (
+                        <>
+                          <span>·</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {t.deadline}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${statusBadgeColor}`}>
+                      {statusLabel}
+                    </span>
+                    {isWaitingReview && (
+                      <Button size="sm" variant="outline" className="h-8 border-emerald-300 hover:bg-emerald-50 text-emerald-700 gap-1" onClick={() => handleApproveTask(t.id, t.name)}>
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        {tr(language, 'Duyệt', 'Approve')}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTask(t.id, t.name)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <div className="grid lg:grid-cols-2 gap-6">

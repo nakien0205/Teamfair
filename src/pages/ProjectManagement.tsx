@@ -15,6 +15,7 @@ import { tr } from "@/lib/i18n";
 import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
@@ -523,7 +524,7 @@ const ProjectManagement: React.FC = () => {
     }
 
     // Check if user is the lecturer of this project
-    if (group.lecturer_id === user?.id || profile?.role === "lecturer") {
+    if (profile?.role === "lecturer" && group.lecturer_id === user?.id) {
       return "Lecturer";
     }
 
@@ -635,16 +636,7 @@ const ProjectManagement: React.FC = () => {
   ];
 
   const isDemo = !user?.id;
-  const myGroups = groups.filter(group => {
-    if (isDemo) return true;
-    if (profile?.role === "admin") return true;
-    if (profile?.role === "lecturer") {
-      const isOwner = group.lecturer_id === user?.id;
-      const isMember = group.members?.some(m => m.id === user?.id);
-      return isOwner || isMember;
-    }
-    return group.members?.some(m => m.id === user?.id);
-  });
+  const myGroups = getAccessibleProjectGroups(groups, user?.id, profile?.role, isDemo);
 
   const isNewUserOnboarding = !isDemo && myGroups.length === 0 && !dismissedFreestyle;
 

@@ -492,6 +492,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.error("Failed to approve join request:", err);
         void fetchPendingJoinRequests();
+        throw err;
       }
     } else {
       const currentGroup = groups[currentGroupIndex];

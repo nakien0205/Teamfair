@@ -4,7 +4,7 @@ See [index.md](index.md) for the docs routing map.
 Primary entry: [src/layouts/LecturerLayout.tsx](../../src/layouts/LecturerLayout.tsx) (behind [ProtectedRoute](../../src/components/ProtectedRoute.tsx)). This layout acts as the central navigation shell for all lecturer pages, replacing the old monolithic `LecturerDashboard.tsx`.
 
 - Workspace Overview
-  - [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx) - renders group members table, AI analysis, and links to evaluation metrics.
+  - [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx) - renders the active accessible group's members table, contribution analytics, and AI analysis. It does not expose a full project selector; lecturers switch projects through the scoped project list.
 - Group overview and analytics
   - [src/pages/LecturerContributionPage.tsx](../../src/pages/LecturerContributionPage.tsx) -> renders [src/components/ContributionAnalytics.tsx](src/components/ContributionAnalytics.tsx)
 - Reports and rubric
@@ -28,3 +28,5 @@ Primary entry: [src/layouts/LecturerLayout.tsx](../../src/layouts/LecturerLayout
 - Export and materials
   - [src/components/ExportReport.tsx](src/components/ExportReport.tsx) - CSV/XLS export utility.
   - [src/components/MaterialsSection.tsx](src/components/MaterialsSection.tsx) - upload and download private Storage-backed materials; deletion is only available to the original uploader or Project Leader.
+- Group Task Management
+  - [src/pages/LecturerDashboard.tsx](../../src/pages/LecturerDashboard.tsx) - now contains a group task management section directly under the members table, allowing lecturers to create tasks, assign them, and review (approve/delete) them for the selected group.

@@ -448,8 +448,6 @@ const Landing = () => {
         'Làm nhiều nhưng khó chứng minh?\nTeamfair lưu lại công việc, tài liệu và tiến độ để công sức của bạn được ghi nhận rõ ràng',
         'Did the work, but cannot prove it?\nTeamfair records tasks, files, and progress so your effort is easy to verify.',
       ),
-      metric: '4.7/5',
-      metricLabel: tr(language, 'độ rõ ràng khi review', 'review clarity score'),
     },
     {
       icon: ClipboardList,
@@ -459,8 +457,6 @@ const Landing = () => {
         'Theo dõi cả nhóm bằng một cú click\nDễ phát hiện ai đang chậm tiến độ, ai đang “mất tích” trước khi deadline tới',
         'Track the whole team in one click\nSpot who is falling behind or going quiet before the deadline.',
       ),
-      metric: '23m',
-      metricLabel: tr(language, 'tiết kiệm mỗi lần kiểm tra', 'saved per review'),
     },
     {
       icon: BarChart3,
@@ -470,8 +466,6 @@ const Landing = () => {
         'Chấm điểm dựa trên dữ liệu thật\nTheo dõi lịch sử làm việc, đánh giá đồng đội và mức độ đóng góp của từng sinh viên',
         "Grade with real evidence\nReview work history, peer feedback, and each student's contribution level.",
       ),
-      metric: '12',
-      metricLabel: tr(language, 'lớp học thử nghiệm', 'course pilots'),
     },
   ];
 
@@ -702,47 +696,6 @@ const Landing = () => {
 
       <WorkflowSection language={language} workflow={workflow} />
 
-      {/* ---- roles section ---- */}
-      <section id="roles" className="relative scroll-mt-24 bg-[#0a0820] py-24 text-white">
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(48,70,255,0.18),transparent_34%),radial-gradient(circle_at_76%_28%,rgba(211,109,255,0.22),transparent_30%)]" />
-        <div className="container relative mx-auto">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200">{tr(language, 'Cho mọi vai trò', 'For every role')}</p>
-            <h2 className="text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-              {tr(language, 'Mỗi người thấy đúng thứ họ cần', 'Each role sees what matters')}
-            </h2>
-          </div>
-
-          <div className="mt-14 grid gap-5 lg:grid-cols-3">
-            {audiences.map((item, index) => (
-              <article
-                key={item.label}
-                className={`rounded-lg border border-white/[0.12] bg-white/[0.07] p-6 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-blue-200/[0.35] hover:bg-white/[0.1] ${
-                  index === 1 ? 'lg:mt-10' : ''
-                }`}
-              >
-                <div className="mb-10 flex items-center justify-between">
-                  <span className="rounded-md bg-white/10 px-3 py-1 text-sm text-slate-200">{item.label}</span>
-                  <item.icon className="h-6 w-6 text-cyan-200" />
-                </div>
-                <h3 className="text-balance font-display text-2xl font-semibold">{item.title}</h3>
-                <p className="mt-4 leading-7 text-slate-300">{item.desc}</p>
-                <div className="mt-8 rounded-md border border-white/10 bg-[#090a2a] p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm text-cyan-100">
-                    <span className="h-2 w-2 rounded-full bg-cyan-300" />
-                    {tr(language, 'Workspace sau đăng nhập', 'Workspace after sign-in')}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <span className="h-14 rounded-md bg-blue-400/25" />
-                    <span className="h-14 rounded-md bg-fuchsia-400/25" />
-                    <span className="h-14 rounded-md bg-cyan-300/25" />
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ---- pricing section ---- */}
       <section id="pricing" className="scroll-mt-24 bg-[#f7f8ff] py-24 text-[#0d1026]">
