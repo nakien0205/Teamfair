@@ -9,7 +9,6 @@ import {
   FileUp,
   FolderOpen,
   Link2,
-  Loader2,
   Sparkles,
   TimerOff,
   Trash2,
@@ -30,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { TaskListSkeleton } from "@/components/skeletons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam, type Task } from "@/context/TeamContext";
 import { createTaskSubmission, fetchLatestTaskSubmission, uploadTaskEvidenceFiles, type SubmissionHistoryRecord } from "@/lib/taskSubmissions";
@@ -377,7 +377,7 @@ const StudentTaskSubmit = () => {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-6">
-          {dataLoading ? <LoadingPage /> : null}
+          {dataLoading ? <TaskListSkeleton /> : null}
 
           {!dataLoading && connectionError ? (
             <Alert className="rounded-3xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
@@ -615,8 +615,7 @@ const StudentTaskSubmit = () => {
                       Hủy
                     </Button>
                     <Button type="button" className="rounded-2xl" onClick={() => void handleSubmit()} disabled={!canSubmit || submitting}>
-                      {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                      Nộp bằng chứng
+                      {submitting ? "Đang nộp..." : <><CheckCircle2 className="mr-2 h-4 w-4" />Nộp bằng chứng</>}
                     </Button>
                   </div>
                 </CardContent>

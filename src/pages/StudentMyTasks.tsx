@@ -45,7 +45,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { TaskListSkeleton } from "@/components/skeletons";
 import { useTeam, type Task } from "@/context/TeamContext";
+import {tr} from "@/lib/i18n";
 import {
   STUDENT_TASK_PROGRESS_MESSAGES,
   canStudentEditSubmission,
@@ -303,14 +305,14 @@ const StudentMyTasks = () => {
 
   const filters = useMemo(
     () => [
-      { key: "all" as const, label: "Tất cả" },
-      { key: "todo" as const, label: "Chưa bắt đầu" },
-      { key: "in_progress" as const, label: "Đang thực hiện" },
-      { key: "submitted" as const, label: "Đã nộp" },
-      { key: "need_revision" as const, label: "Cần chỉnh sửa" },
-      { key: "approved" as const, label: "Đã duyệt" },
-      { key: "rejected" as const, label: "Bị từ chối" },
-      { key: "overdue" as const, label: "Trễ hạn" },
+      { key: "all" as const, label: tr(language, "Tất cả", "All") },
+      { key: "todo" as const, label: tr(language, "Chưa bắt đầu", "Not Started") },
+      { key: "in_progress" as const, label: tr(language, "Đang thực hiện", "In Progress") },
+      { key: "submitted" as const, label: tr(language, "Đã nộp", "Submitted") },
+      { key: "need_revision" as const, label: tr(language, "Cần chỉnh sửa", "Needs Revision") },
+      { key: "approved" as const, label: tr(language, "Đã duyệt", "Approved") },
+      { key: "rejected" as const, label: tr(language, "Bị từ chối", "Rejected") },
+      { key: "overdue" as const, label: tr(language, "Trễ hạn", "Overdue") },
     ],
     [],
   );
@@ -348,16 +350,16 @@ const StudentMyTasks = () => {
     <>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-          {dataLoading ? <LoadingPage /> : null}
+          {dataLoading ? <TaskListSkeleton /> : null}
 
           {!dataLoading && connectionError ? (
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="p-6">
                 <Alert className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Không thể tải task của bạn</AlertTitle>
+                  <AlertTitle>{tr(language, "Không thể tải task của bạn", "Unable to load your tasks")}</AlertTitle>
                   <AlertDescription className="mt-2 flex flex-col gap-4 text-amber-900/80">
-                    <p>Đã có lỗi khi đồng bộ dữ liệu task. Vui lòng thử tải lại.</p>
+                    <p>{tr(language, "Đã có lỗi khi đồng bộ dữ liệu task. Vui lòng thử tải lại.", "An error occurred while syncing task data. Please try reloading.")}</p>
                     <div>
                       <Button variant="outline" className="border-amber-300 bg-white" onClick={() => void loadPersistedState()}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
@@ -390,20 +392,20 @@ const StudentMyTasks = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
-                          Sinh viên
+                          {tr(language, "Thành viên", "User")}
                         </Badge>
                         <Badge variant="outline" className="border-border/80 bg-background/80 text-muted-foreground">
                           {group.name}
                         </Badge>
                       </div>
-                      <h1 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">Task của tôi</h1>
+                      <h1 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">{tr(language, "Task của tôi", "My Tasks")}</h1>
                       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                        Chỉ hiển thị task được giao cho bạn. Bạn có thể bắt đầu task, nộp minh chứng, chỉnh sửa submission khi còn được phép và xem phản hồi review.
+                        {tr(language, "Chỉ hiển thị task được giao cho bạn. Bạn có thể bắt đầu task, nộp minh chứng, chỉnh sửa submission khi còn được phép và xem phản hồi review.", "Only tasks assigned to you are displayed. You can start tasks, submit evidence, edit submissions when allowed, and view review feedback.")}
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{myTasks.length}</span> task được giao
+                      <span className="font-medium text-foreground">{myTasks.length}</span> {tr(language, "task được giao", "tasks assigned")}
                     </div>
                   </div>
 
@@ -413,7 +415,7 @@ const StudentMyTasks = () => {
                       <Input
                         value={searchTerm}
                         onChange={event => setSearchTerm(event.target.value)}
-                        placeholder="Tìm theo tên task hoặc mô tả"
+                        placeholder={tr(language, "Tìm theo tên task hoặc mô tả", "Search by task name or description")}
                         className="h-11 rounded-2xl pl-10"
                       />
                     </div>
@@ -442,10 +444,10 @@ const StudentMyTasks = () => {
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="deadline">Deadline gần nhất</SelectItem>
-                        <SelectItem value="latest">Giao gần đây nhất</SelectItem>
-                        <SelectItem value="weight">Weight cao nhất</SelectItem>
-                        <SelectItem value="status">Trạng thái</SelectItem>
+                        <SelectItem value="deadline">{tr(language, "Deadline gần nhất", "Closest Deadline")}</SelectItem>
+                        <SelectItem value="latest">{tr(language, "Giao gần đây nhất", "Most Recent")}</SelectItem>
+                        <SelectItem value="weight">{tr(language, "Weight cao nhất", "Highest Weight")}</SelectItem>
+                        <SelectItem value="status">{tr(language, "Trạng thái", "Status")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -456,8 +458,8 @@ const StudentMyTasks = () => {
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardContent className="p-6">
                     <EmptyBlock
-                      title="Bạn chưa có task nào được giao."
-                      description="Khi trưởng nhóm giao việc, task của bạn sẽ xuất hiện tại đây."
+                      title={tr(language, "Bạn chưa có task nào được giao.", "You have no tasks assigned.")}
+                      description={tr(language, "Khi trưởng nhóm giao việc, task của bạn sẽ xuất hiện tại đây.", "When a team leader assigns tasks, they will appear here.")}
                       icon={FolderOpen}
                     />
                   </CardContent>
@@ -466,8 +468,8 @@ const StudentMyTasks = () => {
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardContent className="p-6">
                     <EmptyBlock
-                      title="Không tìm thấy task phù hợp."
-                      description="Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái."
+                      title={tr(language, "Không tìm thấy task phù hợp.", "No matching tasks found.")}
+                      description={tr(language, "Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.", "Try changing the search keyword or status filter.")}
                       icon={Search}
                     />
                   </CardContent>
@@ -481,7 +483,7 @@ const StudentMyTasks = () => {
                     const status = statusMeta[workflowStatus];
                     const review = reviewMeta(reviewStatus);
                     const hasEvidence = (task.evidence?.length ?? 0) > 0;
-                    const submissionStatus = hasEvidence ? "Đã nộp minh chứng" : "Chưa nộp";
+                    const submissionStatus = hasEvidence ? tr(language, "Đã nộp minh chứng", "Evidence Submitted") : tr(language, "Chưa nộp", "Not Submitted");
                     const isAssignee = isTaskAssignedToStudent(task, user?.id, currentUserName);
                     const canStart = canStudentStartTask(task, isAssignee).ok;
                     const canSubmitEvidence = canStudentOpenSubmission(task, isAssignee).ok;
@@ -505,22 +507,22 @@ const StudentMyTasks = () => {
                                   {workflowStatus === "overdue" ? (
                                     <Badge className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-50">
                                       <TimerOff className="mr-1 h-3 w-3" />
-                                      Task đang trễ hạn
+                                      {tr(language, "Task đang trễ hạn", "Task Overdue")}
                                     </Badge>
                                   ) : null}
                                 </div>
                                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                                  {task.description?.trim() || "Chưa có mô tả chi tiết cho task này."}
+                                  {task.description?.trim() || tr(language, "Chưa có mô tả chi tiết cho task này.", "No detailed description for this task.")}
                                 </p>
                               </div>
 
                               <div className="grid min-w-[280px] gap-3 rounded-2xl border border-border/70 bg-background/80 p-3 sm:grid-cols-2">
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Assigned by</p>
-                                  <p className="mt-1 text-sm font-medium">{group.members.find(member => member.role === "Leader")?.name || "Trưởng nhóm"}</p>
+                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Giao bởi", "Assigned by")}</p>
+                                  <p className="mt-1 text-sm font-medium">{group.members.find(member => member.role === "Leader")?.name || tr(language, "Trưởng nhóm", "Team Leader")}</p>
                                 </div>
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Deadline</p>
+                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Hạn chót", "Deadline")}</p>
                                   <p className="mt-1 text-sm font-medium">{formatDate(task.deadline)}</p>
                                 </div>
                               </div>
@@ -528,37 +530,37 @@ const StudentMyTasks = () => {
 
                             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Độ khó</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Độ khó", "Difficulty")}</p>
                                 <Badge className={cn("mt-2 border", difficulty.className)}>{difficulty.label}</Badge>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Weight</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Weight", "Weight")}</p>
                                 <p className="mt-2 text-lg font-semibold">{task.contributionPercent}%</p>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Submission</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Submission", "Submission")}</p>
                                 <p className="mt-2 text-sm font-medium">{submissionStatus}</p>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Review</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Review", "Review")}</p>
                                 <p className={cn("mt-2 text-sm font-medium", review.className)}>{review.label}</p>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Minh chứng</p>
-                                <p className="mt-2 text-sm font-medium">{hasEvidence ? `${task.evidence?.length || 0} file` : "Chưa có file"}</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Minh chứng", "Evidence")}</p>
+                                <p className="mt-2 text-sm font-medium">{hasEvidence ? `${task.evidence?.length || 0} ${tr(language, "file", "file")}` : tr(language, "Chưa có file", "No files")}</p>
                               </div>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
                               <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
                                 <Eye className="mr-2 h-4 w-4" />
-                                Xem chi tiết
+                                {tr(language, "Xem chi tiết", "View Details")}
                               </Button>
 
                               {canStart ? (
                                 <Button className="rounded-2xl" onClick={() => setStartTaskCandidate(task)}>
                                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                                  Bắt đầu task
+                                  {tr(language, "Bắt đầu task", "Start Task")}
                                 </Button>
                               ) : null}
 
@@ -572,13 +574,13 @@ const StudentMyTasks = () => {
                               {canEditSubmission && hasEvidence ? (
                                 <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}/submit`)}>
                                   <FilePenLine className="mr-2 h-4 w-4" />
-                                  Chỉnh sửa submission
+                                  {tr(language, "Chỉnh sửa submission", "Edit Submission")}
                                 </Button>
                               ) : null}
 
                               <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
                                 <MessageSquareQuote className="mr-2 h-4 w-4" />
-                                Xem review feedback
+                                {tr(language, "Xem review feedback", "View Review Feedback")}
                               </Button>
 
                               <Button
@@ -587,7 +589,7 @@ const StudentMyTasks = () => {
                                 onClick={() => navigate(`/student/work-logs?taskId=${task.id}`)}
                               >
                                 <ClipboardPenLine className="mr-2 h-4 w-4" />
-                                Write work log
+                                {tr(language, "Write work log", "Write Work Log")}
                               </Button>
                             </div>
                           </div>
@@ -612,11 +614,11 @@ const StudentMyTasks = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bắt đầu task</AlertDialogTitle>
+            <AlertDialogTitle>{tr(language, "Bắt đầu task", "Start Task")}</AlertDialogTitle>
             <AlertDialogDescription>{STUDENT_TASK_PROGRESS_MESSAGES.startConfirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>{tr(language, "Hủy", "Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (startTaskCandidate) {
@@ -625,7 +627,7 @@ const StudentMyTasks = () => {
                 setStartTaskCandidate(null);
               }}
             >
-              Xác nhận
+              {tr(language, "Xác nhận", "Confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

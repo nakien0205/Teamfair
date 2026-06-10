@@ -36,7 +36,7 @@ type ProfileQueryError = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PROFILE_TIMEOUT_MS = 8000; // Reduced from 15s to 8s
 const PROFILE_RETRY_ATTEMPTS = 2; // Retry up to 2 times
-const SIGN_OUT_TIMEOUT_MS = 5000;
+const SIGN_OUT_TIMEOUT_MS = 2000; // Reduced from 5s to 2s for better UX
 const PROFILE_TABLE_NAME = "users";
 
 // Simple in-memory cache to avoid re-fetching profile immediately
