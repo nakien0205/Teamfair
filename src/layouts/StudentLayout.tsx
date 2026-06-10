@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { t, tr } from "@/lib/i18n";
-import { useState, useMemo } from "react"; 
+import { useState, useMemo } from "react";
 
 const LOGOUT_TRANSITION_MS = 420;
 
@@ -94,9 +94,9 @@ const StudentLayout = () => {
     // Đẩy thêm các mục của Leader vào mảng nếu user là Leader
     if (isLeader) {
       items.push(
-        // { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
+        { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
+        { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
+        { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
         { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" }
       );
     }
@@ -107,9 +107,8 @@ const StudentLayout = () => {
   return (
     <div className="relative min-h-svh">
       <div
-        className={`relative min-h-svh overflow-hidden transition-opacity duration-500 ease-out ${
-          isLoggingOut ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
+        className={`relative min-h-svh overflow-hidden transition-opacity duration-500 ease-out ${isLoggingOut ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
       >
         <DashboardShell
           sidebar={
@@ -136,9 +135,8 @@ const StudentLayout = () => {
       </div>
       <div
         aria-hidden="true"
-        className={`pointer-events-none fixed inset-0 z-50 bg-background/70 backdrop-blur-[2px] transition-opacity duration-500 ${
-          isLoggingOut ? "opacity-100" : "opacity-0"
-        }`}
+        className={`pointer-events-none fixed inset-0 z-50 bg-background/70 backdrop-blur-[2px] transition-opacity duration-500 ${isLoggingOut ? "opacity-100" : "opacity-0"
+          }`}
       />
     </div>
   );
