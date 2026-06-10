@@ -7,8 +7,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { t } from "@/lib/i18n";
-import { useState } from "react";
+import { t, tr } from "@/lib/i18n";
+import { useState, useMemo } from "react"; 
 
 const LOGOUT_TRANSITION_MS = 420;
 
@@ -51,7 +51,7 @@ const StudentLayout = () => {
   else if (pathname.includes("/leader/progress-report")) activeKey = "leader-progress";
 
   const handleSelect = (key: string) => {
-    if (dataLoading) return;
+    // if (dataLoading) return;
 
     switch (key) {
       case "overview": navigate("/student/dashboard"); break;
@@ -71,32 +71,38 @@ const StudentLayout = () => {
     }
   };
 
-  const sidebarItems: DashboardSidebarItem[] = [
-    // Workspace
-    { key: "overview", label: "Tổng quan", icon: <Sparkles className="h-4 w-4" />, section: "workspace" },
-    { key: "my-group", label: "Nhóm của tôi", icon: <Users className="h-4 w-4" />, section: "workspace" },
-    { key: "tasks", label: "Task của tôi", icon: <FolderOpen className="h-4 w-4" />, section: "workspace" },
-    { key: "work-logs", label: "Nhật ký làm việc", icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
-    { key: "peer-review", label: "Đánh giá chéo", icon: <MessageSquareQuote className="h-4 w-4" />, section: "workspace" },
-    { key: "my-contribution", label: "Điểm đóng góp", icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
-    { key: "feedback", label: "Phản hồi", icon: <Scale className="h-4 w-4" />, section: "workspace" },
-    { key: "appeals", label: "Giải trình", icon: <Brain className="h-4 w-4" />, section: "workspace" },
+  // 🌟 Biến đổi mảng tĩnh thành mảng có khả năng phản ứng (Reactive) thông qua useMemo
+  const processedSidebarItems = useMemo<DashboardSidebarItem[]>(() => {
+    const items: DashboardSidebarItem[] = [
+      // Workspace
+      { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <Sparkles className="h-4 w-4" />, section: "workspace" },
+      { key: "my-group", label: tr(language, "Nhóm của tôi", "My Group"), icon: <Users className="h-4 w-4" />, section: "workspace" },
+      { key: "tasks", label: tr(language, "Task của tôi", "My Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "workspace" },
+      // { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
+      { key: "peer-review", label: tr(language, "Đánh giá chéo", "Peer Review"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "workspace" },
+      // { key: "my-contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
+      { key: "feedback", label: tr(language, "Phản hồi", "Feedback"), icon: <Scale className="h-4 w-4" />, section: "workspace" },
+      // { key: "appeals", label: tr(language, "Giải trình", "Appeals"), icon: <Brain className="h-4 w-4" />, section: "workspace" },
 
-    // Resources
-    { key: "materials", label: "Tài liệu", icon: <FileUp className="h-4 w-4" />, section: "resources" },
+      // Resources
+      { key: "materials", label: tr(language, "Tài liệu", "Resources"), icon: <FileUp className="h-4 w-4" />, section: "resources" },
 
-    // Other
-    { key: "switch-projects", label: "Đổi dự án", icon: <BookOpenText className="h-4 w-4" />, section: "other" },
-  ];
+      // Other
+      { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <BookOpenText className="h-4 w-4" />, section: "other" },
+    ];
 
-  if (isLeader) {
-    sidebarItems.push(
-      { key: "leader-tasks", label: "Quản lý task", icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
-      { key: "leader-submissions", label: "Duyệt submission", icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
-      { key: "leader-evaluations", label: "Đánh giá thành viên", icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
-      { key: "leader-progress", label: "Báo cáo tiến độ", icon: <ArrowRight className="h-4 w-4" />, section: "leader" }
-    );
-  }
+    // Đẩy thêm các mục của Leader vào mảng nếu user là Leader
+    if (isLeader) {
+      items.push(
+        // { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
+        // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
+        // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
+        { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" }
+      );
+    }
+
+    return items;
+  }, [language, isLeader]); // 🌟 Lắng nghe sự thay đổi của language và quyền leader để tính toán lại text hoàn toàn sạch sẽ
 
   return (
     <div className="relative min-h-svh">
@@ -110,7 +116,7 @@ const StudentLayout = () => {
             <DashboardSidebar
               title={t(language, "student")}
               subtitle={currentUserName}
-              items={sidebarItems}
+              items={processedSidebarItems} // 🌟 Đã đổi sang mảng đã xử lý đa ngôn ngữ mượt mà
               activeKey={activeKey}
               onSelect={handleSelect}
             />

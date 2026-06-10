@@ -43,7 +43,7 @@ const LecturerDashboard = () => {
           <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
             <div className="p-6 md:p-8">
               <div className="mb-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Lecturer dashboard</span>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{tr(language, "Lecturer dashboard", "Lecturer Dashboard")}</span>
                 <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-200">
                   {tr(language, "Quản lý lớp, nhóm và điểm", "Manage classes, groups, and scores")}
                 </span>
@@ -158,18 +158,18 @@ const LecturerDashboard = () => {
         <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
           <div className="p-6 md:p-8">
             <div className="mb-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Lecturer dashboard</span>
-              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-200">Quản lý lớp, nhóm và điểm</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{tr(language, "Trang quản lí của Giảng Viên", "Lecturer Dashboard")}</span>
+              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-200">{tr(language, "Quản lý lớp, nhóm và điểm", "Class, Group, and Grading Management")}</span>
             </div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Điều hướng nhanh sang khu vực quản lý lớp, nhóm và điểm
+              {tr(language, "Điều hướng nhanh sang khu vực quản lý lớp, nhóm và điểm", "Quick navigation to class, group, and grading management")} 
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200/80 md:text-base">
-              Màn dashboard này tập trung vào theo dõi nhóm hiện tại. Các thao tác tạo lớp, import danh sách nhóm và chấm điểm thành viên nằm ở trang quản lý riêng để dễ thao tác hơn.
+              {tr(language, "Màn dashboard này tập trung vào theo dõi nhóm hiện tại. Các thao tác tạo lớp, import danh sách nhóm và chấm điểm thành viên nằm ở trang quản lý riêng để dễ thao tác hơn.", "This dashboard focuses on monitoring the current group. Actions such as creating classes, importing group lists, and grading members are located on a separate management page for easier operation.")}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button className="bg-white text-slate-950 hover:bg-slate-100" onClick={() => navigate('/lecturer/groups')}>
-                Mở trang quản lý nhóm
+                {tr(language, "Mở trang quản lý nhóm", "Open Group Management Page")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button
@@ -178,7 +178,7 @@ const LecturerDashboard = () => {
                 onClick={() => navigate('/lecturer/groups')}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Tạo / import nhóm
+                {tr(language, "Tạo / import nhóm", "Create / Import Groups")}
               </Button>
             </div>
           </div>

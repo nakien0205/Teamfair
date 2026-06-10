@@ -631,22 +631,22 @@ const StudentMyGroup = () => {
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Học phần</p>
                           <p className="mt-2 text-sm font-medium">{courseName}</p>
-                        </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        </div> */}
+                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Dự án</p>
                           <p className="mt-2 text-sm font-medium">{group.name}</p>
-                        </div>
+                        </div> */}
                         <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Giảng viên</p>
                           <p className="mt-2 text-sm font-medium">{profileLoading ? "Đang tải..." : lecturerName}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Nhóm trưởng</p>
                           <p className="mt-2 text-sm font-medium">{leader?.name || "Chưa cập nhật"}</p>
-                        </div>
+                        </div> */}
                         <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Deadline dự án</p>
                           <p className="mt-2 text-sm font-medium">{formatDate(groupDeadline)}</p>
@@ -659,10 +659,10 @@ const StudentMyGroup = () => {
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tổng thành viên</p>
                           <p className="mt-2 text-sm font-medium">{group.members.length} người</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Trạng thái nhóm</p>
                           <p className="mt-2 text-sm font-medium">{groupStatusMeta[groupProgress.status].label}</p>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </div>

@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { t, tr } from "@/lib/i18n";
+import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import {
@@ -88,6 +90,7 @@ const parseLinks = (value: string) =>
     .filter(Boolean);
 
 const StudentAppeals = () => {
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -182,19 +185,19 @@ const StudentAppeals = () => {
 
     const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
     if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(extension)) {
-      setFieldErrors(current => ({ ...current, attachments: "Định dạng file không được hỗ trợ." }));
+      setFieldErrors(current => ({ ...current, attachments: tr(language, "Định dạng file không được hỗ trợ.", "Unsupported file format.") }));
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_ATTACHMENT_SIZE) {
-      setFieldErrors(current => ({ ...current, attachments: "File vượt quá dung lượng cho phép." }));
+      setFieldErrors(current => ({ ...current, attachments: tr(language, "File vượt quá dung lượng cho phép.", "File exceeds the allowed size.") }));
       event.target.value = "";
       return;
     }
 
     if (attachments.length >= 5) {
-      setFieldErrors(current => ({ ...current, attachments: "Chỉ được tải tối đa 5 file." }));
+      setFieldErrors(current => ({ ...current, attachments: tr(language, "Chỉ được tải tối đa 5 file.", "Only 5 files can be uploaded.") }));
       event.target.value = "";
       return;
     }
@@ -210,7 +213,7 @@ const StudentAppeals = () => {
     } catch (uploadError) {
       setFieldErrors(current => ({
         ...current,
-        attachments: uploadError instanceof Error ? uploadError.message : "Không thể tải attachment.",
+        attachments: uploadError instanceof Error ? uploadError.message : tr(language, "Không thể tải attachment.", "Failed to upload attachment."),
       }));
     } finally {
       event.target.value = "";
@@ -222,10 +225,10 @@ const StudentAppeals = () => {
       try {
         const url = new URL(link);
         if (!["http:", "https:"].includes(url.protocol)) {
-          return "Link không hợp lệ.";
+          return tr(language, "Link không hợp lệ.", "Invalid link.");
         }
       } catch {
-        return "Link không hợp lệ.";
+        return tr(language, "Link không hợp lệ.", "Invalid link.");
       }
     }
     return "";
@@ -276,7 +279,7 @@ const StudentAppeals = () => {
       let saved: StudentAppealRecord;
       if (editingItem) {
         saved = await updateDraftStudentAppeal(editingItem.id, payload);
-        addLog(`Sinh viên ${currentUserName} đã cập nhật bản nháp giải trình "${editingItem.id}".`);
+        addLog(tr(language, `Sinh viên ${currentUserName} đã cập nhật bản nháp giải trình "${editingItem.id}".`, `Student ${currentUserName} has updated the draft appeal "${editingItem.id}".`));
       } else {
         saved = await createDraftStudentAppeal({
           id: "",
@@ -333,25 +336,25 @@ const StudentAppeals = () => {
               <CardContent className="space-y-4 p-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
-                    Giải trình
+                    {tr(language, "Giải trình", "Appeals")}
                   </Badge>
                   <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
-                    Yêu cầu xem xét lại
+                    {tr(language, "Yêu cầu xem xét lại", "Request for Reconsideration")}
                   </Badge>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Giải trình và bổ sung minh chứng</h1>
+                  <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{tr(language, "Giải trình và bổ sung minh chứng", "Appeals and Additional Evidence")}</h1>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                    Việc gửi giải trình không tự động thay đổi điểm. Quyết định cuối cùng thuộc về giảng viên.
+                    {tr(language, "Việc gửi giải trình không tự động thay đổi điểm. Quyết định cuối cùng thuộc về giảng viên.", "Submitting an appeal does not automatically change the grade. The final decision rests with the instructor.")} 
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Button className="rounded-2xl" onClick={openCreateDialog}>
                     <ClipboardPenLine className="mr-2 h-4 w-4" />
-                    Gửi giải trình
+                    {tr(language, "Gửi giải trình", "Submit Appeal")}
                   </Button>
                   <Button variant="outline" className="rounded-2xl" onClick={() => navigate("/student/my-contribution")}>
-                    Xem điểm đóng góp
+                    {tr(language, "Xem điểm đóng góp", "View My Contributions")}
                   </Button>
                 </div>
               </CardContent>
@@ -361,7 +364,7 @@ const StudentAppeals = () => {
           {!loading && error ? (
             <Alert className="rounded-3xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Không thể tải giải trình</AlertTitle>
+              <AlertTitle>{tr(language, "Không thể tải giải trình", "Failed to load appeals")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
@@ -370,7 +373,7 @@ const StudentAppeals = () => {
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="flex min-h-[280px] flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
                 <ShieldAlert className="h-10 w-10 text-muted-foreground" />
-                <p>Bạn chưa gửi giải trình nào.</p>
+                <p>{tr(language, "Bạn chưa gửi giải trình nào.", "You have not submitted any appeals.")}</p>
               </CardContent>
             </Card>
           ) : null}
@@ -446,16 +449,16 @@ const StudentAppeals = () => {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Chỉnh sửa giải trình" : "Tạo giải trình mới"}</DialogTitle>
+            <DialogTitle>{editingItem ? tr(language, "Chỉnh sửa giải trình", "Edit Appeal") : tr(language, "Tạo giải trình mới", "Create New Appeal")}</DialogTitle>
             <DialogDescription>
-              Trình bày rõ vấn đề, phần đóng góp của bạn và bằng chứng liên quan. Giải trình là yêu cầu xem xét lại, không tự thay đổi điểm.
+              {tr(language, "Trình bày rõ vấn đề, phần đóng góp của bạn và bằng chứng liên quan. Giải trình là yêu cầu xem xét lại, không tự thay đổi điểm.", "Clearly state the issue, your contribution, and relevant evidence. An appeal is a request for reconsideration, not an automatic grade change.")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Loại giải trình</Label>
+                <Label>{tr(language, "Loại giải trình", "Appeal Type")}</Label>
                 <Select value={form.appealType} onValueChange={value => handleFieldChange("appealType", value as StudentAppealType)}>
                   <SelectTrigger className="rounded-2xl">
                     <SelectValue />
@@ -611,7 +614,7 @@ const StudentAppeals = () => {
                 {saving ? "Đang lưu..." : "Lưu bản nháp"}
               </Button>
               <Button className="rounded-2xl" onClick={() => void handleSave(true)} disabled={saving}>
-                {saving ? "Đang gửi..." : "Gửi giải trình"}
+                {saving ?  "Đang gửi..." : "Gửi giải trình"}
               </Button>
             </div>
           </DialogFooter>

@@ -79,7 +79,7 @@ const dictionary: Dictionary = {
     studentCardDesc: "Theo dõi task, đóng góp và tiến độ nhóm.",
     lecturerCardTitle: "Không gian giảng viên",
     lecturerCardDesc: "Xem nhóm, đánh giá đóng góp và xuất báo cáo.",
-    dashboardExit: "Thoát",
+    // dashboardExit: "Thoát",
     lecturerStudentEvaluationTitle: "Đánh giá sinh viên",
     uploadMaterial: "Tải lên tài liệu",
     awardContributionBadge: "Trao badge đóng góp",

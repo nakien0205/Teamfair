@@ -628,7 +628,7 @@ const ProjectManagement: React.FC = () => {
 
   const sidebarItems = [
     { name: "All Projects", labelVi: "Tất cả dự án", labelEn: "All Projects", icon: Folder },
-    { name: "Global Calendar", labelVi: "Lịch chung", labelEn: "Global Calendar", icon: Calendar },
+    // { name: "Global Calendar", labelVi: "Lịch chung", labelEn: "Global Calendar", icon: Calendar },
     { name: "Activity Logs", labelVi: "Nhật ký hoạt động", labelEn: "Activity Logs", icon: History },
     { name: "Notification", labelVi: "Thông báo", labelEn: "Notification", icon: Bell },
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },

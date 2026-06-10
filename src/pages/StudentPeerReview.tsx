@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { t, tr } from "@/lib/i18n";
 import { useTeam } from "@/context/TeamContext";
 import {
   getStudentPeerReviewActive,
@@ -56,6 +58,7 @@ const LoadingState = () => (
 );
 
 const StudentPeerReview = () => {
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -149,6 +152,7 @@ const StudentPeerReview = () => {
   };
 
   const handleSubmit = async () => {
+    
     if (!group?.id || !user?.id || !selectedPeriod) return;
     setSubmitting(true);
     setError("");
@@ -207,7 +211,7 @@ const StudentPeerReview = () => {
             <CardContent className="space-y-4 p-6">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
-                  Đánh giá chéo
+                  {tr(language, "Đánh giá chéo", "Peer Review")}
                 </Badge>
                 {group?.name ? (
                   <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
@@ -216,9 +220,9 @@ const StudentPeerReview = () => {
                 ) : null}
               </div>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Đánh giá thành viên trong nhóm</h1>
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{tr(language, "Đánh giá thành viên trong nhóm", "Peer Review")}</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Đánh giá chéo là dữ liệu tham khảo để giảng viên xem xét contribution. Vui lòng đánh giá công bằng và có trách nhiệm.
+                  {tr(language, "Đánh giá chéo là dữ liệu tham khảo để giảng viên xem xét contribution. Vui lòng đánh giá công bằng và có trách nhiệm.", "Peer review is reference data for instructors to evaluate contributions. Please review fairly and responsibly.")}
                 </p>
               </div>
             </CardContent>
@@ -235,7 +239,7 @@ const StudentPeerReview = () => {
           {error ? (
             <Alert className="rounded-3xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Không thể xử lý đánh giá chéo</AlertTitle>
+              <AlertTitle>{tr(language, "Không thể xử lý đánh giá chéo", "Cannot Process Peer Review")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
@@ -243,8 +247,8 @@ const StudentPeerReview = () => {
           {group && periods.length > 0 ? (
             <Card className="rounded-3xl border-0 shadow-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-xl">Kỳ đánh giá hiện có</CardTitle>
-                <CardDescription>Chọn một kỳ đang mở để gửi đánh giá chéo.</CardDescription>
+                <CardTitle className="text-xl">{tr(language, "Kỳ đánh giá hiện có", "Current Review Periods")}</CardTitle>
+                <CardDescription>{tr(language, "Chọn một kỳ đang mở để gửi đánh giá chéo.", "Select an open period to submit a peer review.")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
@@ -266,7 +270,7 @@ const StudentPeerReview = () => {
           {group && periods.length === 0 ? (
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                Hiện chưa có kỳ đánh giá chéo nào đang mở.
+                {tr(language, "Hiện chưa có kỳ đánh giá chéo nào đang mở.", "No peer review periods are currently open.")}
               </CardContent>
             </Card>
           ) : null}

@@ -21,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam } from "@/context/TeamContext";
 import { t, tr } from "@/lib/i18n";
-import { useState } from "react";
+import { useState, useMemo } from "react"; 
 import { SettingsModal } from "@/components/SettingsModal";
 
 const LOGOUT_TRANSITION_MS = 420;
@@ -89,27 +89,33 @@ const LecturerLayout = () => {
     }
   };
 
-  const sidebarItems: DashboardSidebarItem[] = [
-    // Workspace
-    { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <LayoutDashboard className="h-4 w-4" />, section: "workspace" },
-    { key: "groups", label: tr(language, "Nhóm sinh viên", "Student Groups"), icon: <Users className="h-4 w-4" />, section: "workspace" },
-    { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
-    { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
+  // 🌟 Bản sao hoàn hảo theo cấu trúc của StudentLayout
+  const processedSidebarItems = useMemo<DashboardSidebarItem[]>(() => {
+    const items: DashboardSidebarItem[] = [
+      // Workspace
+      { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <LayoutDashboard className="h-4 w-4" />, section: "workspace" },
+      { key: "groups", label: tr(language, "Nhóm sinh viên", "Student Groups"), icon: <Users className="h-4 w-4" />, section: "workspace" },
+      { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
+      { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
 
-    // Evaluation (Đánh giá)
-    { key: "rubrics", label: tr(language, "Thang chấm điểm", "Rubrics"), icon: <ClipboardList className="h-4 w-4" />, section: "evaluation" },
-    { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "evaluation" },
-    { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "evaluation" },
-    { key: "export-reports", label: tr(language, "Xuất báo cáo", "Export Reports"), icon: <Download className="h-4 w-4" />, section: "evaluation" },
+      // Evaluation (Đánh giá)
+      { key: "rubrics", label: tr(language, "Thang chấm điểm", "Rubrics"), icon: <ClipboardList className="h-4 w-4" />, section: "workspace" },
+      { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "workspace" },
+      { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
+      { key: "export-reports", label: tr(language, "Xuất báo cáo", "Export Reports"), icon: <Download className="h-4 w-4" />, section: "workspace" },
 
-    // Resources
-    { key: "documents", label: tr(language, "Tài liệu", "Documents"), icon: <FileText className="h-4 w-4" />, section: "resources" },
-    { key: "activity", label: tr(language, "Hoạt động", "Activity"), icon: <Activity className="h-4 w-4" />, section: "resources" },
+      // Resources
+      { key: "documents", label: tr(language, "Tài liệu", "Documents"), icon: <FileText className="h-4 w-4" />, section: "resources" },
+      { key: "activity", label: tr(language, "Hoạt động", "Activity"), icon: <Activity className="h-4 w-4" />, section: "resources" },
 
-    // Settings (Other)
-    { key: "settings", label: tr(language, "Cấu hình", "Settings"), icon: <Settings className="h-4 w-4" />, section: "other" },
-    { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <Folder className="h-4 w-4" />, section: "other" },
-  ];
+      // Settings (Other)
+      { key: "settings", label: tr(language, "Cấu hình", "Settings"), icon: <Settings className="h-4 w-4" />, section: "other" },
+      { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <Folder className="h-4 w-4" />, section: "other" },
+    ];
+
+    // Vì Giảng viên hiển thị cố định không phân quyền leader nên ta return thẳng items luôn
+    return items;
+  }, [language]); 
 
   return (
     <div className="relative min-h-svh">
@@ -123,7 +129,7 @@ const LecturerLayout = () => {
             <DashboardSidebar
               title={t(language, "lecturer")}
               subtitle={displayName}
-              items={sidebarItems}
+              items={processedSidebarItems}
               activeKey={activeKey}
               onSelect={handleSelect}
             />

@@ -38,15 +38,15 @@ const DashboardHeader = ({ roleLabel, onExit, onHomeClick, leftSlot, rightSlot, 
     <header className="border-b bg-card/80 supports-[backdrop-filter]:bg-card/60 backdrop-blur">
       <div className="w-full px-4 md:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {leftSlot}
-          <div 
+          {/* {leftSlot} */}
+          {/* <div 
             className={`flex items-center gap-2 transition-opacity ${onHomeClick ? 'cursor-pointer hover:opacity-80' : ''}`}
             onClick={onHomeClick}
           >
             <Users className="h-6 w-6 text-primary" />
             <span className="font-display text-lg font-bold">TEAMFAIR</span>
             <span className="text-muted-foreground text-sm ml-2">/ {roleLabel}</span>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center gap-2">
           {showRoleSelect !== false && roleValue && onRoleChange ? (

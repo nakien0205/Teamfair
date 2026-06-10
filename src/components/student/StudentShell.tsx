@@ -20,13 +20,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useTeam } from "@/context/TeamContext";
-import { t } from "@/lib/i18n";
+import { t, tr } from "@/lib/i18n";
 
 type StudentNavKey =
   | "overview"
   | "my-group"
   | "my-tasks"
-  | "work-logs"
+  // | "work-logs"
   | "peer-review"
   | "contribution"
   | "feedback"
@@ -48,13 +48,13 @@ const StudentShell = ({ activeKey, children }: Props) => {
 
   const group = groups[currentGroupIndex] || groups[0];
   const sidebarItems: DashboardSidebarItem[] = [
-    { key: "overview", label: "Tổng quan", icon: <Sparkles className="h-4 w-4" />, section: "student" },
-    { key: "my-group", label: "Nhóm của tôi", icon: <Users className="h-4 w-4" />, section: "student" },
-    { key: "my-tasks", label: "Task của tôi", icon: <FolderOpen className="h-4 w-4" />, section: "student" },
-    { key: "work-logs", label: "Work log", icon: <ClipboardPenLine className="h-4 w-4" />, section: "student" },
-    { key: "peer-review", label: "Đánh giá chéo", icon: <Star className="h-4 w-4" />, section: "personal" },
-    { key: "contribution", label: "Điểm đóng góp", icon: <Sparkles className="h-4 w-4" />, section: "personal" },
-    { key: "feedback", label: "Feedback", icon: <MessageSquareQuote className="h-4 w-4" />, section: "personal" },
+    { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <Sparkles className="h-4 w-4" />, section: "student" },    { key: "my-group", label: "Nhóm của tôi", icon: <Users className="h-4 w-4" />, section: "student" },
+    { key: "my-group", label: tr(language, "Nhóm của tôi", "My Group"), icon: <Users className="h-4 w-4" />, section: "student" },
+    { key: "my-tasks", label: tr(language, "Task của tôi", "My Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "student" },
+    // { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "student" },
+    { key: "peer-review", label: tr(language, "Đánh giá chéo", "Peer Review"), icon: <Star className="h-4 w-4" />, section: "personal" },
+    { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <Sparkles className="h-4 w-4" />, section: "personal" },
+    { key: "feedback", label: tr(language, "Phản hồi", "Feedback"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "personal" },
     { key: "appeals", label: "Giải trình", icon: <ShieldAlert className="h-4 w-4" />, section: "personal" },
   ];
 
@@ -78,7 +78,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
     if (key === "overview") return navigate("/student/dashboard");
     if (key === "my-group") return navigate("/student/my-group");
     if (key === "my-tasks") return navigate("/student/my-tasks");
-    if (key === "work-logs") return navigate("/student/work-logs");
+    // if (key === "work-logs") return navigate("/student/work-logs");
     if (key === "peer-review") return navigate("/student/peer-review");
     if (key === "contribution") return navigate("/student/my-contribution");
     if (key === "feedback") return navigate("/student/feedback");
