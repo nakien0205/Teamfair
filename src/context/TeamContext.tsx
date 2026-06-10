@@ -28,10 +28,6 @@ import {
   getProjectInvites,
   revokeProjectInvite,
   scopePersistedTeamSnapshotForUser,
-<<<<<<< HEAD
-  createJoinRequest,
-=======
->>>>>>> fe9d16f6e34f56a17017d46fb0a4410835ac746f
   getJoinRequests,
   processJoinRequest,
   validateInviteCode,
@@ -823,14 +819,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reviewed: false,
       },
     ]);
-<<<<<<< HEAD
-=======
     if (currentGroup) {
       trackEvent("report_submitted", {
         group_id: currentGroup.id,
       });
     }
->>>>>>> fe9d16f6e34f56a17017d46fb0a4410835ac746f
     if (currentGroup) persist(() => insertStudentReport(currentGroup.id, report));
   }, [currentGroupIndex, groups, persist]);
 
@@ -1096,59 +1089,6 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return created;
   }, [canPersist, user?.id, loadPersistedState, currentUserName]);
 
-  const createProjects = useCallback(async (projectNames: string[]) => {
-    const normalizedNames = Array.from(
-      new Set(
-        projectNames
-          .map(name => name.trim())
-          .filter(Boolean),
-      ),
-    );
-
-    if (normalizedNames.length === 0) return [];
-
-    if (canPersist && user?.id) {
-      const created: Array<{ id: string; name: string }> = [];
-      for (const projectName of normalizedNames) {
-        const newId = await createPersistedGroup(projectName, user.id);
-        created.push({ id: newId, name: projectName });
-      }
-
-      if (created[0]) {
-        localStorage.setItem(`teamfair_last_project_${user.id}`, created[0].id);
-      }
-      await loadPersistedState();
-      return created;
-    }
-
-    const created = normalizedNames.map((projectName, index) => ({
-      id: `mock-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
-      name: projectName,
-    }));
-
-    const mockGroups: Group[] = created.map(({ id, name }) => ({
-      id,
-      name,
-      members: [
-        {
-          id: 'demo-user-id',
-          name: currentUserName || 'Nguyễn Văn A',
-          role: 'Leader',
-          completedTasks: 0,
-          contributionPercent: 0,
-          lecturerScore: null,
-        },
-      ],
-      tasks: [],
-      activityLog: [
-        { timestamp: new Date(), description: 'Nhóm được tạo' },
-      ],
-    }));
-
-    setGroups(prev => [...prev, ...mockGroups]);
-    return created;
-  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
-
   const joinProject = useCallback(async (inviteCode: string): Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }> => {
     if (canPersist && user?.id) {
       const { group_id, group_name, status } = await validateInviteCode(inviteCode);
@@ -1172,13 +1112,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setConnectionError(false);
 
         const joinedGroup = scopedSnapshot.groups[targetIndex];
-<<<<<<< HEAD
-=======
         trackEvent("group_joined", {
           group_id,
           method: "invite",
         });
->>>>>>> fe9d16f6e34f56a17017d46fb0a4410835ac746f
         return { status: "success", groupIndex: targetIndex, groupName: joinedGroup?.name || group_name };
       } else {
         trackEvent("group_join_requested", {
@@ -1233,11 +1170,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return { status: "success", groupIndex: newIdx, groupName: newName };
     }
-<<<<<<< HEAD
-  }, [canPersist, currentUserName, profile?.full_name, scopeSnapshotForCurrentUser, user?.email, user?.id]);
-=======
   }, [canPersist, currentUserName, scopeSnapshotForCurrentUser, user?.id]);
->>>>>>> fe9d16f6e34f56a17017d46fb0a4410835ac746f
 
   const deleteProject = useCallback(async (projectId: string) => {
     if (canPersist && user?.id) {
