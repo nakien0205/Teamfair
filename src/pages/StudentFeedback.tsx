@@ -4,7 +4,6 @@ import {
   AlertCircle,
   BellDot,
   CheckCircle2,
-  Loader2,
   MessageSquareQuote,
   ShieldAlert,
 } from "lucide-react";
@@ -19,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { t, tr } from "@/lib/i18n";
+import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import {
@@ -55,6 +56,7 @@ const filterMatches = (filter: FeedbackFilter, item: StudentFeedbackRecord) => {
 };
 
 const StudentFeedback = () => {
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -197,9 +199,9 @@ const StudentFeedback = () => {
                   ) : null}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Phản hồi từ nhóm trưởng và giảng viên</h1>
+                  <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{tr(language, "Phản hồi từ nhóm trưởng và giảng viên", "Feedback from Team Leader and Instructor")}</h1>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                    Đây là khu vực chỉ hiển thị feedback dành riêng cho bạn. Cảnh báo ở đây không phải kết luận cuối cùng hay hình thức xử phạt tự động.
+                    {tr(language, "Đây là khu vực chỉ hiển thị feedback dành riêng cho bạn. Cảnh báo ở đây không phải kết luận cuối cùng hay hình thức xử phạt tự động.", "This is a section that only displays feedback specifically for you. Warnings here are not the final conclusion or automatic punishment mechanisms.")}
                   </p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-[220px_1fr]">
@@ -208,17 +210,17 @@ const StudentFeedback = () => {
                     onChange={event => setFilter(event.target.value as FeedbackFilter)}
                     className="h-11 rounded-2xl border border-input bg-background px-3 text-sm"
                   >
-                    <option value="all">Tất cả</option>
-                    <option value="unread">Chưa đọc</option>
-                    <option value="task_review">Task feedback</option>
-                    <option value="contribution">Contribution feedback</option>
-                    <option value="warning">Warning</option>
-                    <option value="lecturer_note">Lecturer feedback</option>
+                    <option value="all">{tr(language, "Tất cả", "All")}</option>
+                    <option value="unread">{tr(language, "Chưa đọc", "Unread")}</option>
+                    <option value="task_review">{tr(language, "Task feedback", "Task feedback")}</option>
+                    <option value="contribution">{tr(language, "Contribution feedback", "Contribution feedback")}</option>
+                    <option value="warning">{tr(language, "Warning", "Warning")}</option>
+                    <option value="lecturer_note">{tr(language, "Lecturer feedback", "Lecturer feedback")}</option>
                   </select>
                   <Input
                     value={search}
                     onChange={event => setSearch(event.target.value)}
-                    placeholder="Tìm theo người gửi, nội dung hoặc task liên quan"
+                    placeholder={tr(language, "Tìm theo người gửi, nội dung hoặc task liên quan", "Search by sender, content, or related task")}
                     className="h-11 rounded-2xl"
                   />
                 </div>
@@ -229,7 +231,7 @@ const StudentFeedback = () => {
           {!loading && error ? (
             <Alert className="rounded-3xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Không thể tải feedback</AlertTitle>
+              <AlertTitle>{tr(language, "Không thể tải feedback", "Failed to load feedback")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
@@ -238,7 +240,7 @@ const StudentFeedback = () => {
             <Card className="rounded-3xl border-0 shadow-card">
               <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
                 <BellDot className="h-10 w-10 text-muted-foreground" />
-                <p>Bạn chưa có feedback nào.</p>
+                <p>{tr(language, "Bạn chưa có feedback nào.", "You have no feedback yet.")}</p>
               </CardContent>
             </Card>
           ) : null}
@@ -247,8 +249,8 @@ const StudentFeedback = () => {
             <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
               <Card className="rounded-3xl border-0 shadow-card">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-xl">Danh sách feedback</CardTitle>
-                  <CardDescription>Chọn một feedback để xem chi tiết và phản hồi nếu được phép.</CardDescription>
+                  <CardTitle className="text-xl">{tr(language, "Danh sách feedback", "Feedback List")}</CardTitle>
+                  <CardDescription>{tr(language, "Chọn một feedback để xem chi tiết và phản hồi nếu được phép.", "Select a feedback to view details and respond if permitted.")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {visibleItems.map(item => (
@@ -392,8 +394,7 @@ const StudentFeedback = () => {
               Hủy
             </Button>
             <Button className="rounded-2xl" onClick={() => void handleReply()} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Gửi phản hồi
+              {saving ? "Đang gửi..." : "Gửi phản hồi"}
             </Button>
           </DialogFooter>
         </DialogContent>

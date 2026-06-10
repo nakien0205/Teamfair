@@ -16,6 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { t, tr } from "@/lib/i18n";
 import { useTeam } from "@/context/TeamContext";
 import { getStudentContributionData, getStudentPeerReviewActive } from "@/lib/studentApi";
 import { listStudentWorkLogs, type WorkLogRecord } from "@/lib/workLogs";
@@ -44,6 +46,7 @@ const LoadingState = () => (
 );
 
 const StudentMyContribution = () => {
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { groups, currentGroupIndex, tasks, lecturerStudentReviews, currentUserName } = useTeam();
@@ -134,7 +137,7 @@ const StudentMyContribution = () => {
                 <CardContent className="space-y-4 p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
-                      Điểm đóng góp tham khảo
+                      {tr(language, "Điểm đóng góp tham khảo", "Reference Contribution Score")}
                     </Badge>
                     <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
                       {group.name}
@@ -143,10 +146,10 @@ const StudentMyContribution = () => {
                   <div>
                     <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{profile?.full_name || currentUserName}</h1>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.
+                      {tr(language, "Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.", "Contribution scores are for reference only. The final decision rests with the instructor.")}
                     </p>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  {/* <div className="grid gap-3 md:grid-cols-3">
                     <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Nhóm / dự án</p>
                       <p className="mt-2 text-sm font-medium">{group.name}</p>
@@ -159,14 +162,14 @@ const StudentMyContribution = () => {
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Work log</p>
                       <p className="mt-2 text-sm font-medium">{workLogs.length} bản ghi</p>
                     </div>
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
               {!result?.hasEnoughData ? (
                 <Card className="rounded-3xl border-0 shadow-card">
                   <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                    Chưa có đủ dữ liệu để tính điểm đóng góp.
+                      {tr(language, "Chưa có đủ dữ liệu để tính điểm đóng góp.", "Not enough data available to calculate contribution score.")}
                   </CardContent>
                 </Card>
               ) : null}

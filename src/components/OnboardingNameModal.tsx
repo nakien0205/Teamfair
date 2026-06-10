@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
 
 export const OnboardingNameModal: React.FC = () => {
-  const { profile, updateProfileName } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { language } = useLanguage();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedRole, setSelectedRole] = useState<"student" | "lecturer" | null>(null);
@@ -53,17 +53,16 @@ export const OnboardingNameModal: React.FC = () => {
 
     setLoading(true);
     try {
-      // 1. Commit the role securely using the Supabase RPC function
-      const { error: rpcError } = await supabase.rpc("set_signup_role", {
+      const { error: rpcError } = await supabase.rpc("complete_signup_profile", {
         p_role: selectedRole,
+        p_full_name: trimmed,
       });
 
       if (rpcError) {
-        throw new Error(rpcError.message || "Failed to commit your role preference.");
+        throw new Error(rpcError.message || "Failed to complete your profile setup.");
       }
 
-      // 2. Commit the full name and mark profile completed
-      await updateProfileName(trimmed);
+      await refreshProfile();
 
       toast.success(
         tr(language, "Chào mừng đến với Teamfair!", "Welcome to Teamfair!")

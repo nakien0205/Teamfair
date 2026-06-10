@@ -134,6 +134,19 @@ export type TeamRows = {
   calendarEvents?: DbCalendarEvent[];
 };
 
+export type GroupEmailInvite = {
+  id: string;
+  group_id: string;
+  invited_email: string;
+  invited_user_id: string | null;
+  invite_code: string;
+  created_by: string;
+  status: "pending" | "sent" | "accepted" | "rejected" | "revoked";
+  note: string | null;
+  created_at: string;
+  responded_at: string | null;
+};
+
 export type PersistedTeamSnapshot = {
   groups: Group[];
   reports: StudentReport[];
@@ -216,6 +229,10 @@ function serializeEvidence(evidence: Task["evidence"] | undefined): Array<{
 function relationUser(member: DbMember): { id: string; full_name: string; role?: string } | null {
   if (Array.isArray(member.users)) return member.users[0] ?? null;
   return member.users ?? null;
+}
+
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function taskAssigneeName(task: DbTask, members: DbMember[]): string {
@@ -328,6 +345,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
 
   const reports = rows.reports.map<StudentReport>(report => ({
     id: report.id,
+    groupId: report.group_id,
     from: report.from_name,
     to: report.to_name,
     reason: report.reason,
@@ -391,10 +409,77 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
   return { groups, reports, materialsByGroupId, lecturerStudentReviews, studentBadges, calendarEventsByGroupId };
 }
 
+type SnapshotScope = {
+  userId: string;
+  role: "student" | "lecturer" | "admin";
+};
+
+export function scopePersistedTeamSnapshotForUser(
+  snapshot: PersistedTeamSnapshot,
+  scope: SnapshotScope,
+): PersistedTeamSnapshot {
+  if (scope.role === "admin") {
+    return snapshot;
+  }
+
+  const allowedGroupIds = new Set(
+    snapshot.groups
+      .filter(group => (
+        scope.role === "lecturer"
+          ? group.lecturer_id === scope.userId
+          : group.members.some(member => member.id === scope.userId)
+      ))
+      .map(group => group.id),
+  );
+
+  const filterGroupIdMap = <T>(value: Record<string, T[]>) =>
+    Object.entries(value).reduce<Record<string, T[]>>((acc, [groupId, rows]) => {
+      if (allowedGroupIds.has(groupId)) {
+        acc[groupId] = rows;
+      }
+      return acc;
+    }, {});
+
+  return {
+    groups: snapshot.groups.filter(group => allowedGroupIds.has(group.id)),
+    reports: snapshot.reports.filter(report => report.groupId ? allowedGroupIds.has(report.groupId) : false),
+    materialsByGroupId: filterGroupIdMap(snapshot.materialsByGroupId),
+    lecturerStudentReviews: snapshot.lecturerStudentReviews,
+    studentBadges: snapshot.studentBadges,
+    calendarEventsByGroupId: filterGroupIdMap(snapshot.calendarEventsByGroupId),
+  };
+}
+
 async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    await supabase
+      .from("project_invites")
+      .delete()
+      .eq("id", invite.id);
+    throw new Error(error.message);
+  }
   return data ?? ([] as T);
+}
+
+async function findUserByEmail(email: string): Promise<{ id: string; email: string; full_name: string; role: string } | null> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id,email,full_name,role")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    await supabase
+      .from("project_invites")
+      .delete()
+      .eq("id", invite.id);
+    throw new Error(error.message);
+  }
+  return data ?? null;
 }
 
 export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot> {
@@ -881,6 +966,165 @@ export async function createProjectInvite(
     maxUses,
     approvalMode,
   });
+}
+
+export async function createGroupEmailInvite(
+  groupId: string,
+  invitedEmail: string,
+  note: string | null = null,
+): Promise<{ invite: ProjectInvite; emailInvite: GroupEmailInvite; recipient: { id: string; email: string; full_name: string; role: string } | null }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("User not authenticated");
+
+  const normalizedEmail = normalizeEmail(invitedEmail);
+  if (!normalizedEmail) throw new Error("Email không hợp lệ");
+
+  const recipient = await findUserByEmail(normalizedEmail);
+  if (recipient) {
+    const { data: existingMember, error: memberError } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("group_id", groupId)
+      .eq("student_id", recipient.id)
+      .maybeSingle();
+    if (memberError) throw new Error(memberError.message);
+    if (existingMember) {
+      throw new Error("Người dùng này đã là thành viên của nhóm");
+    }
+  }
+
+  const invite = await createProjectInvite(groupId, null, 1, "requires_approval");
+
+  const { data, error } = await supabase
+    .from("group_email_invites")
+    .insert({
+      group_id: groupId,
+      invited_email: normalizedEmail,
+      invited_user_id: recipient?.id ?? null,
+      invite_code: invite.id,
+      created_by: user.id,
+      note,
+      status: "sent",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    await supabase
+      .from("project_invites")
+      .delete()
+      .eq("id", invite.id);
+    throw new Error(error.message);
+  }
+  if (!data) throw new Error("Không thể tạo lời mời email");
+
+  return {
+    invite,
+    emailInvite: data as GroupEmailInvite,
+    recipient,
+  };
+}
+
+export async function sendGroupEmailInviteEmail(input: {
+  recipientEmail: string;
+  senderName: string;
+  groupName: string;
+  inviteCode: string;
+  note?: string | null;
+}): Promise<{ sent?: boolean; skipped?: boolean; reason?: string }> {
+  const { data, error } = await supabase.functions.invoke("send-group-email-invite", {
+    body: {
+      recipientEmail: input.recipientEmail,
+      senderName: input.senderName,
+      groupName: input.groupName,
+      inviteCode: input.inviteCode,
+      note: input.note ?? null,
+    },
+  });
+
+  if (error) throw new Error(error.message);
+  return (data ?? {}) as { sent?: boolean; skipped?: boolean; reason?: string };
+}
+
+export async function listGroupEmailInvites(groupId: string): Promise<GroupEmailInvite[]> {
+  const { data, error } = await supabase
+    .from("group_email_invites")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []) as GroupEmailInvite[];
+}
+
+export async function listMyGroupEmailInvites(): Promise<GroupEmailInvite[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const normalizedEmail = normalizeEmail(user.email ?? "");
+  const query = supabase
+    .from("group_email_invites")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const { data, error } = normalizedEmail
+    ? await query.or(`invited_user_id.eq.${user.id},invited_email.eq.${normalizedEmail}`)
+    : await query.eq("invited_user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  return (data || []) as GroupEmailInvite[];
+}
+
+export async function claimGroupEmailInvitesForCurrentUser(): Promise<number> {
+  const { data, error } = await supabase.rpc("claim_group_email_invites_for_current_user");
+  if (error) throw new Error(error.message);
+  return typeof data === "number" ? data : Number(data ?? 0);
+}
+
+export async function respondToGroupEmailInvite(inviteId: string, response: "accepted" | "rejected"): Promise<void> {
+  const { error } = await supabase.rpc("respond_to_group_email_invite", {
+    p_invite_id: inviteId,
+    p_response: response,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function assignGroupLeader(groupId: string, memberId: string): Promise<void> {
+  const { error } = await supabase.rpc("assign_group_leader", {
+    p_group_id: groupId,
+    p_new_leader_id: memberId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeGroupMember(groupId: string, memberId: string): Promise<void> {
+  const { error } = await supabase.rpc("remove_group_member", {
+    p_group_id: groupId,
+    p_target_user_id: memberId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function revokeGroupEmailInvite(inviteId: string): Promise<void> {
+  const { data: emailInvite, error: fetchError } = await supabase
+    .from("group_email_invites")
+    .select("invite_code")
+    .eq("id", inviteId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { error } = await supabase.from("group_email_invites").update({
+    status: "revoked",
+    responded_at: new Date().toISOString(),
+  }).eq("id", inviteId);
+  if (error) throw new Error(error.message);
+
+  if (emailInvite?.invite_code) {
+    const { error: inviteError } = await supabase
+      .from("project_invites")
+      .delete()
+      .eq("id", emailInvite.invite_code);
+    if (inviteError) throw new Error(inviteError.message);
+  }
 }
 
 export async function getProjectInvites(groupId: string): Promise<ProjectInvite[]> {
