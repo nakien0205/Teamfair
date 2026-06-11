@@ -1,49 +1,45 @@
--- Migration to fix Row-Level Security (RLS) constraints for invite counters and request approvals
+-- Invite RLS cleanup and member-insert tightening.
 -- Timestamp: 2026-05-29 15:00:00
+--
+-- The invite counter is now updated only inside the service-only
+-- consume_project_invite / approve_project_join_request RPC flow. Keeping a
+-- separate authenticated increment RPC lets clients mutate counters without
+-- proving that a join actually happened, so remove it.
 
--- ---------------------------------------------------------------------------
--- 1. Create increment_invite_use SECURITY DEFINER RPC function
--- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.increment_invite_use(p_invite_code text)
-RETURNS void
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  -- Perform direct atomic update bypassing standard RLS checks for updating guests
-  UPDATE public.project_invites
-  SET uses_count = uses_count + 1
-  WHERE id = p_invite_code;
-END;
-$$ LANGUAGE plpgsql;
+DROP FUNCTION IF EXISTS public.increment_invite_use(text);
 
-GRANT EXECUTE ON FUNCTION public.increment_invite_use(text) TO authenticated, service_role;
-
--- ---------------------------------------------------------------------------
--- 2. Modify group_members INSERT policy to allow Leaders to add members
--- ---------------------------------------------------------------------------
+-- Leaders may add regular project members, but leader promotion must move
+-- through the dedicated member-management RPCs. This keeps browser inserts
+-- from minting new project owners.
 DROP POLICY IF EXISTS group_members_insert ON public.group_members;
 CREATE POLICY group_members_insert ON public.group_members
   FOR INSERT
   WITH CHECK (
     public.is_admin()
     OR public.is_lecturer_of_group(group_id)
-    -- Allow the student themselves to join with 'Member' role
     OR (
       student_id = auth.uid()
       AND (
-        (role = 'Member')
-        OR (role = 'Leader' AND EXISTS (
-          SELECT 1 FROM public.groups g
-          WHERE g.id = group_id AND g.lecturer_id = auth.uid()
-        ))
+        role = 'Member'
+        OR (
+          role = 'Leader'
+          AND EXISTS (
+            SELECT 1
+            FROM public.groups g
+            WHERE g.id = group_members.group_id
+              AND g.lecturer_id = auth.uid()
+          )
+        )
       )
     )
-    -- Allow the Group Leader of the target group to insert/add new members
-    OR EXISTS (
-      SELECT 1 FROM public.group_members gm
-      WHERE gm.group_id = group_members.group_id
-        AND gm.student_id = auth.uid()
-        AND gm.role = 'Leader'
+    OR (
+      role = 'Member'
+      AND EXISTS (
+        SELECT 1
+        FROM public.group_members gm
+        WHERE gm.group_id = group_members.group_id
+          AND gm.student_id = auth.uid()
+          AND gm.role = 'Leader'
+      )
     )
   );

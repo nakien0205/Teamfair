@@ -75,12 +75,12 @@ Order matters; examples in this repo:
 13. `20260529120000_project_sharing.sql` - `project_invites` and `join_requests` tables to support invite code sharing and join request workflow, complete with RLS policies, constraints, indexes, and grants.
 14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
 15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
-16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
+16. `20260529150000_invite_rls_fixes.sql` - cleanup migration that removes the obsolete invite counter RPC and tightens group leader membership insert RLS.
 17. `20260604120000_storage_buckets.sql` - private Supabase Storage buckets for materials/evidence, material storage metadata columns, and Storage RLS policies.
 18. `20260604130000_enable_realtime.sql` - Supabase Realtime publication setup for dashboard-core Postgres Changes subscriptions.
 19. `20260604140000_api_layer_invite_security.sql` - tightens invite row visibility and adds service-only RPC helpers for atomic invite consumption and approval-required invite usage.
 20. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
-21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite visibility, service-only invite RPC grants, lecturer project scoping, and guarded signup role/name completion.
+21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite/share visibility, resets invite and join-request RLS policies, keeps invite redemption service-only, fixes lecturer project scoping, and guards signup role/name completion.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.

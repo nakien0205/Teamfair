@@ -44,9 +44,8 @@ const StudentLayout = () => {
 
   const handleSelect = (key: string) => {
     if (key === "share-project") {
-      console.log("1. Đã click nút Share trên Sidebar!");
       openShareModal();
-      return; // CHẶN LẠI, không cho chạy xuống logic chuyển trang/đổi activeKey ở dưới
+      return;
   }
     // if (dataLoading) return;
 

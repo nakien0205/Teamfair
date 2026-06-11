@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox, Mail, MailOpen, Bell, Check, AlertTriangle, UserX, Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
+  const location = useLocation();
   const navigate = useNavigate();
   const { language } = useLanguage();
   const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
@@ -53,6 +54,13 @@ const ProjectManagement: React.FC = () => {
   const [deleteAccountProceedInput, setDeleteAccountProceedInput] = useState("");
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [ledProjects, setLedProjects] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
+
+  useEffect(() => {
+    const inviteFromLink = new URLSearchParams(location.search).get("invite");
+    if (!inviteFromLink) return;
+    setProjectIdInput(inviteFromLink.toUpperCase());
+    setIsJoinOpen(true);
+  }, [location.search]);
 
   useEffect(() => {
     if (user?.id) {
