@@ -4,7 +4,6 @@ import DashboardShell from "@/components/DashboardShell";
 import DashboardSidebar, { DashboardSidebarItem } from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useAuth } from "@/context/AuthContext";
 import { useTeam } from "@/context/TeamContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { t, tr } from "@/lib/i18n";
@@ -18,24 +17,14 @@ const StudentLayout = () => {
   const openShareModal = useShareModalStore((state) => state.openShareModal);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { currentUserName, studentRole, dataLoading } = useTeam();
   const { language } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isLeader = studentRole === "Leader";
 
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
-
-    setIsLoggingOut(true);
-    await new Promise((resolve) => setTimeout(resolve, LOGOUT_TRANSITION_MS));
-
-    try {
-      await signOut();
-    } finally {
-      navigate("/login", { replace: true });
-    }
+  const handleExit = () => {
+    navigate("/projects");
   };
 
   // Determine active key from pathname
@@ -48,7 +37,7 @@ const StudentLayout = () => {
   else if (pathname.includes("/student/feedback")) activeKey = "feedback";
   else if (pathname.includes("/student/appeals")) activeKey = "appeals";
   else if (pathname.includes("/student/documents")) activeKey = "materials";
-  else if (pathname.includes("/leader/tasks")) activeKey = "leader-tasks";
+  else if (pathname.includes("/leader/tasks") || pathname.includes("/student/workspace")) activeKey = "leader-tasks";
   else if (pathname.includes("/leader/submissions")) activeKey = "leader-submissions";
   else if (pathname.includes("/leader/member-evaluations")) activeKey = "leader-evaluations";
   else if (pathname.includes("/leader/progress-report")) activeKey = "leader-progress";
@@ -72,7 +61,7 @@ const StudentLayout = () => {
       case "appeals": navigate("/student/appeals"); break;
       case "materials": navigate("/student/documents"); break;
       case "switch-projects": navigate("/projects"); break;
-      case "leader-tasks": navigate("/leader/tasks"); break;
+      case "leader-tasks": navigate("/student/workspace"); break;
       case "leader-submissions": navigate("/leader/submissions"); break;
       case "leader-evaluations": navigate("/leader/member-evaluations"); break;
       case "leader-progress": navigate("/leader/progress-report"); break;
@@ -103,10 +92,10 @@ const StudentLayout = () => {
     // Đẩy thêm các mục của Leader vào mảng nếu user là Leader
     if (isLeader) {
       items.push(
-        // { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
+        { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
         // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
         // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
-        { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
+        // { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
         { key: "share-project", label: tr(language, "Chia sẻ dự án", "Share Project"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
 
       );
@@ -135,7 +124,7 @@ const StudentLayout = () => {
           header={
             <DashboardHeader
               roleLabel={t(language, "student")}
-              onExit={handleLogout}
+              onExit={handleExit}
               onHomeClick={() => navigate("/")}
               leftSlot={<SidebarTrigger />}
               showRoleSelect={false}

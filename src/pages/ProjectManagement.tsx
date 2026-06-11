@@ -779,7 +779,7 @@ const ProjectManagement: React.FC = () => {
 
           <Button
             onClick={() => {
-              navigate("/login", { replace: true });
+              navigate("/", { replace: true });
               void signOut();
             }}
             variant="ghost"
@@ -1118,7 +1118,7 @@ const ProjectManagement: React.FC = () => {
 
           <Button
             onClick={() => {
-              navigate("/login", { replace: true });
+              navigate("/", { replace: true });
               void signOut();
             }}
             variant="ghost"

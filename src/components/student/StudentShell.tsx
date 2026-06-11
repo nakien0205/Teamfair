@@ -42,7 +42,7 @@ interface Props {
 const StudentShell = ({ activeKey, children }: Props) => {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const { groups, currentGroupIndex, currentUserName, studentRole } = useTeam();
   const { unreadCount } = useNotifications();
 
@@ -102,8 +102,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
         <DashboardHeader
           roleLabel={t(language, "student")}
           onExit={() => {
-            navigate("/login", { replace: true });
-            void signOut();
+            navigate("/projects");
           }}
           leftSlot={<SidebarTrigger />}
           rightSlot={
