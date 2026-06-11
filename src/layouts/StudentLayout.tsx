@@ -92,7 +92,7 @@ const StudentLayout = () => {
     // Đẩy thêm các mục của Leader vào mảng nếu user là Leader
     if (isLeader) {
       items.push(
-        { key: "leader-tasks", label: tr(language, "Quản lý task", "Manage Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
+        { key: "leader-tasks", label: tr(language, "Tạo task", "Create Task"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
         // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
         // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
         // { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
