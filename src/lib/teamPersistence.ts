@@ -453,10 +453,7 @@ export function scopePersistedTeamSnapshotForUser(
 async function selectOrThrow<T>(query: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
   const { data, error } = await query;
   if (error) {
-    await supabase
-      .from("project_invites")
-      .delete()
-      .eq("id", invite.id);
+    
     throw new Error(error.message);
   }
   return data ?? ([] as T);
@@ -473,10 +470,6 @@ async function findUserByEmail(email: string): Promise<{ id: string; email: stri
     .maybeSingle();
 
   if (error) {
-    await supabase
-      .from("project_invites")
-      .delete()
-      .eq("id", invite.id);
     throw new Error(error.message);
   }
   return data ?? null;

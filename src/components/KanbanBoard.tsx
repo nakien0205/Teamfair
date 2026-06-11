@@ -180,7 +180,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     }
 
     const validation = validateStorageFile("evidence", file);
-    if (!validation.valid) {
+    if (validation.valid==false) {
       toast({
         title: validation.reason === "size" ? tr(language, 'Lỗi kích thước', 'Size Error') : tr(language, 'Định dạng không hỗ trợ', 'Unsupported file type'),
         description: validation.message,
