@@ -38,6 +38,13 @@ The `team-api` and `delete-user-auth` Edge Functions run server-side and read se
 
 Local function testing can use `supabase functions serve --env-file <file>`. Never commit Edge Function env files.
 
+### CORS and Distributed Tracing (Sentry)
+If frontend client-side Sentry error tracking is enabled, browser fetch requests to Edge Functions (like `team-api`) will carry Sentry distributed tracing headers (`sentry-trace`, `baggage`). 
+
+To prevent CORS preflight blocks in the browser:
+- Ensure the Edge Function's allowed preflight headers (`Access-Control-Allow-Headers`) include both `sentry-trace` and `baggage`.
+- This configuration resides in `supabase/functions/_shared/cors.ts`.
+
 ## Google Cloud Console (Web OAuth client)
 Use these when creating or editing the OAuth 2.0 **Web application** client that you attach to Supabase Google provider.
 
