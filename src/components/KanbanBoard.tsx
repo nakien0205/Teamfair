@@ -12,6 +12,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/studentTaskProgress';
 import { useAuth } from '@/context/AuthContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useNotifications } from '@/context/NotificationContext';
 import {
   createSignedFileUrl,
   deleteStorageFile,
@@ -46,12 +48,15 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
     addTask,
     updateTaskStatus,
     appendTaskEvidence,
+    currentUserName,
   } = useTeam();
   const { user } = useAuth();
   const { toast } = useToast();
   const { language } = useLanguage();
+  const { sendNotification } = useNotifications();
   const [createOpen, setCreateOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium' as 'Low' | 'Medium' | 'High', contributionPercent: 10 });
+  const [notifyTeam, setNotifyTeam] = useState(false);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const evidenceRef = useRef<HTMLInputElement>(null);
   const [evidenceTaskId, setEvidenceTaskId] = useState<string | null>(null);
@@ -85,7 +90,23 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
       return;
     }
     addTask({ ...newTask });
+    if (notifyTeam) {
+      members
+        .filter(m => m.name !== currentUserName)
+        .forEach(member => {
+          void sendNotification(
+            member.id || member.name,
+            currentUserName,
+            tr(
+              language,
+              `Đã giao task mới: "${newTask.name}"`,
+              `Assigned a new task: "${newTask.name}"`
+            )
+          );
+        });
+    }
     setNewTask({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium', contributionPercent: 10 });
+    setNotifyTeam(false);
     setCreateOpen(false);
     toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: `"${newTask.name}" ${tr(language, 'đã được thêm', 'has been added')}` });
   };
@@ -291,6 +312,16 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="flex items-center space-x-2 py-2">
+                  <Checkbox
+                    id="notifyTeamKanban"
+                    checked={notifyTeam}
+                    onCheckedChange={(checked) => setNotifyTeam(!!checked)}
+                  />
+                  <Label htmlFor="notifyTeamKanban" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
+                    {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
+                  </Label>
                 </div>
                 <div className="flex gap-2">
                   <Button className="flex-1" onClick={handleCreate}>{tr(language, 'Tạo Task', 'Create Task')}</Button>
