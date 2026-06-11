@@ -29,24 +29,15 @@ const LOGOUT_TRANSITION_MS = 420;
 const LecturerLayout = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const { dataLoading } = useTeam();
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
-
-    setIsLoggingOut(true);
-    await new Promise((resolve) => setTimeout(resolve, LOGOUT_TRANSITION_MS));
-
-    try {
-      await signOut();
-    } finally {
-      navigate("/login", { replace: true });
-    }
+  const handleExit = () => {
+    navigate("/projects");
   };
 
   // Compute Display Name fallback logic: full_name > email > short uuid
@@ -137,7 +128,7 @@ const LecturerLayout = () => {
           header={
             <DashboardHeader
               roleLabel={t(language, "lecturer")}
-              onExit={handleLogout}
+              onExit={handleExit}
               onHomeClick={() => navigate("/")}
               leftSlot={<SidebarTrigger />}
               showRoleSelect={false}

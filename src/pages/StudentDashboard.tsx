@@ -44,9 +44,6 @@ const StudentDashboard = () => {
   const { sendNotification } = useNotifications();
   const navigate = useNavigate();
   const { profile, loading: authLoading, signOut } = useAuth();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
-  const [notifyTeam, setNotifyTeam] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [peerEvaluations, setPeerEvaluations] = useState<PeerEvaluation[]>([]);
@@ -96,30 +93,6 @@ const StudentDashboard = () => {
       map[e.to].count += 1;
     });
     return Object.entries(map).map(([name, { total, count }]) => ({ name, avg: total / count, count }));
-  };
-
-  const handleCreateTask = () => {
-    if (!newTask.name || !newTask.assignedTo) return;
-    addTask(newTask);
-    if (notifyTeam) {
-      members
-        .filter(m => m.name !== currentUserName)
-        .forEach(member => {
-          void sendNotification(
-            member.id || member.name,
-            currentUserName,
-            tr(
-              language,
-              `Đã giao task mới: "${newTask.name}"`,
-              `Assigned a new task: "${newTask.name}"`
-            )
-          );
-        });
-    }
-    setNewTask({ name: '', assignedTo: '', contributionPercent: 10, deadline: '' });
-    setNotifyTeam(false);
-    setModalOpen(false);
-    toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: tr(language, `"${newTask.name}" giao cho ${newTask.assignedTo}`, `"${newTask.name}" assigned to ${newTask.assignedTo}`) });
   };
 
   const handleDelete = (t: Task) => {
@@ -249,50 +222,6 @@ const StudentDashboard = () => {
             <section className="bg-card rounded-xl p-6 shadow-card border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-lg font-semibold">{tr(language, 'Danh sách Task', 'Task list')}</h2>
-                {isLeader && (
-                  <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm"><Plus className="h-4 w-4 mr-1" /> {tr(language, 'Tạo Task', 'Create Task')}</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>{tr(language, 'Tạo Task mới', 'Create a new task')}</DialogTitle></DialogHeader>
-                      <div className="space-y-4 pt-2">
-                        <div className="space-y-1">
-                          <Label>{tr(language, 'Tên task', 'Task name')}</Label>
-                          <Input value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} placeholder="Nhập tên task" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>{tr(language, 'Giao cho', 'Assign to')}</Label>
-                          <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
-                            <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Pick a member')} /></SelectTrigger>
-                            <SelectContent>
-                              {members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label>{tr(language, 'Đóng góp (%)', 'Contribution (%)')}</Label>
-                          <Input type="number" min={1} max={100} value={newTask.contributionPercent} onChange={e => setNewTask(p => ({ ...p, contributionPercent: Number(e.target.value) }))} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>{tr(language, 'Deadline', 'Deadline')}</Label>
-                          <Input type="date" value={newTask.deadline} onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))} />
-                        </div>
-                        <div className="flex items-center space-x-2 py-2">
-                          <Checkbox
-                            id="notifyTeam"
-                            checked={notifyTeam}
-                            onCheckedChange={(checked) => setNotifyTeam(!!checked)}
-                          />
-                          <Label htmlFor="notifyTeam" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
-                            {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
-                          </Label>
-                        </div>
-                        <Button className="w-full" onClick={handleCreateTask}>{tr(language, 'Tạo Task', 'Create task')}</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
 
               {visibleTasks.length === 0 ? (
