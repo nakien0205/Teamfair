@@ -469,6 +469,7 @@ async function findUserByEmail(email: string): Promise<{ id: string; email: stri
     .maybeSingle();
 
   if (error) {
+    console.warn("[findUserByEmail] Error fetching user by email:", error.message);
   }
   return data ?? null;
 }
@@ -913,10 +914,11 @@ export async function deletePersistedCalendarEvent(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function createPersistedGroup(projectName: string, userId: string): Promise<string> {
+export async function createPersistedGroup(projectName: string, userId: string, creatorRole?: string): Promise<string> {
+  const isLecturer = creatorRole === "lecturer" || creatorRole === "admin";
   const { data, error } = await supabase
     .from("groups")
-    .insert({ project_name: projectName, lecturer_id: userId })
+    .insert({ project_name: projectName, lecturer_id: isLecturer ? userId : null })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -929,6 +931,7 @@ export async function createPersistedGroup(projectName: string, userId: string):
 
   return data.id;
 }
+
 
 export async function joinPersistedGroup(groupId: string, userId: string, role?: string): Promise<void> {
   const { error } = await supabase

@@ -85,7 +85,7 @@ const Landing = () => {
                   {tr(language, "Đăng nhập", "Log in")}
                 </Button>
                 <Button className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-md shadow-indigo-600/20 hover:shadow-lg hover:shadow-indigo-600/30 hover:-translate-y-0.5 transition-all" onClick={() => navigate('/login')}>
-                  Bắt đầu ngay
+                  {tr(language, "Bắt đầu ngay", "Start now")}
                 </Button>
               </>
             )}
@@ -137,7 +137,7 @@ const Landing = () => {
                 <Button size="lg" variant="outline" className="text-base h-14 px-8 rounded-full border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 hover:-translate-y-1 transition-all shadow-sm" onClick={() => {
                   document.getElementById('cach-hoat-dong')?.scrollIntoView({ behavior: 'smooth' });
                 }}>
-                  Xem cách hoạt động
+                  {tr(language, "Xem cách hoạt động", "See how it works")}
                 </Button>
               </div>
             </div>

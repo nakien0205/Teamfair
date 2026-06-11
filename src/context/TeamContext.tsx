@@ -999,7 +999,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createProject = useCallback(async (projectName: string) => {
     if (canPersist && user?.id) {
-      const newId = await createPersistedGroup(projectName, user.id);
+      const newId = await createPersistedGroup(projectName, user.id, profile?.role);
       localStorage.setItem(`teamfair_last_project_${user.id}`, newId);
       await loadPersistedState();
       trackEvent("group_created", {
@@ -1050,7 +1050,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (canPersist && user?.id) {
       const created: Array<{ id: string; name: string }> = [];
       for (const projectName of normalizedNames) {
-        const newId = await createPersistedGroup(projectName, user.id);
+        const newId = await createPersistedGroup(projectName, user.id, profile?.role);
         created.push({ id: newId, name: projectName });
       }
 
