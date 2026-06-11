@@ -46,10 +46,6 @@ const LecturerDashboard = () => {
     }
   }, [profile, authLoading, navigate]);
 
-  if (authLoading || dataLoading) {
-    return <LecturerDashboardSkeleton />;
-  }
-
   const handleCreateTask = () => {
     if (!newTask.name || !newTask.assignedTo) {
       toast({
