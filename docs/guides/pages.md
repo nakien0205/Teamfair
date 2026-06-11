@@ -1,7 +1,11 @@
 See [index.md](index.md) for the docs routing map.
 
 ## Pages (top-level views)
+<<<<<<< HEAD
+- [src/pages/Landing.tsx](src/pages/Landing.tsx) - modern SaaS/EdTech landing page for TeamFair with full feature overview and language switcher.
+=======
 - [src/pages/Landing.tsx](src/pages/Landing.tsx) - marketing/hero landing page with language switcher. Features GSAP-powered animations: (1) `HeroReviewDemo` component with cursor-driven AI scoring animation (User A/B/C progress bars, Gemini star click, loading dots, review text), (2) `WorkflowSection` with scroll-triggered task board, segmented evidence bars, and step highlights, (3) Pricing cards with lavender-tinted Starter/Campus plans. Uses `useGSAP`, `gsap.matchMedia()` for reduced-motion, and `ScrollTrigger` for scroll-linked workflow animation.
+>>>>>>> fe9d16f6e34f56a17017d46fb0a4410835ac746f
 - [src/pages/Login.tsx](src/pages/Login.tsx) - Google OAuth and email sign-in / sign-up (Supabase Auth), role-based redirect when authenticated.
 - [src/layouts/StudentLayout.tsx](src/layouts/StudentLayout.tsx) - Centralized layout for all student pages (Overview, Workspace, Tasks, Work Logs, etc.).
 - [src/pages/StudentDashboard.tsx](src/pages/StudentDashboard.tsx) - student workspace with tasks, calendar, evaluation, materials, badges, and activity log.
@@ -9,6 +13,7 @@ See [index.md](index.md) for the docs routing map.
 - [src/pages/StudentMyGroup.tsx](src/pages/StudentMyGroup.tsx) - group management page for students.
 - [src/layouts/LecturerLayout.tsx](src/layouts/LecturerLayout.tsx) - Centralized layout for all lecturer pages (Overview, Rubrics, Evaluations, etc.).
 - [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx) - lecturer overview page displaying group metrics and AI analysis.
+- [src/pages/LecturerGroupsPage.tsx](src/pages/LecturerGroupsPage.tsx) - lecturer page to manage classes, projects, groups, and score grading with pagination.
 - [src/pages/LecturerReportsPage.tsx](src/pages/LecturerReportsPage.tsx) - lecturer page to view student peer review reports.
 - [src/pages/LecturerStudentEvaluationsPage.tsx](src/pages/LecturerStudentEvaluationsPage.tsx) - lecturer page to manage student badges and evaluation.
 - [src/pages/LecturerRubricsList.tsx](src/pages/LecturerRubricsList.tsx) - lecturer page to manage rubrics.

@@ -32,6 +32,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ProjectManagement from "./pages/ProjectManagement";
 import * as Sentry from "@sentry/react";
 import SentryErrorBoundaryFallback from "@/components/SentryErrorBoundaryFallback";
+import { ShareProjectModal } from "@/pages/ShareProjectModal";
 
 import LecturerLayout from "./layouts/LecturerLayout";
 import LecturerGroupsPage from "./pages/LecturerGroupsPage";
@@ -51,6 +52,17 @@ import LeaderTasks from "./pages/LeaderTasks";
 import LeaderSubmissions from "./pages/LeaderSubmissions";
 import LeaderEvaluations from "./pages/LeaderEvaluations";
 import LeaderProgress from "./pages/LeaderProgress";
+
+export  function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="app-layout">
+      {children}
+      
+      {/* Đặt cố định ở đây, nó sẽ ẩn đi cho đến khi được gọi */}
+      <ShareProjectModal />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
