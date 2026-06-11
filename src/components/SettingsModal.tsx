@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Settings, User, Mail, Shield, Check, Copy, AlertTriangle, Crown, ChevronDown, ShieldAlert, Share2, Trash2, X } from "lucide-react";
+import { Loader2, Settings, User, Mail, Shield, Check, Copy, AlertTriangle, Crown, ChevronDown, ShieldAlert, Share2, Trash2, X, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useTeam } from "@/context/TeamContext";
 import { supabase } from "@/lib/supabaseClient";
