@@ -2184,7 +2184,7 @@ const ProjectManagement: React.FC = () => {
               }}
               className="w-full bg-slate-850 hover:bg-slate-750 text-white font-bold rounded-xl py-3 border-0 shadow-md cursor-pointer"
             >
-              {tr(language, "Hoàn tất & Tiếp tục", "Complete & Continue")}
+              {tr(language, "Bỏ qua", "Skip")}
             </Button>
           </DialogFooter>
         </DialogContent>
