@@ -17,6 +17,7 @@ export type ContributionBreakdownItem = {
   weight: number;
   weightedScore: number;
   explanation: string;
+  hasData: boolean;
 };
 
 export type ContributionEvidenceSummary = {
@@ -111,58 +112,110 @@ export function calculateStudentContribution(input: Input): ContributionResult {
   const completionRatio = assignedTasks === 0 ? 0 : approvedTasks / assignedTasks;
   const deadlineRatio = assignedTasks === 0 ? 0 : Math.max(0, 1 - lateTasks / assignedTasks);
   const qualityRatio = averageQualityRating === null ? completionRatio : averageQualityRating / 5;
-  const peerRatio = peerReviewAverage === null ? 0.6 : peerReviewAverage / 5;
-  const leaderRatio = averageQualityRating === null ? 0.6 : averageQualityRating / 5;
   const workLogRatio = assignedTasks === 0 ? 0 : Math.min(1, workLogCount / Math.max(assignedTasks, 2));
+
+  // Determine which optional components have real data
+  const hasPeerData = peerReviewAverage !== null;
+  const hasLeaderData = averageQualityRating !== null;
+
+  // Base weights for all components
+  const baseWeights = {
+    task_completion: 30,
+    deadline: 20,
+    task_quality: 20,
+    peer_review: 10,
+    leader_evaluation: 10,
+    work_log: 10,
+  };
+
+  // Redistribute weight from components that have no data
+  // proportionally to components that DO have data
+  let redistributable = 0;
+  if (!hasPeerData) redistributable += baseWeights.peer_review;
+  if (!hasLeaderData) redistributable += baseWeights.leader_evaluation;
+
+  // Components that always have data (task-based + work log)
+  const alwaysPresent = ["task_completion", "deadline", "task_quality", "work_log"] as const;
+  const alwaysPresentTotal = alwaysPresent.reduce((s, k) => s + baseWeights[k], 0);
+
+  const effectiveWeights = { ...baseWeights };
+  if (redistributable > 0) {
+    // Redistribute proportionally to components that have data
+    for (const k of alwaysPresent) {
+      effectiveWeights[k] += Math.round((baseWeights[k] / alwaysPresentTotal) * redistributable);
+    }
+    if (!hasPeerData) effectiveWeights.peer_review = 0;
+    if (!hasLeaderData) effectiveWeights.leader_evaluation = 0;
+
+    // Fix any rounding mismatch so total = 100
+    const totalCheck = Object.values(effectiveWeights).reduce((a, b) => a + b, 0);
+    if (totalCheck !== 100) {
+      effectiveWeights.task_completion += 100 - totalCheck;
+    }
+  }
+
+  // Compute ratios for optional components (only used if they have data)
+  const peerRatio = hasPeerData ? peerReviewAverage / 5 : 0;
+  const leaderRatio = hasLeaderData ? averageQualityRating / 5 : 0;
 
   const breakdown: ContributionBreakdownItem[] = [
     {
       key: "task_completion",
       label: "Task Completion Score",
       score: clamp(completionRatio * 100),
-      weight: 30,
-      weightedScore: Math.round(completionRatio * 30),
+      weight: effectiveWeights.task_completion,
+      weightedScore: Math.round(completionRatio * effectiveWeights.task_completion),
       explanation: "Tỷ lệ task đã được duyệt trên tổng số task được giao.",
+      hasData: assignedTasks > 0,
     },
     {
       key: "deadline",
       label: "Deadline Score",
       score: clamp(deadlineRatio * 100),
-      weight: 20,
-      weightedScore: Math.round(deadlineRatio * 20),
+      weight: effectiveWeights.deadline,
+      weightedScore: Math.round(deadlineRatio * effectiveWeights.deadline),
       explanation: "Mức độ giữ deadline và hạn chế nộp trễ.",
+      hasData: assignedTasks > 0,
     },
     {
       key: "task_quality",
       label: "Task Quality Score",
       score: clamp(qualityRatio * 100),
-      weight: 20,
-      weightedScore: Math.round(qualityRatio * 20),
+      weight: effectiveWeights.task_quality,
+      weightedScore: Math.round(qualityRatio * effectiveWeights.task_quality),
       explanation: "Chất lượng đầu ra dựa trên task được duyệt và đánh giá hiện có.",
+      hasData: assignedTasks > 0,
     },
     {
       key: "peer_review",
       label: "Peer Review Score",
-      score: clamp(peerRatio * 100),
-      weight: 10,
-      weightedScore: Math.round(peerRatio * 10),
-      explanation: "Điểm trung bình từ đánh giá chéo, chỉ là dữ liệu tham khảo.",
+      score: hasPeerData ? clamp(peerRatio * 100) : 0,
+      weight: effectiveWeights.peer_review,
+      weightedScore: hasPeerData ? Math.round(peerRatio * effectiveWeights.peer_review) : 0,
+      explanation: hasPeerData
+        ? "Điểm trung bình từ đánh giá chéo, chỉ là dữ liệu tham khảo."
+        : "Chưa có dữ liệu đánh giá chéo — trọng số được phân bổ lại cho các thành phần khác.",
+      hasData: hasPeerData,
     },
     {
       key: "leader_evaluation",
       label: "Leader Evaluation Score",
-      score: clamp(leaderRatio * 100),
-      weight: 10,
-      weightedScore: Math.round(leaderRatio * 10),
-      explanation: "Mức đánh giá tổng quát từ trưởng nhóm hoặc giảng viên nếu có.",
+      score: hasLeaderData ? clamp(leaderRatio * 100) : 0,
+      weight: effectiveWeights.leader_evaluation,
+      weightedScore: hasLeaderData ? Math.round(leaderRatio * effectiveWeights.leader_evaluation) : 0,
+      explanation: hasLeaderData
+        ? "Mức đánh giá tổng quát từ trưởng nhóm hoặc giảng viên nếu có."
+        : "Chưa có đánh giá từ trưởng nhóm — trọng số được phân bổ lại cho các thành phần khác.",
+      hasData: hasLeaderData,
     },
     {
       key: "work_log",
       label: "Work Log / Supporting Evidence Score",
       score: clamp(workLogRatio * 100),
-      weight: 10,
-      weightedScore: Math.round(workLogRatio * 10),
+      weight: effectiveWeights.work_log,
+      weightedScore: Math.round(workLogRatio * effectiveWeights.work_log),
       explanation: "Mức độ bổ sung work log và bằng chứng hỗ trợ cho contribution.",
+      hasData: workLogCount > 0,
     },
   ];
 
