@@ -75,26 +75,26 @@ const StudentLayout = () => {
       { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <Sparkles className="h-4 w-4" />, section: "workspace" },
       { key: "my-group", label: tr(language, "Nhóm của tôi", "My Group"), icon: <Users className="h-4 w-4" />, section: "workspace" },
       { key: "tasks", label: tr(language, "Task của tôi", "My Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "workspace" },
-      // { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
+      { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
       { key: "peer-review", label: tr(language, "Đánh giá chéo", "Peer Review"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "workspace" },
-      // { key: "my-contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
+      { key: "my-contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
       { key: "feedback", label: tr(language, "Phản hồi", "Feedback"), icon: <Scale className="h-4 w-4" />, section: "workspace" },
-      // { key: "appeals", label: tr(language, "Giải trình", "Appeals"), icon: <Brain className="h-4 w-4" />, section: "workspace" },
+      { key: "appeals", label: tr(language, "Giải trình", "Appeals"), icon: <Brain className="h-4 w-4" />, section: "workspace" },
 
       // Resources
       { key: "materials", label: tr(language, "Tài liệu", "Resources"), icon: <FileUp className="h-4 w-4" />, section: "resources" },
 
       // Other
-      { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <BookOpenText className="h-4 w-4" />, section: "other" },
+      // { key: "switch-projects", label: tr(language, "Đổi dự án", "Switch Projects"), icon: <BookOpenText className="h-4 w-4" />, section: "other" },
     ];
 
     // Đẩy thêm các mục của Leader vào mảng nếu user là Leader
     if (isLeader) {
       items.push(
         { key: "leader-tasks", label: tr(language, "Tạo task", "Create Task"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
+        { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
+        { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
+        { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
         { key: "share-project", label: tr(language, "Chia sẻ dự án", "Share Project"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
 
       );
