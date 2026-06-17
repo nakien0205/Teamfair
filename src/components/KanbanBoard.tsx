@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, GripVertical, Upload, FileText, Clock, User, Download } from 'lucide-react';
+import { Plus, GripVertical, Upload, FileText, Clock, User, Download, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/studentTaskProgress';
@@ -37,9 +37,10 @@ interface Props {
   isLeader: boolean;
   currentUser: string;
   locked?: boolean;
+  onApproveClick?: (t: Task) => void;
 }
 
-const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
+const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) => {
   const {
     groups,
     currentGroupIndex,
@@ -278,34 +279,63 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-1" /> {tr(language, 'Tạo Task', 'Create Task')}</Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{tr(language, 'Tạo Task', 'Create Task')}</DialogTitle></DialogHeader>
-              <div className="space-y-3 pt-2">
-                <div className="space-y-1">
-                  <Label>{tr(language, 'Tên task', 'Task Title')}</Label>
-                  <Input value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} placeholder={tr(language, 'Nhập tên task', 'Task title')} />
+            <DialogContent className="rounded-[22px] border border-white/60 bg-white/90 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-indigo-600 animate-pulse" />
+                  {tr(language, 'Tạo Nhiệm Vụ Mới', 'Create New Task')}
+                </DialogTitle>
+                <DialogDescription>
+                  {tr(language, 'Giao việc cho thành viên nhóm và thiết lập các thông tin chi tiết.', 'Assign work to team members and set details.')}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-2 text-slate-700 text-sm">
+                <div className="space-y-1.5">
+                  <Label className="font-medium">{tr(language, 'Tên task', 'Task Title')} <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={newTask.name}
+                    onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))}
+                    placeholder={tr(language, 'Nhập tên task', 'Task title')}
+                    className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                  />
                 </div>
-                <div className="space-y-1">
-                  <Label>{tr(language, 'Mô tả', 'Description')}</Label>
-                  <Textarea value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} placeholder={tr(language, 'Nhập mô tả', 'Description')} />
+                <div className="space-y-1.5">
+                  <Label className="font-medium">{tr(language, 'Mô tả', 'Description')}</Label>
+                  <Textarea
+                    value={newTask.description}
+                    onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))}
+                    placeholder={tr(language, 'Nhập mô tả chi tiết nhiệm vụ...', 'Description')}
+                    className="h-20 rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                  />
                 </div>
-                <div className="space-y-1">
-                  <Label>{tr(language, 'Giao cho', 'Assign To')}</Label>
+                <div className="space-y-1.5">
+                  <Label className="font-medium">{tr(language, 'Giao cho', 'Assign To')} <span className="text-red-500">*</span></Label>
                   <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
-                    <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Select member')} /></SelectTrigger>
-                    <SelectContent>{members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
+                      <SelectValue placeholder={tr(language, 'Chọn thành viên', 'Select member')} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>{tr(language, 'Deadline', 'Deadline')}</Label>
-                    <Input type="date" value={newTask.deadline} onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))} />
+                  <div className="space-y-1.5">
+                    <Label className="font-medium">{tr(language, 'Deadline', 'Deadline')}</Label>
+                    <Input
+                      type="date"
+                      value={newTask.deadline}
+                      onChange={e => setNewTask(p => ({ ...p, deadline: e.target.value }))}
+                      className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                    />
                   </div>
-                  <div className="space-y-1">
-                    <Label>{tr(language, 'Ưu tiên', 'Priority')}</Label>
+                  <div className="space-y-1.5">
+                    <Label className="font-medium">{tr(language, 'Ưu tiên', 'Priority')}</Label>
                     <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
                         <SelectItem value="Low">{tr(language, 'Thấp', 'Low')}</SelectItem>
                         <SelectItem value="Medium">{tr(language, 'Trung bình', 'Medium')}</SelectItem>
                         <SelectItem value="High">{tr(language, 'Cao', 'High')}</SelectItem>
@@ -313,19 +343,24 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                     </Select>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 py-2">
+                <div className="flex items-center space-x-2 py-2 border-t border-slate-100 mt-2">
                   <Checkbox
                     id="notifyTeamKanban"
                     checked={notifyTeam}
                     onCheckedChange={(checked) => setNotifyTeam(!!checked)}
+                    className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
-                  <Label htmlFor="notifyTeamKanban" className="text-xs sm:text-sm font-medium leading-none cursor-pointer">
+                  <Label htmlFor="notifyTeamKanban" className="text-xs font-semibold leading-none cursor-pointer text-slate-500">
                     {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
                   </Label>
                 </div>
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={handleCreate}>{tr(language, 'Tạo Task', 'Create Task')}</Button>
-                  <Button variant="outline" className="flex-1" onClick={() => setCreateOpen(false)}>{tr(language, 'Hủy', 'Cancel')}</Button>
+                <div className="flex gap-2 border-t border-slate-100 pt-3">
+                  <Button className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={handleCreate}>
+                    {tr(language, 'Tạo Task', 'Create Task')}
+                  </Button>
+                  <Button variant="outline" className="flex-1 rounded-xl border-slate-200" onClick={() => setCreateOpen(false)}>
+                    {tr(language, 'Hủy', 'Cancel')}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
@@ -429,6 +464,18 @@ const KanbanBoard = ({ isLeader, currentUser, locked }: Props) => {
                         }}
                       >
                         <Upload className="h-3 w-3 mr-1" /> {tr(language, 'Tải bằng chứng', 'Upload Evidence')}
+                      </Button>
+                    )}
+                    {isLeader && t.status === 'Done' && !t.approved && (
+                      <Button
+                        size="sm"
+                        className="h-6 text-xs px-2 bg-indigo-600 hover:bg-indigo-700 text-white ml-1"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (onApproveClick) onApproveClick(t);
+                        }}
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Duyệt', 'Approve')}
                       </Button>
                     )}
                   </div>

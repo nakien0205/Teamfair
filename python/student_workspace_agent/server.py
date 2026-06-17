@@ -10,8 +10,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import httpx
 from .agent import run_agent_detailed
-from .contribution_analyzer import AnalysisResult, analyze_contribution
+from .contribution_analyzer import AnalysisResult, analyze_contribution, verify_task_submission
+from .document_parser import extract_text_from_bytes
 from .schemas import WorkspaceSnapshot
 from .store import StudentWorkspaceStore
 
@@ -162,3 +164,52 @@ def analyze_contribution_endpoint(body: ContributionAnalysisRequest) -> dict[str
         raise HTTPException(status_code=500, detail=f"Analysis error: {e}") from e
 
     return result.to_dict()
+
+
+class EvidenceFileItem(BaseModel):
+    fileName: str
+    signedUrl: str
+
+
+class VerifyTaskRequest(BaseModel):
+    task_id: str
+    task_name: str
+    task_description: str = ""
+    student_name: str
+    work_logs: list[WorkLogItem] = Field(default_factory=list)
+    evidence_files: list[EvidenceFileItem] = Field(default_factory=list)
+
+
+@app.post("/verify-task")
+def verify_task_endpoint(body: VerifyTaskRequest) -> dict[str, Any]:
+    # Download and extract text from evidence files
+    evidence_payload = []
+    for ev in body.evidence_files:
+        content = ""
+        try:
+            r = httpx.get(ev.signedUrl, timeout=10.0)
+            if r.status_code == 200:
+                content = extract_text_from_bytes(r.content, ev.fileName)
+            else:
+                content = f"[Lỗi: Không tải được file, HTTP {r.status_code}]"
+        except Exception as err:
+            content = f"[Lỗi tải file: {err}]"
+
+        evidence_payload.append({
+            "file_name": ev.fileName,
+            "content": content
+        })
+
+    payload = {
+        "task_name": body.task_name,
+        "task_description": body.task_description,
+        "student_name": body.student_name,
+        "work_logs": [{"date": w.date, "hours": w.hours, "description": w.description} for w in body.work_logs],
+        "evidence_files": evidence_payload,
+    }
+
+    try:
+        res = verify_task_submission(payload)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Verification error: {e}") from e

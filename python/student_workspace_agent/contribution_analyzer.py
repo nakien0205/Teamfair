@@ -231,3 +231,129 @@ def analyze_contribution(data: dict[str, Any]) -> AnalysisResult:
         return _fallback_result()
     except Exception:
         return _fallback_result()
+
+
+def _build_verification_prompt(data: dict[str, Any]) -> str:
+    task_name = data.get("task_name", "N/A")
+    task_description = data.get("task_description", "Không có mô tả.")
+    student_name = data.get("student_name", "N/A")
+    work_logs = data.get("work_logs", [])
+    evidence_files = data.get("evidence_files", [])
+
+    work_logs_text = ""
+    for i, log in enumerate(work_logs, 1):
+        work_logs_text += (
+            f"  {i}. Ngày: {log.get('date', 'N/A')}, "
+            f"Số giờ: {log.get('hours', 0)}, "
+            f"Mô tả: {log.get('description', '')}\n"
+        )
+    if not work_logs_text:
+        work_logs_text = "  (Không có nhật ký làm việc nào được ghi cho task này)\n"
+
+    evidence_text = ""
+    for i, f in enumerate(evidence_files, 1):
+        evidence_text += (
+            f"--- Tệp {i}: {f.get('file_name', 'N/A')} ---\n"
+            f"{f.get('content', '')}\n\n"
+        )
+    if not evidence_text:
+        evidence_text = "  (Không có tài liệu/bằng chứng nào được nộp)\n"
+
+    return f"""Bạn là một chuyên gia đánh giá và xác minh đóng góp của sinh viên Việt Nam trên nền tảng Teamfair.
+Nhiệm vụ của bạn là đánh giá xem nhiệm vụ (task) được nộp bởi sinh viên đã hoàn thành thực sự và đảm bảo chất lượng hay chưa.
+
+Dưới đây là thông tin nhiệm vụ và các bằng chứng liên quan:
+
+**Tên nhiệm vụ:** {task_name}
+**Mô tả nhiệm vụ:** {task_description}
+**Sinh viên thực hiện:** {student_name}
+
+**Nhật ký làm việc liên quan (Work Logs):**
+{work_logs_text}
+
+**Tệp bằng chứng được nộp (Evidence Files & Content):**
+{evidence_text}
+
+---
+
+Hãy phân tích toàn bộ dữ liệu trên (mô tả task, nhật ký làm việc, nội dung chi tiết trong các file đính kèm) và trả về duy nhất một JSON object (không markdown, không giải thích bên ngoài) với cấu trúc sau:
+
+{{
+  "status": "<Một trong: verified, needs_revision>",
+  "confidence_score": <Điểm số tin cậy từ 0 đến 100 về độ xác thực của kết quả, kiểu int>,
+  "reasoning": "<Phân tích chi tiết bằng tiếng Việt về lý do đưa ra đánh giá, chỉ ra các điểm khớp hoặc không khớp giữa bằng chứng và task, chất lượng công việc, các bất thường nếu có>",
+  "suggested_feedback": "<Gợi ý phản hồi bằng tiếng Việt ngắn gọn để trưởng nhóm gửi cho sinh viên (khen ngợi hoặc các điểm cần sửa đổi cụ thể nếu có)>"
+}}
+
+Quy tắc:
+- Chỉ trả về JSON, không có text nào khác.
+- status chỉ được là "verified" hoặc "needs_revision".
+- reasoning và suggested_feedback phải bằng tiếng Việt."""
+
+
+def verify_task_submission(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Verify a student's task submission by analyzing details, work logs and extracted document text.
+    """
+    try:
+        client = OpenAI(
+            api_key=get_openrouter_api_key(),
+            base_url=openrouter_url,
+            default_headers={
+                "HTTP-Referer": HTTP_REFERER,
+                "X-Title": X_TITLE,
+            },
+        )
+
+        prompt = _build_verification_prompt(data)
+
+        completion = client.chat.completions.create(
+            model=light_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a task verification assistant for Teamfair. "
+                        "Respond ONLY with valid JSON, no markdown or extra text."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+
+        raw_content = (completion.choices[0].message.content or "").strip()
+        if not raw_content:
+            raise ValueError("Empty response from AI")
+
+        # Parse JSON
+        text = raw_content.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            start = 1 if lines[0].startswith("```") else 0
+            end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+            text = "\n".join(lines[start:end]).strip()
+
+        res = json.loads(text)
+        if not isinstance(res, dict):
+            raise ValueError("Response is not a dictionary")
+
+        status = res.get("status", "needs_revision")
+        if status not in ("verified", "needs_revision"):
+            status = "needs_revision"
+
+        return {
+            "status": status,
+            "confidence_score": int(res.get("confidence_score", 50)),
+            "reasoning": str(res.get("reasoning", "Không có giải thích chi tiết.")),
+            "suggested_feedback": str(res.get("suggested_feedback", "Không có gợi ý phản hồi."))
+        }
+
+    except Exception as e:
+        return {
+            "status": "needs_revision",
+            "confidence_score": 0,
+            "reasoning": f"Lỗi trong quá trình xác minh bằng AI: {e}",
+            "suggested_feedback": "Vui lòng kiểm tra lại thủ công."
+        }

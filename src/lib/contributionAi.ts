@@ -250,3 +250,48 @@ export async function getOrFetchAnalysis(
 
   return analysis;
 }
+
+export type TaskVerificationResult = {
+  status: "verified" | "needs_revision";
+  confidence_score: number;
+  reasoning: string;
+  suggested_feedback: string;
+};
+
+export type VerifyTaskPayload = {
+  task_id: string;
+  task_name: string;
+  task_description: string;
+  student_name: string;
+  work_logs: {
+    date: string;
+    hours: number;
+    description: string;
+  }[];
+  evidence_files: {
+    fileName: string;
+    signedUrl: string;
+  }[];
+};
+
+export async function fetchTaskVerification(
+  payload: VerifyTaskPayload
+): Promise<TaskVerificationResult | null> {
+  try {
+    const response = await fetch(`${agentBaseUrl()}/verify-task`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.warn("[contributionAi] verify task failed:", response.status, await response.text().catch(() => ""));
+      return null;
+    }
+
+    return (await response.json()) as TaskVerificationResult;
+  } catch (err) {
+    console.warn("[contributionAi] verify task error:", err);
+    return null;
+  }
+}
