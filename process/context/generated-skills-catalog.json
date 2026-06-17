@@ -1,0 +1,764 @@
+{
+  "owner": "audit-context",
+  "generatedFrom": {
+    "skillsRoot": ".claude/skills",
+    "routingPolicy": ".claude/skills/vc-audit-context/references/skill-routing-policy.json",
+    "canonicalRoutingSurfaces": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "process/context/generated-skills-catalog.json"
+    ]
+  },
+  "skillCount": 33,
+  "skills": [
+    {
+      "folder": "vc-agent-browser",
+      "name": "vc-agent-browser",
+      "description": "",
+      "aliases": [
+        "vc-agent-browser"
+      ],
+      "normalizedName": "vcagentbrowser",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/browserbase-cloud-setup.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-agent-strategy-compare",
+      "name": "vc-agent-strategy-compare",
+      "description": "",
+      "aliases": [
+        "vc-agent-strategy-compare"
+      ],
+      "normalizedName": "vcagentstrategycompare",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-audit-context",
+      "name": "vc-audit-context",
+      "description": "",
+      "aliases": [
+        "vc-audit-context"
+      ],
+      "normalizedName": "vcauditcontext",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/audit-context.md"
+      ],
+      "mentionedSkills": [
+        "vc-scout"
+      ]
+    },
+    {
+      "folder": "vc-audit-plans",
+      "name": "vc-audit-plans",
+      "description": "",
+      "aliases": [
+        "vc-audit-plans"
+      ],
+      "normalizedName": "vcauditplans",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/audit-plans.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-audit-vc",
+      "name": "vc-audit-vc",
+      "description": "",
+      "aliases": [
+        "vc-audit-vc"
+      ],
+      "normalizedName": "vcauditvc",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-autopilot",
+      "name": "vc-autopilot",
+      "description": "",
+      "aliases": [
+        "vc-autopilot"
+      ],
+      "normalizedName": "vcautopilot",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "scripts/validate-autopilot-goal-block.mjs"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-autoresearch",
+      "name": "vc-autoresearch",
+      "description": "",
+      "aliases": [
+        "vc-autoresearch"
+      ],
+      "normalizedName": "vcautoresearch",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-predict",
+        "vc-scenario",
+        "vc-security",
+        "vc-validate-findings"
+      ]
+    },
+    {
+      "folder": "vc-context-discovery",
+      "name": "vc-context-discovery",
+      "description": "",
+      "aliases": [
+        "vc-context-discovery"
+      ],
+      "normalizedName": "vccontextdiscovery",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-debug",
+      "name": "vc-debug",
+      "description": "",
+      "aliases": [
+        "vc-debug"
+      ],
+      "normalizedName": "vcdebug",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/defense-in-depth.md",
+        "references/frontend-verification.md",
+        "references/investigation-methodology.md",
+        "references/log-and-ci-analysis.md",
+        "references/performance-diagnostics.md",
+        "references/reporting-standards.md",
+        "references/root-cause-tracing.md",
+        "references/systematic-debugging.md",
+        "references/task-management-debugging.md",
+        "references/verification.md",
+        "scripts/find-polluter.sh"
+      ],
+      "mentionedSkills": [
+        "vc-agent-browser",
+        "vc-docs-seeker",
+        "vc-problem-solving",
+        "vc-scout"
+      ]
+    },
+    {
+      "folder": "vc-docs-seeker",
+      "name": "vc-docs-seeker",
+      "description": "",
+      "aliases": [
+        "vc-docs-seeker"
+      ],
+      "normalizedName": "vcdocsseeker",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/advanced.md",
+        "references/context7-patterns.md",
+        "references/errors.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-feasibility-test",
+      "name": "vc-feasibility-test",
+      "description": "",
+      "aliases": [
+        "vc-feasibility-test"
+      ],
+      "normalizedName": "vcfeasibilitytest",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-test-coverage-plan"
+      ]
+    },
+    {
+      "folder": "vc-frontend-design",
+      "name": "vc-frontend-design",
+      "description": "",
+      "aliases": [
+        "vc-frontend-design"
+      ],
+      "normalizedName": "vcfrontenddesign",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-generate-closeout",
+      "name": "vc-generate-closeout",
+      "description": "",
+      "aliases": [
+        "vc-generate-closeout"
+      ],
+      "normalizedName": "vcgeneratecloseout",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-generate-context",
+      "name": "vc-generate-context",
+      "description": "",
+      "aliases": [
+        "vc-generate-context"
+      ],
+      "normalizedName": "vcgeneratecontext",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/generate-context.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-generate-phase-program",
+      "name": "vc-generate-phase-program",
+      "description": "",
+      "aliases": [
+        "vc-generate-phase-program"
+      ],
+      "normalizedName": "vcgeneratephaseprogram",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-agent-strategy-compare"
+      ]
+    },
+    {
+      "folder": "vc-generate-plan",
+      "name": "vc-generate-plan",
+      "description": "",
+      "aliases": [
+        "vc-generate-plan"
+      ],
+      "normalizedName": "vcgenerateplan",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/generate-plan.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-generate-spec",
+      "name": "vc-generate-spec",
+      "description": "",
+      "aliases": [
+        "vc-generate-spec"
+      ],
+      "normalizedName": "vcgeneratespec",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/spec-contract.md",
+        "templates/program-spec-template.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-intent-clarify",
+      "name": "vc-intent-clarify",
+      "description": "",
+      "aliases": [
+        "vc-intent-clarify"
+      ],
+      "normalizedName": "vcintentclarify",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-plan-discovery",
+      "name": "vc-plan-discovery",
+      "description": "",
+      "aliases": [
+        "vc-plan-discovery"
+      ],
+      "normalizedName": "vcplandiscovery",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-context-discovery"
+      ]
+    },
+    {
+      "folder": "vc-predict",
+      "name": "vc-predict",
+      "description": "",
+      "aliases": [
+        "vc-predict"
+      ],
+      "normalizedName": "vcpredict",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-scenario"
+      ]
+    },
+    {
+      "folder": "vc-problem-solving",
+      "name": "vc-problem-solving",
+      "description": "",
+      "aliases": [
+        "vc-problem-solving"
+      ],
+      "normalizedName": "vcproblemsolving",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/attribution.md",
+        "references/collision-zone-thinking.md",
+        "references/inversion-exercise.md",
+        "references/meta-pattern-recognition.md",
+        "references/scale-game.md",
+        "references/simplification-cascades.md",
+        "references/when-stuck.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-publish",
+      "name": "vc-publish",
+      "description": "",
+      "aliases": [
+        "vc-publish"
+      ],
+      "normalizedName": "vcpublish",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/vc-publish.md"
+      ],
+      "mentionedSkills": [
+        "vc-audit-vc",
+        "vc-update"
+      ]
+    },
+    {
+      "folder": "vc-review-situation",
+      "name": "vc-review-situation",
+      "description": "",
+      "aliases": [
+        "vc-review-situation"
+      ],
+      "normalizedName": "vcreviewsituation",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/review-situation-workflow.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-risk-evidence-pack",
+      "name": "vc-risk-evidence-pack",
+      "description": "",
+      "aliases": [
+        "vc-risk-evidence-pack"
+      ],
+      "normalizedName": "vcriskevidencepack",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-scenario",
+      "name": "vc-scenario",
+      "description": "",
+      "aliases": [
+        "vc-scenario"
+      ],
+      "normalizedName": "vcscenario",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-predict"
+      ]
+    },
+    {
+      "folder": "vc-scout",
+      "name": "vc-scout",
+      "description": "",
+      "aliases": [
+        "vc-scout"
+      ],
+      "normalizedName": "vcscout",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/external-scouting.md",
+        "references/internal-scouting.md",
+        "references/task-management-scouting.md"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-security",
+      "name": "vc-security",
+      "description": "",
+      "aliases": [
+        "vc-security"
+      ],
+      "normalizedName": "vcsecurity",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/stride-owasp-checklist.md"
+      ],
+      "mentionedSkills": [
+        "vc-autoresearch",
+        "vc-predict",
+        "vc-scenario"
+      ]
+    },
+    {
+      "folder": "vc-sequential-thinking",
+      "name": "vc-sequential-thinking",
+      "description": "",
+      "aliases": [
+        "vc-sequential-thinking"
+      ],
+      "normalizedName": "vcsequentialthinking",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/advanced-strategies.md",
+        "references/advanced-techniques.md",
+        "references/core-patterns.md",
+        "references/examples-api.md",
+        "references/examples-architecture.md",
+        "references/examples-debug.md",
+        "scripts/format-thought.js",
+        "scripts/process-thought.js"
+      ],
+      "mentionedSkills": []
+    },
+    {
+      "folder": "vc-setup",
+      "name": "vc-setup",
+      "description": "",
+      "aliases": [
+        "vc-setup"
+      ],
+      "normalizedName": "vcsetup",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/vc-setup.md"
+      ],
+      "mentionedSkills": [
+        "vc-update"
+      ]
+    },
+    {
+      "folder": "vc-test-coverage-plan",
+      "name": "vc-test-coverage-plan",
+      "description": "",
+      "aliases": [
+        "vc-test-coverage-plan"
+      ],
+      "normalizedName": "vctestcoverageplan",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": [
+        "vc-context-discovery",
+        "vc-feasibility-test"
+      ]
+    },
+    {
+      "folder": "vc-update",
+      "name": "vc-update",
+      "description": "",
+      "aliases": [
+        "vc-update"
+      ],
+      "normalizedName": "vcupdate",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/vc-update.md"
+      ],
+      "mentionedSkills": [
+        "vc-setup"
+      ]
+    },
+    {
+      "folder": "vc-validate-findings",
+      "name": "vc-validate-findings",
+      "description": "",
+      "aliases": [
+        "vc-validate-findings"
+      ],
+      "normalizedName": "vcvalidatefindings",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [
+        "references/example-validate-output.md"
+      ],
+      "mentionedSkills": [
+        "vc-agent-strategy-compare",
+        "vc-predict",
+        "vc-scenario",
+        "vc-security",
+        "vc-sequential-thinking"
+      ]
+    },
+    {
+      "folder": "vc-web-testing",
+      "name": "vc-web-testing",
+      "description": "",
+      "aliases": [
+        "vc-web-testing"
+      ],
+      "normalizedName": "vcwebtesting",
+      "triggerKeywords": [],
+      "layer": "",
+      "routedFrom": [
+        "AGENTS.md",
+        "process/context/generated-skills-catalog.json"
+      ],
+      "allowlisted": false,
+      "allowlistReason": null,
+      "relativeReferences": [],
+      "mentionedSkills": []
+    }
+  ]
+}
