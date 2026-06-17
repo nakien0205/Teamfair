@@ -258,3 +258,14 @@ scratch
 /frontend/
 /backend/
 note.md
+
+# VibeCode AI Agent Harness
+.claude/
+.agents/
+AGENTS.md
+CLAUDE.md
+.vc-installed-files
+.vc-version
+process/development-protocols/
+process/_seeds/
+process/context/generated-skills-catalog.json
