@@ -1,8 +1,9 @@
-"""FastAPI server: POST /chat — keep OPENROUTER_API_KEY off the browser."""
+"""FastAPI server: POST /chat, POST /analyze-contribution — keep OPENROUTER_API_KEY off the browser."""
 
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -10,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .agent import run_agent_detailed
+from .contribution_analyzer import AnalysisResult, analyze_contribution
 from .schemas import WorkspaceSnapshot
 from .store import StudentWorkspaceStore
 
@@ -20,6 +22,7 @@ _DEFAULT_ORIGINS = (
     "https://www.teamfair.company",
     "https://teamfair.vercel.app",
 )
+_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$"
 
 
 def _cors_origins() -> list[str]:
@@ -29,10 +32,19 @@ def _cors_origins() -> list[str]:
     return list(_DEFAULT_ORIGINS)
 
 
+def _cors_origin_regex() -> str | None:
+    raw = os.environ.get("STUDENT_AGENT_CORS_ORIGIN_REGEX")
+    if raw is not None:
+        normalized = raw.strip()
+        return normalized or None
+    return _DEFAULT_ORIGIN_REGEX
+
+
 app = FastAPI(title="Teamfair Student Workspace Agent", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=False,
     allow_methods=["POST", "OPTIONS", "GET"],
     allow_headers=["*"],
@@ -72,3 +84,81 @@ def chat(body: ChatRequest) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Agent error: {e}") from e
 
     return result.to_json_dict()
+
+
+# ---------------------------------------------------------------------------
+# POST /analyze-contribution — AI contribution analysis
+# ---------------------------------------------------------------------------
+
+_RATE_LIMIT_WINDOW_SECS = 30.0
+_rate_limit_store: dict[str, float] = {}
+
+
+def _check_rate_limit(student_name: str) -> None:
+    """Enforce max 1 request per student_name per 30 seconds."""
+    now = time.monotonic()
+    last = _rate_limit_store.get(student_name)
+    if last is not None and (now - last) < _RATE_LIMIT_WINDOW_SECS:
+        remaining = _RATE_LIMIT_WINDOW_SECS - (now - last)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: please wait {remaining:.0f}s before requesting again for this student.",
+        )
+    _rate_limit_store[student_name] = now
+
+    # Evict stale entries to prevent memory growth
+    stale_keys = [k for k, v in _rate_limit_store.items() if (now - v) > _RATE_LIMIT_WINDOW_SECS * 2]
+    for k in stale_keys:
+        del _rate_limit_store[k]
+
+
+class TaskItem(BaseModel):
+    name: str = ""
+    status: str = ""
+    deadline: str = ""
+    description: str = ""
+    evidence_count: int = 0
+    approved: bool = False
+
+
+class WorkLogItem(BaseModel):
+    date: str = ""
+    hours: float = 0
+    description: str = ""
+
+
+class LeaderReviewItem(BaseModel):
+    rating: float = 0
+    comment: str = ""
+
+
+class ContributionAnalysisRequest(BaseModel):
+    student_name: str = Field(min_length=1, max_length=200)
+    group_name: str = Field(min_length=1, max_length=200)
+    deterministic_score: int = Field(ge=0, le=100)
+    tasks: list[TaskItem] = Field(default_factory=list)
+    work_logs: list[WorkLogItem] = Field(default_factory=list)
+    leader_reviews: list[LeaderReviewItem] = Field(default_factory=list)
+    peer_review_average: float | None = None
+
+
+@app.post("/analyze-contribution")
+def analyze_contribution_endpoint(body: ContributionAnalysisRequest) -> dict[str, Any]:
+    _check_rate_limit(body.student_name)
+
+    payload = {
+        "student_name": body.student_name,
+        "group_name": body.group_name,
+        "deterministic_score": body.deterministic_score,
+        "tasks": [t.model_dump() for t in body.tasks],
+        "work_logs": [w.model_dump() for w in body.work_logs],
+        "leader_reviews": [r.model_dump() for r in body.leader_reviews],
+        "peer_review_average": body.peer_review_average,
+    }
+
+    try:
+        result: AnalysisResult = analyze_contribution(payload)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis error: {e}") from e
+
+    return result.to_dict()

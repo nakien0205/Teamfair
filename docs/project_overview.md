@@ -8,7 +8,7 @@ A website platform designed for final-year students completing their graduation 
 
 ---
 
-### Objectiveshttps://www.coursera.org/specializations/ibm-ai-workflow
+### Objectives
 
 * **Ensure Fairness:** Build a transparent evaluation mechanism. Students are required to document their workflow and provide evidence of their results. AI is utilized to provide an overview assessment of student notes and outputs.
 

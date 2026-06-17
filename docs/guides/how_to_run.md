@@ -142,6 +142,7 @@ Recommended production target: **Railway**.
    - `OPENROUTER_HTTP_REFERER=https://teamfair.company`
    - `OPENROUTER_X_TITLE=Teamfair`
    - `STUDENT_AGENT_CORS_ORIGINS=https://teamfair.company,https://www.teamfair.company,https://teamfair.vercel.app,http://localhost:8080,http://127.0.0.1:8080`
+   - Optional: `STUDENT_AGENT_CORS_ORIGIN_REGEX=^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$` to allow Teamfair Vercel preview deployments. The server uses this regex by default when the variable is unset.
    - If the Railway public domain target port is manually set to `8010`, also add `PORT=8010`. Otherwise, leave `PORT` unset and let Railway inject/expose its own port.
 6. After Railway creates the public HTTPS URL, add it to Vercel as `VITE_STUDENT_AGENT_URL=https://teamfair.up.railway.app` with no trailing slash, then redeploy the frontend.
 
