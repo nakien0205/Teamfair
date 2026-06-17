@@ -22,6 +22,7 @@ _DEFAULT_ORIGINS = (
     "https://www.teamfair.company",
     "https://teamfair.vercel.app",
 )
+_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$"
 
 
 def _cors_origins() -> list[str]:
@@ -31,10 +32,19 @@ def _cors_origins() -> list[str]:
     return list(_DEFAULT_ORIGINS)
 
 
+def _cors_origin_regex() -> str | None:
+    raw = os.environ.get("STUDENT_AGENT_CORS_ORIGIN_REGEX")
+    if raw is not None:
+        normalized = raw.strip()
+        return normalized or None
+    return _DEFAULT_ORIGIN_REGEX
+
+
 app = FastAPI(title="Teamfair Student Workspace Agent", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=False,
     allow_methods=["POST", "OPTIONS", "GET"],
     allow_headers=["*"],

@@ -30,7 +30,8 @@ All agent code is under **[`python/student_workspace_agent/`](../../python/stude
 
 - **`OPENROUTER_API_KEY`** (required): read from the project `.env` at the repo root (see `config.py` path logic: two levels up from the package).
 - Optional: **`OPENROUTER_HTTP_REFERER`**, **`OPENROUTER_X_TITLE`** for OpenRouter attribution headers. Default referer is **`https://teamfair.company`** so production traffic matches the custom Vercel domain.
-- Optional: **`STUDENT_AGENT_CORS_ORIGINS`** — comma-separated list to replace the default CORS allowlist for the HTTP server.
+- Optional: **`STUDENT_AGENT_CORS_ORIGINS`** — comma-separated list to replace the default exact-origin CORS allowlist for the HTTP server.
+- Optional: **`STUDENT_AGENT_CORS_ORIGIN_REGEX`** — regex for additional allowed origins. When unset, the server allows Teamfair Vercel preview hosts matching `^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$`.
 
 ### Models (hard rule in code)
 

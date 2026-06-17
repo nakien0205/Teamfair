@@ -84,4 +84,7 @@ jobs:
         run: PYTHONPYCACHEPREFIX="$(mktemp -d)" python -m compileall -q student_workspace_agent
 
       - name: Import server and check health handler
+        env:
+          PYTHONPATH: .
         run: python -c "from student_workspace_agent.server import health; assert health() == {'status': 'ok'}"
+
