@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -77,6 +77,7 @@ const StudentMyContribution = () => {
   const [aiAnalysis, setAiAnalysis] = useState<ContributionAiAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(false);
+  const aiRequestIdRef = useRef(0);
 
   const group = groups[currentGroupIndex] || groups[0];
   const myTasks = useMemo(
@@ -91,14 +92,23 @@ const StudentMyContribution = () => {
   // Main data loading
   useEffect(() => {
     if (!user?.id || !group?.id) {
+      aiRequestIdRef.current += 1;
       setLoading(false);
       setResult(null);
+      setAiAnalysis(null);
+      setAiLoading(false);
+      setAiError(false);
       return;
     }
 
     let cancelled = false;
+    aiRequestIdRef.current += 1;
     setLoading(true);
     setError("");
+    setResult(null);
+    setAiAnalysis(null);
+    setAiLoading(false);
+    setAiError(false);
 
     void Promise.all([
       listStudentWorkLogs(user.id, group.id),
@@ -135,6 +145,8 @@ const StudentMyContribution = () => {
   const fetchAi = useCallback(
     (forceRefresh = false) => {
       if (!user?.id || !group?.id || !result?.hasEnoughData) return;
+      const requestId = aiRequestIdRef.current + 1;
+      aiRequestIdRef.current = requestId;
       setAiLoading(true);
       setAiError(false);
 
@@ -151,20 +163,19 @@ const StudentMyContribution = () => {
         forceRefresh,
       })
         .then(analysis => {
+          if (aiRequestIdRef.current !== requestId) return;
           setAiAnalysis(analysis);
           if (!analysis) setAiError(true);
         })
-        .catch(() => setAiError(true))
-        .finally(() => setAiLoading(false));
+        .catch(() => {
+          if (aiRequestIdRef.current === requestId) setAiError(true);
+        })
+        .finally(() => {
+          if (aiRequestIdRef.current === requestId) setAiLoading(false);
+        });
     },
     [user?.id, group?.id, group?.name, result, myTasks, workLogs, myLeaderReviews, currentUserName, profile?.full_name],
   );
-
-  useEffect(() => {
-    if (result?.hasEnoughData) {
-      fetchAi(false);
-    }
-  }, [result?.hasEnoughData, fetchAi]);
 
   const hasAiInsights =
     aiAnalysis && ((aiAnalysis.anomalies.length > 0) || (aiAnalysis.recommendations.length > 0));
@@ -289,7 +300,7 @@ const StudentMyContribution = () => {
                           </>
                         ) : (
                           <div className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                            {aiError ? "Không thể kết nối tới máy chủ phân tích AI." : "Đang chờ phân tích AI..."}
+                            {aiError ? "Không thể kết nối tới máy chủ phân tích AI." : "Nhấn nút để chạy phân tích AI khi bạn cần."}
                           </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -299,10 +310,10 @@ const StudentMyContribution = () => {
                             size="sm"
                             className="rounded-2xl text-xs"
                             disabled={aiLoading}
-                            onClick={() => fetchAi(true)}
+                            onClick={() => fetchAi(Boolean(aiAnalysis))}
                           >
                             <RefreshCw className={cn("mr-1.5 h-3 w-3", aiLoading && "animate-spin")} />
-                            Phân tích lại
+                            {aiAnalysis ? "Phân tích lại" : "Chạy phân tích AI"}
                           </Button>
                           {aiAnalysis ? (
                             <Badge className={cn("border text-xs", confidenceMeta[aiAnalysis.confidence_tag].className)}>

@@ -262,6 +262,7 @@ note.md
 # VibeCode AI Agent Harness
 .claude/
 .agents/
+.antigravitycli/
 AGENTS.md
 CLAUDE.md
 .vc-installed-files
@@ -269,3 +270,6 @@ CLAUDE.md
 process/development-protocols/
 process/_seeds/
 process/context/generated-skills-catalog.json
+install.cmd
+scratch/
+guide.md
