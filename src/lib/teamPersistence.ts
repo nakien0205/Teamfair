@@ -290,7 +290,21 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       0,
     );
 
-    const members = groupMembers.map(member => {
+    const studentsOnly = groupMembers.filter(member => {
+      const user = relationUser(member);
+      const globalRole = user?.role;
+      const memberRole = member.role;
+      return memberRole !== 'Lecturer' && globalRole !== 'lecturer' && globalRole !== 'admin';
+    });
+
+    const lecturersOnly = groupMembers.filter(member => {
+      const user = relationUser(member);
+      const globalRole = user?.role;
+      const memberRole = member.role;
+      return memberRole === 'Lecturer' || globalRole === 'lecturer' || globalRole === 'admin';
+    });
+
+    const members = studentsOnly.map(member => {
       const user = relationUser(member);
       const name = user?.full_name || member.student_id;
       const memberApprovedTasks = approvedTasks.filter(t => t.assignee_id === member.student_id);
@@ -308,6 +322,20 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
           ? Math.round((memberApprovedPercent / totalApprovedPercent) * 100)
           : 0,
         lecturerScore: scoresByGroupAndStudent.get(`${groupRow.id}:${name}`) ?? null,
+        globalRole: user?.role as "student" | "lecturer" | "admin" | undefined,
+      };
+    });
+
+    const lecturers = lecturersOnly.map(member => {
+      const user = relationUser(member);
+      const name = user?.full_name || member.student_id;
+      return {
+        id: member.student_id,
+        name,
+        role: member.role || "Lecturer",
+        completedTasks: 0,
+        contributionPercent: 0,
+        lecturerScore: null,
         globalRole: user?.role as "student" | "lecturer" | "admin" | undefined,
       };
     });
@@ -337,6 +365,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       id: groupRow.id,
       name: groupRow.project_name,
       members,
+      lecturers,
       tasks,
       activityLog,
       lecturer_id: groupRow.lecturer_id,
@@ -426,7 +455,7 @@ export function scopePersistedTeamSnapshotForUser(
     snapshot.groups
       .filter(group => (
         scope.role === "lecturer"
-          ? (group.lecturer_id === scope.userId || group.members.some(member => member.id === scope.userId))
+          ? (group.lecturer_id === scope.userId || (group.lecturers || []).some(lecturer => lecturer.id === scope.userId) || group.members.some(member => member.id === scope.userId))
           : group.members.some(member => member.id === scope.userId)
       ))
       .map(group => group.id),
@@ -924,10 +953,12 @@ export async function createPersistedGroup(projectName: string, userId: string, 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Failed to create group");
 
-  const { error: memberError } = await supabase
-    .from("group_members")
-    .insert({ group_id: data.id, student_id: userId, role: "Leader" });
-  if (memberError) throw new Error(memberError.message);
+  if (!isLecturer) {
+    const { error: memberError } = await supabase
+      .from("group_members")
+      .insert({ group_id: data.id, student_id: userId, role: "Leader" });
+    if (memberError) throw new Error(memberError.message);
+  }
 
   return data.id;
 }

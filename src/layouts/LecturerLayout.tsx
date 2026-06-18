@@ -30,7 +30,7 @@ const LecturerLayout = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { dataLoading } = useTeam();
+  const { dataLoading, groups, currentGroupIndex } = useTeam();
   const { language } = useLanguage();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -66,7 +66,14 @@ const LecturerLayout = () => {
 
     switch (key) {
       case "overview": navigate("/lecturer/dashboard"); break;
-      case "groups": navigate("/lecturer/groups"); break;
+      case "groups":
+        if (profile?.role === "lecturer" && groups.length > 0) {
+          const activeGroupId = groups[currentGroupIndex]?.id || groups[0].id;
+          navigate(`/lecturer/groups/${activeGroupId}`);
+        } else {
+          navigate("/lecturer/groups");
+        }
+        break;
       case "progress": navigate("/lecturer/progress"); break;
       case "reports": navigate("/lecturer/reports"); break;
       case "rubrics": navigate("/lecturer/rubrics"); break;

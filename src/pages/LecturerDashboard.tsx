@@ -110,7 +110,7 @@ const LecturerDashboard = () => {
     return (
       <div className="space-y-6">
         <section className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 text-white shadow-card">
-          <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
+          <div className={profile?.role === "lecturer" ? "grid gap-0 grid-cols-1" : "grid gap-0 lg:grid-cols-[1.35fr_0.65fr]"}>
             <div className="p-6 md:p-8">
               <div className="mb-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{tr(language, "Lecturer dashboard", "Lecturer Dashboard")}</span>
@@ -119,54 +119,66 @@ const LecturerDashboard = () => {
                 </span>
               </div>
               <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                {tr(language, "Chưa có project nào để xem", "No project to show yet")}
+                {profile?.role === "lecturer"
+                  ? tr(language, "Bạn chưa được gán project nào", "No assigned projects yet")
+                  : tr(language, "Chưa có project nào để xem", "No project to show yet")}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200/80 md:text-base">
-                {tr(
-                  language,
-                  "Hãy sang trang quản lý nhóm để tạo lớp, môn học hoặc project, sau đó mời người dùng bằng email. Khi đã có nhóm, dashboard sẽ tự hiển thị nhóm đang quản lý.",
-                  "Go to the group management page to create a class, course, or project, then invite users by email. Once you have a group, the dashboard will show the one you are managing.",
-                )}
+                {profile?.role === "lecturer"
+                  ? tr(
+                      language,
+                      "Bạn chưa được gán quản lý dự án nào. Vui lòng liên hệ Admin để được cấp quyền.",
+                      "You are not assigned to manage any project yet. Please contact the Admin to get access."
+                    )
+                  : tr(
+                      language,
+                      "Hãy sang trang quản lý nhóm để tạo lớp, môn học hoặc project, sau đó mời người dùng bằng email. Khi đã có nhóm, dashboard sẽ tự hiển thị nhóm đang quản lý.",
+                      "Go to the group management page to create a class, course, or project, then invite users by email. Once you have a group, the dashboard will show the one you are managing.",
+                    )}
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button className="bg-white text-slate-950 hover:bg-slate-100" onClick={() => navigate("/lecturer/groups")}>
-                  {tr(language, "Mở trang quản lý nhóm", "Open group management")}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                  onClick={() => navigate("/lecturer/groups")}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {tr(language, "Tạo / import nhóm", "Create / import groups")}
-                </Button>
-              </div>
+              {profile?.role !== "lecturer" && (
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button className="bg-white text-slate-950 hover:bg-slate-100" onClick={() => navigate("/lecturer/groups")}>
+                    {tr(language, "Mở trang quản lý nhóm", "Open group management")}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                    onClick={() => navigate("/lecturer/groups")}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {tr(language, "Tạo / import nhóm", "Create / import groups")}
+                  </Button>
+                </div>
+              )}
             </div>
-            <div className="grid gap-3 bg-white/5 p-6 md:p-8 lg:border-l lg:border-white/10">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-white/10 p-2 text-white">
-                    <GraduationCap className="h-5 w-5" />
+            {profile?.role !== "lecturer" && (
+              <div className="grid gap-3 bg-white/5 p-6 md:p-8 lg:border-l lg:border-white/10">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-white/10 p-2 text-white">
+                      <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold">{tr(language, "Lớp / môn / project", "Class / course / project")}</div>
+                      <div className="text-xs text-slate-200/70">{tr(language, "Tạo mới trong trang quản lý nhóm", "Create them from group management")}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-semibold">{tr(language, "Lớp / môn / project", "Class / course / project")}</div>
-                    <div className="text-xs text-slate-200/70">{tr(language, "Tạo mới trong trang quản lý nhóm", "Create them from group management")}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-white/10 p-2 text-white">
+                      <Layers3 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold">{tr(language, "Danh sách nhóm", "Group list")}</div>
+                      <div className="text-xs text-slate-200/70">{tr(language, "Chọn nhóm để chấm điểm và quản lý", "Pick a group to grade and manage")}</div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-white/10 p-2 text-white">
-                    <Layers3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{tr(language, "Danh sách nhóm", "Group list")}</div>
-                    <div className="text-xs text-slate-200/70">{tr(language, "Chọn nhóm để chấm điểm và quản lý", "Pick a group to grade and manage")}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </section>
       </div>
@@ -460,29 +472,6 @@ const LecturerDashboard = () => {
           </div>
         )}
       </section>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="bg-card rounded-xl p-6 shadow-card border border-border">
-          <h2 className="font-display text-lg font-semibold mb-4">{tr(language, 'Phân tích đóng góp', 'Contribution analytics')} — {group.name}</h2>
-          <ContributionAnalytics
-            members={group.members}
-            showFreeriderWarning
-          />
-        </section>
-
-        <section className="bg-card rounded-xl p-6 shadow-card border border-border">
-          <h2 className="font-display text-lg font-semibold mb-4">{tr(language, 'AI Phân tích', 'AI Analysis')}</h2>
-          <Button onClick={runAI} disabled={aiLoading} className="mb-4">
-            <Brain className="h-4 w-4 mr-1" />
-            {aiLoading ? tr(language, 'Đang phân tích...', 'Analyzing...') : tr(language, 'AI Phân tích nhóm', 'AI Group Analysis')}
-          </Button>
-          {aiResult && (
-            <div className="bg-muted rounded-lg p-4 text-sm whitespace-pre-line leading-relaxed animate-in fade-in duration-300">
-              {aiResult}
-            </div>
-          )}
-        </section>
-      </div>
     </div>
   );
 };
