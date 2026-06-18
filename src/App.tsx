@@ -88,6 +88,7 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
+
                     <Route path="/dashboard-student" element={<Navigate to="/student/dashboard" replace />} />
                     
                     {/* Student Workspace Routes wrapped in StudentLayout */}
