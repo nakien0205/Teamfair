@@ -341,7 +341,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
 
                                   {isSelf ? (
                                     <span className="text-[10px] px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg font-semibold shrink-0">
-                                      {tr(language, "Trưởng nhóm", "Leader")}
+                                      {m.role === "Leader"
+                                        ? tr(language, "Trưởng nhóm", "Leader")
+                                        : m.role === "Lecturer"
+                                          ? tr(language, "Giảng viên", "Lecturer")
+                                          : tr(language, "Thành viên", "Member")}
                                     </span>
                                   ) : (
                                     <select
@@ -361,25 +365,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                         </div>
 
                         {/* Resignation Button */}
-                        <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-rose-400">{tr(language, "Từ chức Trưởng nhóm", "Resign Leadership")}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5 leading-normal">
-                              {tr(
-                                language,
-                                "Từ chức và nhượng lại quyền quản trị dự án hiện tại cho thành viên khác.",
-                                "Resign and hand over current project ownership to a peer."
-                              )}
-                            </p>
+                        {members.some(m => m.id === profile?.id && m.role === 'Leader') && (
+                          <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-rose-400">{tr(language, "Từ chức Trưởng nhóm", "Resign Leadership")}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-normal">
+                                {tr(
+                                  language,
+                                  "Từ chức và nhượng lại quyền quản trị dự án hiện tại cho thành viên khác.",
+                                  "Resign and hand over current project ownership to a peer."
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              onClick={handleStartResign}
+                              className="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-rose-400 font-bold text-xs rounded-xl px-4 py-3 h-auto transition-all cursor-pointer shrink-0"
+                            >
+                              {tr(language, "Từ chức", "Resign")}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            onClick={handleStartResign}
-                            className="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-rose-400 font-bold text-xs rounded-xl px-4 py-3 h-auto transition-all cursor-pointer shrink-0"
-                          >
-                            {tr(language, "Từ chức", "Resign")}
-                          </Button>
-                        </div>
+                        )}
                       </div>
                     )}
 

@@ -86,12 +86,12 @@ const LecturerLayout = () => {
       // Workspace
       { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <LayoutDashboard className="h-4 w-4" />, section: "workspace" },
       { key: "groups", label: tr(language, "Nhóm sinh viên", "Student Groups"), icon: <Users className="h-4 w-4" />, section: "workspace" },
-      { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
-      { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
+      // { key: "progress", label: tr(language, "Tiến độ nhóm", "Group Progress"), icon: <BarChart className="h-4 w-4" />, section: "workspace" },
+      // { key: "reports", label: tr(language, "Báo cáo", "Reports"), icon: <AlertTriangle className="h-4 w-4" />, section: "workspace" },
 
       // Evaluation (Đánh giá)
       { key: "rubrics", label: tr(language, "Thang chấm điểm", "Rubrics"), icon: <ClipboardList className="h-4 w-4" />, section: "workspace" },
-      { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "workspace" },
+      // { key: "student-evaluations", label: tr(language, "Đánh giá sinh viên", "Student Evaluations"), icon: <Star className="h-4 w-4" />, section: "workspace" },
       { key: "contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
       { key: "export-reports", label: tr(language, "Xuất báo cáo", "Export Reports"), icon: <Download className="h-4 w-4" />, section: "workspace" },
 

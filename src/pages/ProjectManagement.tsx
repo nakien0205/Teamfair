@@ -528,6 +528,7 @@ const ProjectManagement: React.FC = () => {
     );
 
     if (member) {
+      if (member.role === "Lecturer") return "Lecturer";
       return member.role === "Leader" ? "Owner" : "Member";
     }
 

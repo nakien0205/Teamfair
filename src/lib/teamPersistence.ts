@@ -426,7 +426,7 @@ export function scopePersistedTeamSnapshotForUser(
     snapshot.groups
       .filter(group => (
         scope.role === "lecturer"
-          ? group.lecturer_id === scope.userId
+          ? (group.lecturer_id === scope.userId || group.members.some(member => member.id === scope.userId))
           : group.members.some(member => member.id === scope.userId)
       ))
       .map(group => group.id),
