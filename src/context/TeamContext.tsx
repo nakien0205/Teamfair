@@ -137,6 +137,7 @@ export interface Group {
   id: string;
   name: string;
   members: MemberStat[];
+  lecturers?: MemberStat[];
   tasks: Task[];
   activityLog: ActivityLogEntry[];
   lecturer_id?: string;
@@ -1009,10 +1010,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newId;
     } else {
       const mockId = `mock-${Date.now()}`;
+      const isCreatorLecturer = profile?.role === "lecturer" || profile?.role === "admin";
       const mockG: Group = {
         id: mockId,
         name: projectName,
-        members: [
+        members: isCreatorLecturer ? [] : [
           {
             id: 'demo-user-id',
             name: currentUserName || 'Nguyễn Văn A',
@@ -1020,8 +1022,20 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
             completedTasks: 0,
             contributionPercent: 0,
             lecturerScore: null,
+            globalRole: 'student',
           },
         ],
+        lecturers: isCreatorLecturer ? [
+          {
+            id: 'demo-user-id',
+            name: currentUserName || 'Nguyễn Văn A',
+            role: 'Lecturer',
+            completedTasks: 0,
+            contributionPercent: 0,
+            lecturerScore: null,
+            globalRole: profile?.role as 'lecturer' | 'admin',
+          }
+        ] : [],
         tasks: [],
         activityLog: [
           { timestamp: new Date(), description: 'Nhóm được tạo' },
@@ -1066,10 +1080,11 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: projectName,
     }));
 
+    const isCreatorLecturer = profile?.role === "lecturer" || profile?.role === "admin";
     const mockGroups: Group[] = created.map(({ id, name }) => ({
       id,
       name,
-      members: [
+      members: isCreatorLecturer ? [] : [
         {
           id: 'demo-user-id',
           name: currentUserName || 'Nguyễn Văn A',
@@ -1077,8 +1092,20 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
           completedTasks: 0,
           contributionPercent: 0,
           lecturerScore: null,
+          globalRole: 'student',
         },
       ],
+      lecturers: isCreatorLecturer ? [
+        {
+          id: 'demo-user-id',
+          name: currentUserName || 'Nguyễn Văn A',
+          role: 'Lecturer',
+          completedTasks: 0,
+          contributionPercent: 0,
+          lecturerScore: null,
+          globalRole: profile?.role as 'lecturer' | 'admin',
+        }
+      ] : [],
       tasks: [],
       activityLog: [
         { timestamp: new Date(), description: 'Nhóm được tạo' },

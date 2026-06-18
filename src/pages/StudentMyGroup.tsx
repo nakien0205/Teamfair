@@ -368,6 +368,7 @@ const StudentMyGroup = () => {
     const targetIds = Array.from(
       new Set([
         ...group.members.map(member => member.id).filter(Boolean) as string[],
+        ...(group.lecturers || []).map(member => member.id).filter(Boolean) as string[],
         group.lecturer_id,
       ].filter(Boolean)),
     );
@@ -440,9 +441,12 @@ const StudentMyGroup = () => {
   }, [group]);
 
   const lecturerName = useMemo(() => {
+    if (group?.lecturers && group.lecturers.length > 0) {
+      return group.lecturers.map(l => l.name).join(", ");
+    }
     if (!group?.lecturer_id) return "Chưa cập nhật";
     return profilesById[group.lecturer_id]?.full_name || "Chưa cập nhật";
-  }, [group?.lecturer_id, profilesById]);
+  }, [group?.lecturer_id, group?.lecturers, profilesById]);
 
   const groupDeadline = useMemo(() => {
     if (!group) return null;

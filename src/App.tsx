@@ -36,7 +36,6 @@ import { ShareProjectModal } from "@/pages/ShareProjectModal";
 
 import LecturerLayout from "./layouts/LecturerLayout";
 import LecturerGroupsPage from "./pages/LecturerGroupsPage";
-import LecturerGroupDetailPage from "./pages/LecturerGroupDetailPage";
 import LecturerProgressPage from "./pages/LecturerProgressPage";
 import LecturerReportsPage from "./pages/LecturerReportsPage";
 import LecturerStudentEvaluationsPage from "./pages/LecturerStudentEvaluationsPage";
@@ -130,7 +129,7 @@ const App = () => (
                     >
                       <Route path="dashboard" element={<LecturerDashboard />} />
                       <Route path="groups" element={<LecturerGroupsPage />} />
-                      <Route path="groups/:groupId" element={<LecturerGroupDetailPage />} />
+                      <Route path="groups/:groupId" element={<LecturerGroupsPage />} />
                       <Route path="progress" element={<LecturerProgressPage />} />
                       <Route path="reports" element={<LecturerReportsPage />} />
                       
