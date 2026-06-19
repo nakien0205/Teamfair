@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   TimerOff,
   Users,
+  UserMinus,
 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -27,6 +28,9 @@ import { GroupDetailSkeleton } from "@/components/skeletons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam, type ActivityLogEntry, type MemberStat, type Task } from "@/context/TeamContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import {
@@ -216,10 +220,14 @@ const MemberRow = ({
   member,
   profile,
   tasks,
+  isCallerLeader,
+  onKickClick,
 }: {
   member: MemberStat;
   profile?: MemberProfile;
   tasks: Task[];
+  isCallerLeader: boolean;
+  onKickClick?: (member: MemberStat) => void;
 }) => {
   const assignedTasks = tasks.length;
   const approvedTasks = tasks.filter(task => task.approved).length;
@@ -240,6 +248,17 @@ const MemberRow = ({
                 Nhóm trưởng
               </Badge>
             ) : null}
+            {isCallerLeader && member.role !== "Leader" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onKickClick?.(member)}
+                className="h-7 border-rose-500/30 hover:border-rose-500 bg-rose-500/5 hover:bg-rose-500/20 text-rose-400 text-xs rounded-xl px-2.5 transition-all font-semibold animate-in fade-in"
+              >
+                <UserMinus className="mr-1 h-3.5 w-3.5" />
+                Xóa khỏi nhóm
+              </Button>
+            )}
             <Badge className={cn("border", memberActivityMeta[activityLevel].className)}>
               {memberActivityMeta[activityLevel].label}
             </Badge>
@@ -303,6 +322,119 @@ const StudentMyGroup = () => {
   }, [authLoading, navigate, profile]);
 
   const group = groups[currentGroupIndex] || groups[0];
+
+  const isCallerLeader = useMemo(() => {
+    return !!(group && profile?.id && group.members.some(m => m.id === profile.id && m.role === 'Leader'));
+  }, [group, profile?.id]);
+
+  const otherMembers = useMemo(() => {
+    if (!group || !profile?.id) return [];
+    return group.members.filter(m => m.id && m.id !== profile.id);
+  }, [group, profile?.id]);
+
+  // Kick member states
+  const [kickTarget, setKickTarget] = useState<MemberStat | null>(null);
+  const [isKickDialogOpen, setIsKickDialogOpen] = useState(false);
+  const [kickLoading, setKickLoading] = useState(false);
+
+  // Resignation states
+  const [resignStep, setResignStep] = useState<"none" | "verify" | "successor">("none");
+  const [resignText, setResignText] = useState("");
+  const [successorId, setSuccessorId] = useState("");
+  const [resignLoading, setResignLoading] = useState(false);
+
+  const handleKickMember = async () => {
+    if (!group?.id || !kickTarget?.id) return;
+    setKickLoading(true);
+    try {
+      const { error } = await supabase.rpc("kick_member", {
+        p_group_id: group.id,
+        p_target_user_id: kickTarget.id,
+      });
+      if (error) throw new Error(error.message);
+      
+      toast({
+        title: "Đã xóa thành viên",
+        description: `Thành viên ${kickTarget.name} đã bị xóa khỏi nhóm thành công.`,
+      });
+      setIsKickDialogOpen(false);
+      setKickTarget(null);
+      await loadPersistedState();
+    } catch (error) {
+      console.error("Error kicking member:", error);
+      toast({
+        title: "Lỗi xóa thành viên",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setKickLoading(false);
+    }
+  };
+
+  const handleStartResign = () => {
+    if (otherMembers.length === 0) {
+      toast({
+        title: "Không thể từ chức",
+        description: "Nhóm không có thành viên khác để bàn giao quyền trưởng nhóm.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setResignStep("verify");
+    setResignText("");
+    setSuccessorId("");
+  };
+
+  const handleVerifyResign = () => {
+    if (resignText !== "I resign my row") {
+      toast({
+        title: "Xác thực không chính xác",
+        description: "Vui lòng nhập chính xác cụm từ yêu cầu.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setResignStep("successor");
+    if (otherMembers[0]?.id) {
+      setSuccessorId(otherMembers[0].id);
+    }
+  };
+
+  const handleResignLeader = async () => {
+    if (!group?.id || !successorId) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng chọn người kế nhiệm",
+        variant: "destructive",
+      });
+      return;
+    }
+    setResignLoading(true);
+    try {
+      const { error } = await supabase.rpc("resign_as_leader", {
+        p_group_id: group.id,
+        p_new_leader_id: successorId,
+      });
+      if (error) throw new Error(error.message);
+
+      toast({
+        title: "Bàn giao quyền trưởng nhóm thành công!",
+        description: "Quyền trưởng nhóm đã được chuyển giao cho thành viên mới.",
+      });
+      setResignStep("none");
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Error during resignation:", err);
+      toast({
+        title: "Lỗi từ chức",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setResignLoading(false);
+    }
+  };
 
   const loadEmailInvites = useCallback(async () => {
     setInvitesLoading(true);
@@ -696,6 +828,11 @@ const StudentMyGroup = () => {
                             member={member}
                             profile={member.id ? profilesById[member.id] : undefined}
                             tasks={(member.id && memberTasksById[member.id]) || []}
+                            isCallerLeader={isCallerLeader}
+                            onKickClick={(m) => {
+                              setKickTarget(m);
+                              setIsKickDialogOpen(true);
+                            }}
                           />
                         ))}
                       </div>
@@ -748,6 +885,37 @@ const StudentMyGroup = () => {
                       </Alert>
                     </CardContent>
                   </Card>
+
+                  {isCallerLeader && (
+                    <Card className="rounded-3xl border-0 shadow-card bg-slate-900 border border-slate-800 text-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-xl text-rose-400 flex items-center gap-2">
+                          <Crown className="h-5 w-5 text-indigo-400" />
+                          Quản trị Trưởng nhóm
+                        </CardTitle>
+                        <CardDescription className="text-slate-400">
+                          Các công cụ quản trị dành riêng cho Trưởng nhóm dự án.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-rose-450">Từ chức Trưởng nhóm</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                              Từ chức và nhượng lại quyền quản trị dự án hiện tại cho thành viên khác trong nhóm. Bạn sẽ trở thành thành viên thường.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleStartResign}
+                            className="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-rose-400 font-bold text-xs rounded-xl px-4 py-2.5 h-auto transition-all cursor-pointer self-start"
+                          >
+                            Từ chức ngay
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <Card className="rounded-3xl border-0 shadow-card">
                     <CardHeader className="pb-3">
@@ -836,6 +1004,160 @@ const StudentMyGroup = () => {
           )}
         </div>
       </div>
+
+      {/* Kick Member Dialog */}
+      <Dialog open={isKickDialogOpen} onOpenChange={setIsKickDialogOpen}>
+        <DialogContent className="sm:max-w-[420px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight text-rose-400 flex items-center gap-2">
+              <UserMinus className="h-5 w-5 text-rose-450" />
+              Xóa thành viên khỏi nhóm
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm mt-1">
+              Hành động này không thể hoàn tác. Thành viên sẽ bị xóa khỏi dự án.
+            </DialogDescription>
+          </DialogHeader>
+
+          {kickTarget && (
+            <div className="py-4 space-y-3">
+              <p className="text-sm">
+                Bạn có chắc chắn muốn xóa thành viên <strong className="text-white">{kickTarget.name}</strong> khỏi nhóm không?
+              </p>
+              <div className="p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-400 space-y-2">
+                <p className="font-semibold text-rose-400">Lưu ý:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Tất cả task đang được giao cho thành viên này trong nhóm sẽ được chuyển sang trạng thái chưa giao (unassigned).</li>
+                  <li>Thành viên này sẽ không còn quyền truy cập vào không gian làm việc của nhóm.</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={() => setIsKickDialogOpen(false)}
+              className="bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl"
+            >
+              Hủy
+            </Button>
+            <Button
+              disabled={kickLoading}
+              onClick={handleKickMember}
+              className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold transition-colors"
+            >
+              {kickLoading ? "Đang xử lý..." : "Xác nhận xóa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resign Leadership Dialog */}
+      <Dialog open={resignStep !== "none"} onOpenChange={(open) => { if (!open) setResignStep("none"); }}>
+        <DialogContent className="sm:max-w-[460px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+          {resignStep === "verify" && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold tracking-tight text-rose-400 flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-rose-400" />
+                  Xác nhận Từ chức Trưởng nhóm
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  Hành động này yêu cầu xác nhận bằng văn bản để tránh nhầm lẫn.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <p className="text-sm leading-relaxed text-slate-300">
+                  Bằng việc từ chức, bạn sẽ nhượng lại toàn bộ quyền kiểm soát dự án cho một thành viên khác.
+                </p>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Nhập cụm từ bên dưới để xác nhận:
+                  </Label>
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-2.5 text-center font-mono text-sm font-bold text-rose-400 select-none tracking-wider">
+                    I resign my row
+                  </div>
+                  <Input
+                    required
+                    value={resignText}
+                    onChange={(e) => setResignText(e.target.value)}
+                    placeholder="Nhập cụm từ xác nhận tại đây..."
+                    className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 py-5"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="ghost"
+                  onClick={() => setResignStep("none")}
+                  className="hover:bg-slate-800 text-slate-300 rounded-xl"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleVerifyResign}
+                  disabled={resignText !== "I resign my row"}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold disabled:opacity-50 transition-colors"
+                >
+                  Tiếp tục
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {resignStep === "successor" && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-indigo-400" />
+                  Chọn Người Kế Nhiệm
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-1">
+                  Chỉ định thành viên sẽ tiếp quản vai trò Trưởng nhóm.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Thành viên tiếp quản:
+                  </Label>
+                  <select
+                    value={successorId}
+                    onChange={(e) => setSuccessorId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-xl py-3 px-4 text-sm font-semibold focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:bg-slate-900 transition-colors outline-none"
+                  >
+                    {otherMembers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({profilesById[m.id!]?.email || m.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="ghost"
+                  onClick={() => setResignStep("verify")}
+                  className="hover:bg-slate-800 text-slate-300 rounded-xl"
+                >
+                  Quay lại
+                </Button>
+                <Button
+                  onClick={handleResignLeader}
+                  disabled={resignLoading || !successorId}
+                  className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold transition-colors"
+                >
+                  {resignLoading ? "Đang xử lý..." : "Xác nhận & Bàn giao"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
