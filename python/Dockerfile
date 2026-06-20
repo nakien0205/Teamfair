@@ -1,6 +1,6 @@
 # Hardened multi-stage Dockerfile for Teamfair student agent server
 # Base image pinned using SHA256 digest (CIS 4.2)
-FROM python:3.12-slim@sha256:0d96d2e612cb723c21c7be7161b9a910ec7e74ae4f8a6198f1f7b8893d567fa6 AS builder
+FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9 AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY student_workspace_agent/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Final production stage
-FROM python:3.12-slim@sha256:0d96d2e612cb723c21c7be7161b9a910ec7e74ae4f8a6198f1f7b8893d567fa6
+FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9
 
 # OCI labels for image metadata (CIS 4.11)
 LABEL org.opencontainers.image.title="Teamfair Student Workspace Agent" \
