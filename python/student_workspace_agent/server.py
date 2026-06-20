@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
+import socket
 import time
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
+
+from .auth import require_auth
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -68,7 +73,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/chat")
-def chat(body: ChatRequest) -> dict[str, Any]:
+def chat(body: ChatRequest, user: dict = require_auth) -> dict[str, Any]:
     # 1. Run Input Guardrails
     input_res = validate_input(body.message.strip())
     if not input_res["safe"]:
@@ -169,7 +174,7 @@ class ContributionAnalysisRequest(BaseModel):
 
 
 @app.post("/analyze-contribution")
-def analyze_contribution_endpoint(body: ContributionAnalysisRequest) -> dict[str, Any]:
+def analyze_contribution_endpoint(body: ContributionAnalysisRequest, user: dict = require_auth) -> dict[str, Any]:
     _check_rate_limit(body.student_name)
 
     payload = {
@@ -204,18 +209,62 @@ class VerifyTaskRequest(BaseModel):
     evidence_files: list[EvidenceFileItem] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# SSRF protection for signed-URL fetching
+# ---------------------------------------------------------------------------
+
+_SIGNED_URL_ALLOWED_SUFFIXES: list[str] = [
+    s.strip()
+    for s in os.environ.get(
+        "SIGNED_URL_ALLOWED_HOSTS", ".supabase.co,.supabase.in"
+    ).split(",")
+    if s.strip()
+]
+
+
+def _validate_signed_url(url: str) -> None:
+    """Reject URLs that could hit internal services (SSRF)."""
+    parsed = urlparse(url)
+
+    # 1. Scheme must be HTTPS
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # 2. Host allowlist
+    if not any(hostname.endswith(suffix) for suffix in _SIGNED_URL_ALLOWED_SUFFIXES):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # 3. DNS resolution — reject private / loopback / link-local / reserved IPs
+    try:
+        addrinfos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    for family, _type, _proto, _canonname, sockaddr in addrinfos:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+
 @app.post("/verify-task")
-def verify_task_endpoint(body: VerifyTaskRequest) -> dict[str, Any]:
+def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> dict[str, Any]:
     # Download and extract text from evidence files
     evidence_payload = []
     for ev in body.evidence_files:
         content = ""
+        _validate_signed_url(ev.signedUrl)
         try:
             r = httpx.get(ev.signedUrl, timeout=10.0)
             if r.status_code == 200:
                 content = extract_text_from_bytes(r.content, ev.fileName)
             else:
                 content = f"[Lỗi: Không tải được file, HTTP {r.status_code}]"
+        except HTTPException:
+            raise
         except Exception as err:
             content = f"[Lỗi tải file: {err}]"
 
