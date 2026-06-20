@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+import uuid
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 
 import httpx
 from .agent import run_agent_detailed
+from .guardrails import validate_input, validate_output
 from .contribution_analyzer import AnalysisResult, analyze_contribution, verify_task_submission
 from .document_parser import extract_text_from_bytes
 from .schemas import WorkspaceSnapshot
@@ -67,23 +69,45 @@ def health() -> dict[str, str]:
 
 @app.post("/chat")
 def chat(body: ChatRequest) -> dict[str, Any]:
+    # 1. Run Input Guardrails
+    input_res = validate_input(body.message.strip())
+    if not input_res["safe"]:
+        return {
+            "answer": "Tôi không thể hoàn thành yêu cầu này do phát hiện dữ liệu đầu vào không hợp lệ hoặc chứa nội dung không an toàn.",
+            "tool_trace": [],
+            "reasoning": f"Blocked by guardrails: {input_res['reason']}",
+            "used_heavy_synthesis": False,
+            "workspace": None,
+        }
+
     try:
         snapshot = WorkspaceSnapshot.model_validate(body.workspace)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid workspace snapshot: {e}") from e
 
     store = StudentWorkspaceStore(snapshot)
+    
+    # 2. Generate security canary token
+    canary_token = str(uuid.uuid4())
+    
     try:
         result = run_agent_detailed(
-            body.message.strip(),
+            input_res["sanitized_input"],
             store=store,
             use_heavy=body.use_heavy,
             max_tool_rounds=body.max_tool_rounds,
+            canary_token=canary_token,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {e}") from e
+
+    # 3. Run Output Guardrails
+    output_res = validate_output(result.answer, canary_token=canary_token)
+    if not output_res["safe"]:
+        result.answer = output_res["validated_response"]
+        result.reasoning = (result.reasoning or "") + "\n[SECURITY WARNING: Response blocked due to canary leakage or policy violation.]"
 
     return result.to_json_dict()
 
