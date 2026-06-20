@@ -52,7 +52,7 @@ const calculateContributionSnapshotSchema = z.object({
   groupId: z.string().uuid(),
 }).strict();
 
-const payloadSchemas: Record<string, z.ZodType<any>> = {
+const payloadSchemas: Record<string, z.ZodTypeAny> = {
   create_invite: createInviteSchema,
   list_invites: listInvitesSchema,
   revoke_invite: revokeInviteSchema,
