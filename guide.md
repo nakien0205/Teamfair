@@ -14,3 +14,13 @@ Example: Adding a new status color (e.g., "In Review") to the Kanban board cards
 
 ### QUICK FIX Mode: For very minor, low-risk changes that do not need a plan.
 Example: Fixing a spelling error in a label or resolving a simple ESLint warning.
+
+
+## codex.toml
+model = "z-ai/glm-5.2"
+reasoning_effort = "medium"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true

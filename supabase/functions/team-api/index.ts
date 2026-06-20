@@ -2,6 +2,68 @@ import { getSupabaseAdmin, requireAuthUser } from "../_shared/auth.ts";
 import { isAllowedOrigin, optionsResponse } from "../_shared/cors.ts";
 import { enforceRateLimit } from "../_shared/ratelimit.ts";
 import { ApiError, internalError, jsonError, jsonOk } from "../_shared/responses.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const createInviteSchema = z.object({
+  groupId: z.string().uuid(),
+  approvalMode: z.enum(["auto", "requires_approval"]),
+  expiresAt: z.string().trim().nullable().optional(),
+  maxUses: z.number().int().min(1).max(500).nullable().optional(),
+}).strict();
+
+const listInvitesSchema = z.object({
+  groupId: z.string().uuid(),
+}).strict();
+
+const revokeInviteSchema = z.object({
+  inviteId: z.string().regex(/^IV-[A-Z0-9]{6}$/i),
+}).strict();
+
+const joinWithInviteSchema = z.object({
+  inviteCode: z.string().regex(/^IV-[A-Z0-9]{6}$/i),
+}).strict();
+
+const processJoinRequestSchema = z.object({
+  requestId: z.string().uuid(),
+  status: z.enum(["approved", "rejected"]),
+}).strict();
+
+const submitStudentReportSchema = z.object({
+  groupId: z.string().uuid(),
+  toName: z.string().min(1).max(160),
+  reason: z.string().min(1).max(120),
+  notes: z.string().max(2000).nullable().optional(),
+}).strict();
+
+const saveLecturerEvaluationSchema = z.object({
+  groupId: z.string().uuid(),
+  studentName: z.string().min(1).max(160),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(2000).nullable().optional(),
+  awardBadge: z.boolean(),
+}).strict();
+
+const approveTaskSchema = z.object({
+  groupId: z.string().uuid(),
+  taskId: z.string().uuid(),
+}).strict();
+
+const calculateContributionSnapshotSchema = z.object({
+  groupId: z.string().uuid(),
+}).strict();
+
+const payloadSchemas: Record<string, z.ZodType<any>> = {
+  create_invite: createInviteSchema,
+  list_invites: listInvitesSchema,
+  revoke_invite: revokeInviteSchema,
+  join_with_invite: joinWithInviteSchema,
+  process_join_request: processJoinRequestSchema,
+  submit_student_report: submitStudentReportSchema,
+  save_lecturer_evaluation: saveLecturerEvaluationSchema,
+  approve_task: approveTaskSchema,
+  calculate_contribution_snapshot: calculateContributionSnapshotSchema,
+};
+
 
 type ApprovalMode = "auto" | "requires_approval";
 type JoinStatus = "success" | "pending_approval";
@@ -562,12 +624,25 @@ Deno.serve(async req => {
   }
 
   try {
-    const body = asRecord(await req.json());
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== "object") {
+      throw new ApiError("bad_request", "Dữ liệu gửi lên không hợp lệ.");
+    }
+    const body = asRecord(rawBody);
     const action = stringField(body, "action", 80);
     if (!ACTIONS.has(action)) {
       throw new ApiError("not_found", "Không tìm thấy thao tác API.");
     }
-    const payload = asRecord(body.payload ?? {});
+    const rawPayload = body.payload ?? {};
+    const schema = payloadSchemas[action];
+    if (!schema) {
+      throw new ApiError("bad_request", "Thao tác không được hỗ trợ.");
+    }
+    const parsedPayload = schema.safeParse(rawPayload);
+    if (!parsedPayload.success) {
+      throw new ApiError("bad_request", "Dữ liệu payload không đúng định dạng.");
+    }
+    const payload = parsedPayload.data;
 
     const user = await requireAuthUser(req);
     await enforceRateLimit(`${user.id}:${action}`);
