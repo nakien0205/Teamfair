@@ -16,13 +16,16 @@ from .auth import require_auth
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import logging
 import httpx
 from .agent import run_agent_detailed
-from .guardrails import validate_input, validate_output
+from .guardrails import validate_input, validate_output, validate_workspace_strings
 from .contribution_analyzer import AnalysisResult, analyze_contribution, verify_task_submission
 from .document_parser import extract_text_from_bytes
 from .schemas import WorkspaceSnapshot
 from .store import StudentWorkspaceStore
+
+logger = logging.getLogger("student_workspace_agent")
 
 _DEFAULT_ORIGINS = (
     "http://localhost:8080",
@@ -31,7 +34,7 @@ _DEFAULT_ORIGINS = (
     "https://www.teamfair.company",
     "https://teamfair.vercel.app",
 )
-_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$"
+_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-git-[a-z0-9-]+)?-nakien0205\.vercel\.app$"
 
 
 def _cors_origins() -> list[str]:
@@ -56,7 +59,7 @@ app.add_middleware(
     allow_origin_regex=_cors_origin_regex(),
     allow_credentials=False,
     allow_methods=["POST", "OPTIONS", "GET"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -85,6 +88,17 @@ def chat(body: ChatRequest, user: dict = require_auth) -> dict[str, Any]:
             "workspace": None,
         }
 
+    # Run Workspace Input Guardrails
+    workspace_res = validate_workspace_strings(body.workspace)
+    if not workspace_res["safe"]:
+        return {
+            "answer": "Tôi không thể hoàn thành yêu cầu này do phát hiện dữ liệu đầu vào không hợp lệ hoặc chứa nội dung không an toàn.",
+            "tool_trace": [],
+            "reasoning": f"Blocked by guardrails (workspace): {workspace_res['reason']}",
+            "used_heavy_synthesis": False,
+            "workspace": None,
+        }
+
     try:
         snapshot = WorkspaceSnapshot.model_validate(body.workspace)
     except Exception as e:
@@ -104,9 +118,11 @@ def chat(body: ChatRequest, user: dict = require_auth) -> dict[str, Any]:
             canary_token=canary_token,
         )
     except RuntimeError as e:
+        logger.exception("Service unavailable error during chat execution")
         raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent error: {e}") from e
+        logger.exception("Agent error during chat execution")
+        raise HTTPException(status_code=500, detail="An internal error occurred during agent execution.") from e
 
     # 3. Run Output Guardrails
     output_res = validate_output(result.answer, canary_token=canary_token)
@@ -125,17 +141,17 @@ _RATE_LIMIT_WINDOW_SECS = 30.0
 _rate_limit_store: dict[str, float] = {}
 
 
-def _check_rate_limit(student_name: str) -> None:
-    """Enforce max 1 request per student_name per 30 seconds."""
+def _check_rate_limit(user_id: str) -> None:
+    """Enforce max 1 request per user_id per 30 seconds."""
     now = time.monotonic()
-    last = _rate_limit_store.get(student_name)
+    last = _rate_limit_store.get(user_id)
     if last is not None and (now - last) < _RATE_LIMIT_WINDOW_SECS:
         remaining = _RATE_LIMIT_WINDOW_SECS - (now - last)
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit: please wait {remaining:.0f}s before requesting again for this student.",
+            detail=f"Rate limit: please wait {remaining:.0f}s before requesting again.",
         )
-    _rate_limit_store[student_name] = now
+    _rate_limit_store[user_id] = now
 
     # Evict stale entries to prevent memory growth
     stale_keys = [k for k, v in _rate_limit_store.items() if (now - v) > _RATE_LIMIT_WINDOW_SECS * 2]
@@ -175,7 +191,7 @@ class ContributionAnalysisRequest(BaseModel):
 
 @app.post("/analyze-contribution")
 def analyze_contribution_endpoint(body: ContributionAnalysisRequest, user: dict = require_auth) -> dict[str, Any]:
-    _check_rate_limit(body.student_name)
+    _check_rate_limit(user.get("sub", ""))
 
     payload = {
         "student_name": body.student_name,
@@ -190,7 +206,8 @@ def analyze_contribution_endpoint(body: ContributionAnalysisRequest, user: dict 
     try:
         result: AnalysisResult = analyze_contribution(payload)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis error: {e}") from e
+        logger.exception("Error during contribution analysis")
+        raise HTTPException(status_code=500, detail="An internal error occurred during contribution analysis.") from e
 
     return result.to_dict()
 
@@ -252,6 +269,8 @@ def _validate_signed_url(url: str) -> None:
 
 @app.post("/verify-task")
 def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> dict[str, Any]:
+    _check_rate_limit(user.get("sub", ""))
+
     # Download and extract text from evidence files
     evidence_payload = []
     for ev in body.evidence_files:
@@ -285,4 +304,5 @@ def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> 
         res = verify_task_submission(payload)
         return res
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Verification error: {e}") from e
+        logger.exception("Error during task verification")
+        raise HTTPException(status_code=500, detail="An internal error occurred during task verification.") from e

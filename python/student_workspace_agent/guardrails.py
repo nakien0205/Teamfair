@@ -154,3 +154,22 @@ def validate_output(response_text: str, canary_token: str | None = None) -> dict
         "validated_response": sanitized_response,
         "fallback_response": fallback,
     }
+
+
+def validate_workspace_strings(data: Any) -> dict[str, Any]:
+    """Recursively scan all string values in nested dictionaries/lists for injection patterns."""
+    if isinstance(data, dict):
+        for k, v in data.items():
+            res = validate_workspace_strings(v)
+            if not res["safe"]:
+                return res
+    elif isinstance(data, list):
+        for item in data:
+            res = validate_workspace_strings(item)
+            if not res["safe"]:
+                return res
+    elif isinstance(data, str):
+        res = validate_input(data)
+        if not res["safe"]:
+            return res
+    return {"safe": True, "sanitized_input": data, "reason": None}

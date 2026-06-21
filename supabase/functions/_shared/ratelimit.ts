@@ -20,17 +20,22 @@ const strictLimiter = redis
 
 export async function enforceRateLimit(identifier: string): Promise<void> {
   if (!strictLimiter) {
-    console.warn("Upstash rate limiting is not configured; allowing request.");
-    return;
+    throw new ApiError("rate_limited", "Rate limiting is unconfigured.", 429, 60);
   }
 
   try {
     const result = await strictLimiter.limit(identifier);
     if (!result.success) {
-      throw new ApiError("rate_limited", "Bạn đang thao tác quá nhanh. Vui lòng thử lại sau.");
+      const remainingSecs = Math.ceil((result.reset - Date.now()) / 1000);
+      throw new ApiError(
+        "rate_limited",
+        "Bạn đang thao tác quá nhanh. Vui lòng thử lại sau.",
+        429,
+        remainingSecs > 0 ? remainingSecs : 1,
+      );
     }
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    console.warn("Upstash rate limiting failed open:", error);
+    throw new ApiError("rate_limited", "Rate limiting check failed.", 429, 60);
   }
 }
