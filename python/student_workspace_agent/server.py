@@ -2,22 +2,30 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
+import socket
 import time
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
+
+from .auth import require_auth
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import logging
 import httpx
 from .agent import run_agent_detailed
-from .guardrails import validate_input, validate_output
+from .guardrails import validate_input, validate_output, validate_workspace_strings
 from .contribution_analyzer import AnalysisResult, analyze_contribution, verify_task_submission
 from .document_parser import extract_text_from_bytes
 from .schemas import WorkspaceSnapshot
 from .store import StudentWorkspaceStore
+
+logger = logging.getLogger("student_workspace_agent")
 
 _DEFAULT_ORIGINS = (
     "http://localhost:8080",
@@ -26,7 +34,7 @@ _DEFAULT_ORIGINS = (
     "https://www.teamfair.company",
     "https://teamfair.vercel.app",
 )
-_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$"
+_DEFAULT_ORIGIN_REGEX = r"^https://teamfair(?:-git-[a-z0-9-]+)?-nakien0205\.vercel\.app$"
 
 
 def _cors_origins() -> list[str]:
@@ -51,7 +59,7 @@ app.add_middleware(
     allow_origin_regex=_cors_origin_regex(),
     allow_credentials=False,
     allow_methods=["POST", "OPTIONS", "GET"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -68,7 +76,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/chat")
-def chat(body: ChatRequest) -> dict[str, Any]:
+def chat(body: ChatRequest, user: dict = require_auth) -> dict[str, Any]:
     # 1. Run Input Guardrails
     input_res = validate_input(body.message.strip())
     if not input_res["safe"]:
@@ -76,6 +84,17 @@ def chat(body: ChatRequest) -> dict[str, Any]:
             "answer": "Tôi không thể hoàn thành yêu cầu này do phát hiện dữ liệu đầu vào không hợp lệ hoặc chứa nội dung không an toàn.",
             "tool_trace": [],
             "reasoning": f"Blocked by guardrails: {input_res['reason']}",
+            "used_heavy_synthesis": False,
+            "workspace": None,
+        }
+
+    # Run Workspace Input Guardrails
+    workspace_res = validate_workspace_strings(body.workspace)
+    if not workspace_res["safe"]:
+        return {
+            "answer": "Tôi không thể hoàn thành yêu cầu này do phát hiện dữ liệu đầu vào không hợp lệ hoặc chứa nội dung không an toàn.",
+            "tool_trace": [],
+            "reasoning": f"Blocked by guardrails (workspace): {workspace_res['reason']}",
             "used_heavy_synthesis": False,
             "workspace": None,
         }
@@ -99,9 +118,11 @@ def chat(body: ChatRequest) -> dict[str, Any]:
             canary_token=canary_token,
         )
     except RuntimeError as e:
+        logger.exception("Service unavailable error during chat execution")
         raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent error: {e}") from e
+        logger.exception("Agent error during chat execution")
+        raise HTTPException(status_code=500, detail="An internal error occurred during agent execution.") from e
 
     # 3. Run Output Guardrails
     output_res = validate_output(result.answer, canary_token=canary_token)
@@ -120,17 +141,17 @@ _RATE_LIMIT_WINDOW_SECS = 30.0
 _rate_limit_store: dict[str, float] = {}
 
 
-def _check_rate_limit(student_name: str) -> None:
-    """Enforce max 1 request per student_name per 30 seconds."""
+def _check_rate_limit(user_id: str) -> None:
+    """Enforce max 1 request per user_id per 30 seconds."""
     now = time.monotonic()
-    last = _rate_limit_store.get(student_name)
+    last = _rate_limit_store.get(user_id)
     if last is not None and (now - last) < _RATE_LIMIT_WINDOW_SECS:
         remaining = _RATE_LIMIT_WINDOW_SECS - (now - last)
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit: please wait {remaining:.0f}s before requesting again for this student.",
+            detail=f"Rate limit: please wait {remaining:.0f}s before requesting again.",
         )
-    _rate_limit_store[student_name] = now
+    _rate_limit_store[user_id] = now
 
     # Evict stale entries to prevent memory growth
     stale_keys = [k for k, v in _rate_limit_store.items() if (now - v) > _RATE_LIMIT_WINDOW_SECS * 2]
@@ -169,8 +190,8 @@ class ContributionAnalysisRequest(BaseModel):
 
 
 @app.post("/analyze-contribution")
-def analyze_contribution_endpoint(body: ContributionAnalysisRequest) -> dict[str, Any]:
-    _check_rate_limit(body.student_name)
+def analyze_contribution_endpoint(body: ContributionAnalysisRequest, user: dict = require_auth) -> dict[str, Any]:
+    _check_rate_limit(user.get("sub", ""))
 
     payload = {
         "student_name": body.student_name,
@@ -185,7 +206,8 @@ def analyze_contribution_endpoint(body: ContributionAnalysisRequest) -> dict[str
     try:
         result: AnalysisResult = analyze_contribution(payload)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis error: {e}") from e
+        logger.exception("Error during contribution analysis")
+        raise HTTPException(status_code=500, detail="An internal error occurred during contribution analysis.") from e
 
     return result.to_dict()
 
@@ -204,20 +226,91 @@ class VerifyTaskRequest(BaseModel):
     evidence_files: list[EvidenceFileItem] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# SSRF protection for signed-URL fetching
+# ---------------------------------------------------------------------------
+
+_SIGNED_URL_ALLOWED_SUFFIXES: list[str] = [
+    s.strip()
+    for s in os.environ.get(
+        "SIGNED_URL_ALLOWED_HOSTS", ".supabase.co,.supabase.in"
+    ).split(",")
+    if s.strip()
+]
+
+
+def _validate_signed_url(url: str) -> str:
+    """Validate URL against SSRF and return a safe URL using a verified IP.
+
+    Resolves DNS once, validates the IP is not private/loopback/reserved,
+    and rewrites the URL to use the verified IP directly. This eliminates
+    TOCTOU DNS rebinding attacks where a second resolution could return
+    a different (malicious) IP.
+    """
+    parsed = urlparse(url)
+
+    # 1. Scheme must be HTTPS
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # 2. Host allowlist
+    if not any(hostname.endswith(suffix) for suffix in _SIGNED_URL_ALLOWED_SUFFIXES):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # 3. DNS resolution — reject private / loopback / link-local / reserved IPs
+    try:
+        addrinfos = socket.getaddrinfo(hostname, 443, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    if not addrinfos:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    verified_ip: str | None = None
+    for family, _type, _proto, _canonname, sockaddr in addrinfos:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+        if verified_ip is None:
+            verified_ip = sockaddr[0]
+
+    # 4. Rewrite URL to use verified IP, preserving path/query
+    port = parsed.port or 443
+    safe_url = parsed._replace(netloc=f"{verified_ip}:{port}").geturl()
+    return safe_url
+
+
 @app.post("/verify-task")
-def verify_task_endpoint(body: VerifyTaskRequest) -> dict[str, Any]:
+def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> dict[str, Any]:
+    _check_rate_limit(user.get("sub", ""))
+
     # Download and extract text from evidence files
     evidence_payload = []
     for ev in body.evidence_files:
         content = ""
+        safe_url = _validate_signed_url(ev.signedUrl)
+        # Parse original hostname for Host header (required by TLS/SNI)
+        original_hostname = urlparse(ev.signedUrl).hostname
         try:
-            r = httpx.get(ev.signedUrl, timeout=10.0)
+            r = httpx.get(
+                safe_url,
+                timeout=10.0,
+                headers={"Host": original_hostname} if original_hostname else {},
+                verify=True,
+            )
             if r.status_code == 200:
                 content = extract_text_from_bytes(r.content, ev.fileName)
             else:
                 content = f"[Lỗi: Không tải được file, HTTP {r.status_code}]"
+        except HTTPException:
+            raise
         except Exception as err:
-            content = f"[Lỗi tải file: {err}]"
+            logger.exception("Evidence file download failed for %s", ev.fileName)
+            content = "[Lỗi: Không thể tải file minh chứng]"
 
         evidence_payload.append({
             "file_name": ev.fileName,
@@ -236,4 +329,5 @@ def verify_task_endpoint(body: VerifyTaskRequest) -> dict[str, Any]:
         res = verify_task_submission(payload)
         return res
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Verification error: {e}") from e
+        logger.exception("Error during task verification")
+        raise HTTPException(status_code=500, detail="An internal error occurred during task verification.") from e

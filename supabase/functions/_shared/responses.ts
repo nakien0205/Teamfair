@@ -24,12 +24,14 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
 export class ApiError extends Error {
   code: ApiErrorCode;
   status: number;
+  retryAfterSecs?: number;
 
-  constructor(code: ApiErrorCode, message: string, status = STATUS_BY_CODE[code]) {
+  constructor(code: ApiErrorCode, message: string, status = STATUS_BY_CODE[code], retryAfterSecs?: number) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
+    this.retryAfterSecs = retryAfterSecs;
   }
 }
 
@@ -39,11 +41,26 @@ export function jsonOk<T>(req: Request, data: T, status = 200): Response {
     headers: {
       ...corsHeaders(req),
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Frame-Options": "DENY",
     },
   });
 }
 
 export function jsonError(req: Request, error: ApiError): Response {
+  const headers: Record<string, string> = {
+    ...corsHeaders(req),
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Frame-Options": "DENY",
+  };
+  if (error.code === "rate_limited" && error.retryAfterSecs !== undefined) {
+    headers["Retry-After"] = String(error.retryAfterSecs);
+  }
   return new Response(JSON.stringify({
     ok: false,
     error: {
@@ -52,10 +69,7 @@ export function jsonError(req: Request, error: ApiError): Response {
     },
   }), {
     status: error.status,
-    headers: {
-      ...corsHeaders(req),
-      "Content-Type": "application/json",
-    },
+    headers,
   });
 }
 
