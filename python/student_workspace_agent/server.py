@@ -239,8 +239,14 @@ _SIGNED_URL_ALLOWED_SUFFIXES: list[str] = [
 ]
 
 
-def _validate_signed_url(url: str) -> None:
-    """Reject URLs that could hit internal services (SSRF)."""
+def _validate_signed_url(url: str) -> str:
+    """Validate URL against SSRF and return a safe URL using a verified IP.
+
+    Resolves DNS once, validates the IP is not private/loopback/reserved,
+    and rewrites the URL to use the verified IP directly. This eliminates
+    TOCTOU DNS rebinding attacks where a second resolution could return
+    a different (malicious) IP.
+    """
     parsed = urlparse(url)
 
     # 1. Scheme must be HTTPS
@@ -257,14 +263,25 @@ def _validate_signed_url(url: str) -> None:
 
     # 3. DNS resolution — reject private / loopback / link-local / reserved IPs
     try:
-        addrinfos = socket.getaddrinfo(hostname, None)
+        addrinfos = socket.getaddrinfo(hostname, 443, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
         raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
 
+    if not addrinfos:
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    verified_ip: str | None = None
     for family, _type, _proto, _canonname, sockaddr in addrinfos:
         ip = ipaddress.ip_address(sockaddr[0])
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
             raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+        if verified_ip is None:
+            verified_ip = sockaddr[0]
+
+    # 4. Rewrite URL to use verified IP, preserving path/query
+    port = parsed.port or 443
+    safe_url = parsed._replace(netloc=f"{verified_ip}:{port}").geturl()
+    return safe_url
 
 
 @app.post("/verify-task")
@@ -275,9 +292,16 @@ def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> 
     evidence_payload = []
     for ev in body.evidence_files:
         content = ""
-        _validate_signed_url(ev.signedUrl)
+        safe_url = _validate_signed_url(ev.signedUrl)
+        # Parse original hostname for Host header (required by TLS/SNI)
+        original_hostname = urlparse(ev.signedUrl).hostname
         try:
-            r = httpx.get(ev.signedUrl, timeout=10.0)
+            r = httpx.get(
+                safe_url,
+                timeout=10.0,
+                headers={"Host": original_hostname} if original_hostname else {},
+                verify=True,
+            )
             if r.status_code == 200:
                 content = extract_text_from_bytes(r.content, ev.fileName)
             else:
@@ -285,7 +309,8 @@ def verify_task_endpoint(body: VerifyTaskRequest, user: dict = require_auth) -> 
         except HTTPException:
             raise
         except Exception as err:
-            content = f"[Lỗi tải file: {err}]"
+            logger.exception("Evidence file download failed for %s", ev.fileName)
+            content = "[Lỗi: Không thể tải file minh chứng]"
 
         evidence_payload.append({
             "file_name": ev.fileName,

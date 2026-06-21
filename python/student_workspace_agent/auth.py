@@ -41,6 +41,9 @@ async def get_authenticated_user(request: Request) -> dict:
     except JWTError:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    if not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     return payload
 
 
