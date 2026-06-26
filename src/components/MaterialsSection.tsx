@@ -458,7 +458,9 @@ const MaterialsSection = ({ uploaderName }: Props) => {
                 let hostname = '';
                 try {
                   hostname = link.storagePath ? new URL(link.storagePath).hostname : '';
-                } catch {}
+                } catch {
+                  // Ignore invalid URL
+                }
 
                 return (
                   <div
