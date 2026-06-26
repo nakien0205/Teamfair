@@ -108,8 +108,10 @@ export interface MaterialFile {
   uploadedBy: string;
   uploadTime: Date;
   storagePath?: string;
-  storageBucket?: 'materials';
+  storageBucket?: 'materials' | null;
   uploadedById?: string;
+  description?: string;
+  previewImg?: string;
 }
 
 export type BadgeAwarder = "lecturer";

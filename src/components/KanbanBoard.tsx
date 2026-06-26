@@ -307,7 +307,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map(col => (
-          <button type="button"
+          <div
             key={col}
             className={`rounded-lg border border-border bg-muted/30 p-3 min-h-[200px] border-t-4 ${COLUMN_COLORS[col]}`}
             onDragOver={e => e.preventDefault()}
@@ -319,15 +319,15 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
             </h3>
             <div className="space-y-2">
               {visibleTasks.filter(t => t.status === col).map(t => (
-                <button type="button"
+                <div
                   key={t.id}
                   draggable={isLeader || t.assignedTo === currentUser}
                   onDragStart={() => setDraggedTask(t.id)}
-                  className={`bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow ${(isLeader || t.assignedTo === currentUser) ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'}`}
+                  className={`bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow block w-full text-left ${(isLeader || t.assignedTo === currentUser) ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm break-words whitespace-normal">{t.name}</p>
+                      <p className="font-medium text-sm break-all whitespace-normal">{t.name}</p>
                       {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>}
                     </div>
                     <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -361,10 +361,10 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                       </Button>
                     </div>
                   )}
-                </button>
+                </div>
               ))}
             </div>
-          </button>
+          </div>
         ))}
       </div>
       </div>

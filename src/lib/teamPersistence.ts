@@ -81,6 +81,8 @@ type DbMaterial = {
   storage_path?: string | null;
   storage_bucket?: string | null;
   created_at: string;
+  description?: string | null;
+  preview_img?: string | null;
 };
 
 type DbLecturerStudentReview = {
@@ -394,8 +396,10 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
         uploadedBy: material.uploaded_by_name,
         uploadTime: new Date(material.created_at),
         storagePath: material.storage_path ?? undefined,
-        storageBucket: material.storage_bucket === "materials" ? "materials" : undefined,
+        storageBucket: material.storage_bucket === "materials" ? "materials" : (material.storage_bucket === null ? null : undefined),
         uploadedById: material.uploader_id ?? undefined,
+        description: material.description ?? undefined,
+        previewImg: material.preview_img ?? undefined,
       },
     ],
   }), {});
@@ -657,7 +661,9 @@ export async function insertMaterial(groupId: string, file: Omit<MaterialFile, "
     file_size: file.size,
     uploaded_by_name: file.uploadedBy,
     storage_path: file.storagePath,
-    storage_bucket: file.storageBucket ?? "materials",
+    storage_bucket: file.storageBucket === null ? null : (file.storageBucket ?? "materials"),
+    description: file.description,
+    preview_img: file.previewImg,
   });
   if (error) throw new Error(error.message);
 }
@@ -763,8 +769,10 @@ export async function writeBackAgentSnapshot(
           uploaded_by_name: string;
           uploader_id?: string;
           storage_path?: string;
-          storage_bucket?: "materials";
+          storage_bucket?: "materials" | null;
           created_at: string;
+          description?: string;
+          preview_img?: string;
         } = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapMat.id)
           ? {
               id: snapMat.id,
@@ -774,8 +782,10 @@ export async function writeBackAgentSnapshot(
               uploaded_by_name: snapMat.uploadedBy,
               uploader_id: snapMat.uploadedById,
               storage_path: snapMat.storagePath,
-              storage_bucket: snapMat.storageBucket,
+              storage_bucket: snapMat.storageBucket === undefined ? "materials" : snapMat.storageBucket,
               created_at: snapMat.uploadTime.toISOString(),
+              description: snapMat.description,
+              preview_img: snapMat.previewImg,
             }
           : {
               group_id: groupId,
@@ -784,8 +794,10 @@ export async function writeBackAgentSnapshot(
               uploaded_by_name: snapMat.uploadedBy,
               uploader_id: snapMat.uploadedById,
               storage_path: snapMat.storagePath,
-              storage_bucket: snapMat.storageBucket,
+              storage_bucket: snapMat.storageBucket === undefined ? "materials" : snapMat.storageBucket,
               created_at: snapMat.uploadTime.toISOString(),
+              description: snapMat.description,
+              preview_img: snapMat.previewImg,
             };
         const { error } = await supabase.from("materials").insert(insertPayload);
         if (error) console.warn("Failed to insert snapshot material:", error.message);
