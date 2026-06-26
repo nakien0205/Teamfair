@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTeam, Task } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,19 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, GripVertical, Upload, FileText, Clock, User, Download, CheckCircle } from 'lucide-react';
+import { Plus, GripVertical, Clock, User, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/studentTaskProgress';
 import { useAuth } from '@/context/AuthContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNotifications } from '@/context/NotificationContext';
-import {
-  createSignedFileUrl,
-  deleteStorageFile,
-  uploadTeamFile,
-  validateStorageFile,
-} from '@/lib/storage';
+import { supabase } from '@/lib/supabaseClient';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 const COLUMN_COLORS: Record<string, string> = {
@@ -48,7 +43,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
     members,
     addTask,
     updateTaskStatus,
-    appendTaskEvidence,
+    deleteTask,
     currentUserName,
   } = useTeam();
   const { user } = useAuth();
@@ -58,11 +53,8 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
   const [createOpen, setCreateOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium' as 'Low' | 'Medium' | 'High', contributionPercent: 10 });
   const [notifyTeam, setNotifyTeam] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const evidenceRef = useRef<HTMLInputElement>(null);
-  const [evidenceTaskId, setEvidenceTaskId] = useState<string | null>(null);
-  const [uploadingEvidenceTaskId, setUploadingEvidenceTaskId] = useState<string | null>(null);
-  const [downloadingEvidencePath, setDownloadingEvidencePath] = useState<string | null>(null);
   const currentGroup = groups[currentGroupIndex];
 
   const getStatusLabel = (status: Task["status"]): string => {
@@ -106,8 +98,24 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
           );
         });
     }
+    if (sendEmail && newTask.assignedTo) {
+      const assignedMember = members.find(m => m.name === newTask.assignedTo);
+      if (assignedMember?.id) {
+        void supabase.functions.invoke('send-task-email', {
+          body: {
+            assigneeId: assignedMember.id,
+            taskName: newTask.name,
+            taskDescription: newTask.description,
+            deadline: newTask.deadline,
+            priority: newTask.priority,
+            groupName: currentGroup?.name || '',
+          },
+        });
+      }
+    }
     setNewTask({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium', contributionPercent: 10 });
     setNotifyTeam(false);
+    setSendEmail(false);
     setCreateOpen(false);
     toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: `"${newTask.name}" ${tr(language, 'đã được thêm', 'has been added')}` });
   };
@@ -165,100 +173,6 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
     }
   };
 
-  const handleEvidenceUpload = async (taskId: string) => {
-    const file = evidenceRef.current?.files?.[0];
-    if (!file) return;
-
-    if (!currentGroup?.id || !user?.id) {
-      toast({
-        title: tr(language, 'Lỗi', 'Error'),
-        description: tr(language, 'Vui lòng đăng nhập và chọn dự án trước khi tải file', 'Please sign in and select a project before uploading'),
-        variant: 'destructive',
-      });
-      if (evidenceRef.current) evidenceRef.current.value = '';
-      setEvidenceTaskId(null);
-      return;
-    }
-
-    const validation = validateStorageFile("evidence", file);
-    if (!validation.valid) {
-      toast({
-        title: validation.reason === "size" ? tr(language, 'Lỗi kích thước', 'Size Error') : tr(language, 'Định dạng không hỗ trợ', 'Unsupported file type'),
-        description: validation.message,
-        variant: 'destructive',
-      });
-      if (evidenceRef.current) evidenceRef.current.value = '';
-      setEvidenceTaskId(null);
-      return;
-    }
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      if (!isLeader && task.approved) {
-        toast({
-          title: tr(language, 'Không thể cập nhật task', 'Cannot update task'),
-          description: STUDENT_TASK_PROGRESS_MESSAGES.approvedLocked,
-          variant: 'destructive',
-        });
-        if (evidenceRef.current) evidenceRef.current.value = '';
-        setEvidenceTaskId(null);
-        return;
-      }
-    }
-
-    setUploadingEvidenceTaskId(taskId);
-    let uploadedPath: string | null = null;
-    try {
-      const uploaded = await uploadTeamFile("evidence", currentGroup.id, user.id, file);
-      uploadedPath = uploaded.path;
-      await appendTaskEvidence(taskId, {
-        fileName: uploaded.fileName,
-        uploadTime: new Date(),
-        storagePath: uploaded.path,
-        storageBucket: "evidence",
-        size: uploaded.size,
-        uploadedById: user.id,
-      });
-      toast({ title: tr(language, 'Evidence uploaded', 'Evidence uploaded'), description: `"${uploaded.fileName}" ${tr(language, 'đã được tải lên', 'has been uploaded')}` });
-    } catch (error) {
-      if (uploadedPath) {
-        void deleteStorageFile("evidence", uploadedPath);
-      }
-      toast({
-        title: tr(language, 'Upload thất bại', 'Upload failed'),
-        description: error instanceof Error ? error.message : String(error),
-        variant: 'destructive',
-      });
-    } finally {
-      if (evidenceRef.current) evidenceRef.current.value = '';
-      setEvidenceTaskId(null);
-      setUploadingEvidenceTaskId(null);
-    }
-  };
-
-  const handleEvidenceDownload = async (evidence: NonNullable<Task["evidence"]>[number]) => {
-    if (!evidence.storagePath) {
-      toast({
-        title: tr(language, 'Không có file', 'File unavailable'),
-        description: tr(language, 'Bằng chứng cũ này chỉ có metadata, không có file để tải xuống.', 'This legacy evidence only has metadata and no downloadable file.'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setDownloadingEvidencePath(evidence.storagePath);
-    try {
-      const signedUrl = await createSignedFileUrl(evidence.storageBucket ?? "evidence", evidence.storagePath);
-      window.open(signedUrl, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      toast({
-        title: tr(language, 'Tải xuống thất bại', 'Download failed'),
-        description: error instanceof Error ? error.message : String(error),
-        variant: 'destructive',
-      });
-    } finally {
-      setDownloadingEvidencePath(null);
-    }
-  };
 
   const visibleTasks = tasks;
 
@@ -354,6 +268,17 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                     {tr(language, "Thông báo cho thành viên nhóm", "Notify team members")}
                   </Label>
                 </div>
+                <div className="flex items-center space-x-2 py-1">
+                  <Checkbox
+                    id="sendEmailKanban"
+                    checked={sendEmail}
+                    onCheckedChange={(checked) => setSendEmail(!!checked)}
+                    className="rounded-full border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <Label htmlFor="sendEmailKanban" className="text-xs font-semibold leading-none cursor-pointer text-slate-500">
+                    {tr(language, "Gửi email", "Send email")}
+                  </Label>
+                </div>
                 <div className="flex gap-2 border-t border-slate-100 pt-3">
                   <Button className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={handleCreate}>
                     {tr(language, 'Tạo Task', 'Create Task')}
@@ -378,14 +303,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
         )}
       </div>
 
-      {/* Hidden evidence file input */}
-      <input
-        type="file"
-        ref={evidenceRef}
-        accept=".png,.jpg,.jpeg,.gif,.pdf,.txt"
-        className="hidden"
-        onChange={() => evidenceTaskId && void handleEvidenceUpload(evidenceTaskId)}
-      />
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map(col => (
@@ -409,7 +327,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{t.name}</p>
+                      <p className="font-medium text-sm break-words whitespace-normal">{t.name}</p>
                       {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>}
                     </div>
                     <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -427,58 +345,22 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                       <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[t.priority]}`}>{getPriorityLabel(t.priority)}</span>
                     )}
                   </div>
-                  {/* Evidence */}
-                  <div className="mt-2 pt-2 border-t border-border">
-                    {t.evidence && t.evidence.length > 0 && (
-                      <div className="space-y-1 mb-1">
-                        {t.evidence.map(e => (
-                          <Button
-                            key={`${e.fileName}-${e.uploadTime.getTime()}`}
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto min-h-6 w-full justify-start px-1 py-0.5 text-xs text-muted-foreground"
-                            disabled={downloadingEvidencePath === e.storagePath}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleEvidenceDownload(e);
-                            }}
-                          >
-                            <FileText className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{e.fileName}</span>
-                            {e.storagePath && <Download className="ml-auto h-3 w-3 shrink-0" />}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                    {(isLeader || t.assignedTo === currentUser) && (
+                  {isLeader && t.status === 'Done' && !t.approved && (
+                    <div className="mt-2 pt-2 border-t border-border">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-6 text-xs px-2"
-                        disabled={uploadingEvidenceTaskId === t.id}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setEvidenceTaskId(t.id);
-                          evidenceRef.current?.click();
-                        }}
-                      >
-                        <Upload className="h-3 w-3 mr-1" /> {tr(language, 'Tải bằng chứng', 'Upload Evidence')}
-                      </Button>
-                    )}
-                    {isLeader && t.status === 'Done' && !t.approved && (
-                      <Button
-                        size="sm"
-                        className="h-6 text-xs px-2 bg-indigo-600 hover:bg-indigo-700 text-white ml-1"
+                        className="h-6 text-xs px-2 bg-indigo-600 hover:bg-indigo-700 text-white"
                         onClick={(event) => {
                           event.stopPropagation();
                           if (onApproveClick) onApproveClick(t);
+                          // Delete task from board after approval
+                          setTimeout(() => deleteTask(t.id), 300);
                         }}
                       >
                         <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Duyệt', 'Approve')}
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

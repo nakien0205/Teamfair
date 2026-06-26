@@ -19,6 +19,12 @@
       "skillPath": "skills/detecting-ai-model-prompt-injection-attacks/SKILL.md",
       "computedHash": "d36c1dafd9aa81b95e29a95a1a002a88fdba338173182707f3b6e5891d74ee2a"
     },
+    "finance-metrics-quickref": {
+      "source": "deanpeters/Product-Manager-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/finance-metrics-quickref/SKILL.md",
+      "computedHash": "834cd4ea826af19888def4ee70f401ed7642030a2f7b036399bfd2fe311127d2"
+    },
     "gsap-core": {
       "source": "greensock/gsap-skills",
       "sourceType": "github",
@@ -126,6 +132,12 @@
       "sourceType": "github",
       "skillPath": "skills/performing-serverless-function-security-review/SKILL.md",
       "computedHash": "9d2520c918a6145b25bb451724148ec777993ddaf21ff034e2783115daa219f6"
+    },
+    "saas-economics-efficiency-metrics": {
+      "source": "deanpeters/Product-Manager-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/saas-economics-efficiency-metrics/SKILL.md",
+      "computedHash": "d8c9b637b04ca35bb3bcb8d4d769d3076602066f2d9792ddd11685618284ee5f"
     },
     "scanning-docker-images-with-trivy": {
       "source": "mukul975/Anthropic-Cybersecurity-Skills",

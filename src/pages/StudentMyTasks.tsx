@@ -144,7 +144,7 @@ const statusMeta: Record<TaskWorkflowStatus, { label: string; className: string;
     order: 4,
   },
   approved: {
-    label: "Đã duyệt",
+    label: "Đã hoàn thành",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     order: 5,
   },
@@ -187,7 +187,7 @@ const difficultyMeta = (priority?: Task["priority"]) => {
 
 const reviewMeta = (status: ReviewStatus) => {
   if (status === "approved") {
-    return { label: "Đã duyệt", className: "text-emerald-700" };
+    return { label: "Đã hoàn thành", className: "text-emerald-700" };
   }
   if (status === "rejected") {
     return { label: "Bị từ chối", className: "text-rose-700" };
@@ -310,7 +310,7 @@ const StudentMyTasks = () => {
       { key: "in_progress" as const, label: tr(language, "Đang thực hiện", "In Progress") },
       { key: "submitted" as const, label: tr(language, "Đã nộp", "Submitted") },
       { key: "need_revision" as const, label: tr(language, "Cần chỉnh sửa", "Needs Revision") },
-      { key: "approved" as const, label: tr(language, "Đã duyệt", "Approved") },
+      { key: "approved" as const, label: tr(language, "Đã hoàn thành", "Completed") },
       { key: "rejected" as const, label: tr(language, "Bị từ chối", "Rejected") },
       { key: "overdue" as const, label: tr(language, "Trễ hạn", "Overdue") },
     ],
@@ -518,10 +518,6 @@ const StudentMyTasks = () => {
 
                               <div className="grid min-w-[280px] gap-3 rounded-2xl border border-border/70 bg-background/80 p-3 sm:grid-cols-2">
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Giao bởi", "Assigned by")}</p>
-                                  <p className="mt-1 text-sm font-medium">{group.members.find(member => member.role === "Leader")?.name || tr(language, "Trưởng nhóm", "Team Leader")}</p>
-                                </div>
-                                <div>
                                   <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Hạn chót", "Deadline")}</p>
                                   <p className="mt-1 text-sm font-medium">{formatDate(task.deadline)}</p>
                                 </div>
@@ -538,16 +534,16 @@ const StudentMyTasks = () => {
                                 <p className="mt-2 text-lg font-semibold">{task.contributionPercent}%</p>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Submission", "Submission")}</p>
-                                <p className="mt-2 text-sm font-medium">{submissionStatus}</p>
-                              </div>
-                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Review", "Review")}</p>
                                 <p className={cn("mt-2 text-sm font-medium", review.className)}>{review.label}</p>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Minh chứng", "Evidence")}</p>
                                 <p className="mt-2 text-sm font-medium">{hasEvidence ? `${task.evidence?.length || 0} ${tr(language, "file", "file")}` : tr(language, "Chưa có file", "No files")}</p>
+                              </div>
+                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Submission", "Submission")}</p>
+                                <p className="mt-2 text-sm font-medium">{submissionStatus}</p>
                               </div>
                             </div>
 
@@ -581,15 +577,6 @@ const StudentMyTasks = () => {
                               <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
                                 <MessageSquareQuote className="mr-2 h-4 w-4" />
                                 {tr(language, "Xem review feedback", "View Review Feedback")}
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="rounded-2xl"
-                                onClick={() => navigate(`/student/work-logs?taskId=${task.id}`)}
-                              >
-                                <ClipboardPenLine className="mr-2 h-4 w-4" />
-                                {tr(language, "Write work log", "Write Work Log")}
                               </Button>
                             </div>
                           </div>

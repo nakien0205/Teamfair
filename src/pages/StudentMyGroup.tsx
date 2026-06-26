@@ -231,7 +231,7 @@ const MemberRow = ({
 }) => {
   const assignedTasks = tasks.length;
   const approvedTasks = tasks.filter(task => task.approved).length;
-  const pendingTasks = tasks.filter(task => task.status === "Done" && !task.approved).length;
+  const overdueTasks = tasks.filter(isOverdueTask).length;
   const activityLevel = getMemberActivityLevel(tasks);
   const roleLabel = member.role === "Leader" ? "Nhóm trưởng" : "Thành viên";
   const identifier = profile?.email?.trim() || member.id || "Chưa có thông tin";
@@ -281,12 +281,12 @@ const MemberRow = ({
             <p className="mt-1 text-xl font-semibold">{assignedTasks}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Đã duyệt</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Đã hoàn thành</p>
             <p className="mt-1 text-xl font-semibold">{approvedTasks}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Chờ duyệt</p>
-            <p className="mt-1 text-xl font-semibold">{pendingTasks}</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Trễ hạn</p>
+            <p className="mt-1 text-xl font-semibold">{overdueTasks}</p>
           </div>
         </div>
       </div>
@@ -342,6 +342,21 @@ const StudentMyGroup = () => {
   const [resignText, setResignText] = useState("");
   const [successorId, setSuccessorId] = useState("");
   const [resignLoading, setResignLoading] = useState(false);
+
+  // Overdue tasks dialog
+  const [overdueDialogOpen, setOverdueDialogOpen] = useState(false);
+
+  const overdueTasks = useMemo(() => {
+    if (!group) return [];
+    return group.tasks.filter(isOverdueTask).map(task => {
+      const assigneeName = task.assignedTo;
+      const deadlineDate = new Date(task.deadline!);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysOverdue = Math.ceil((today.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
+      return { ...task, daysOverdue, assigneeName };
+    });
+  }, [group]);
 
   const handleKickMember = async () => {
     if (!group?.id || !kickTarget?.id) return;
@@ -860,10 +875,14 @@ const StudentMyGroup = () => {
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Đang chờ xử lý</p>
                           <p className="mt-2 text-2xl font-semibold">{groupProgress.pendingTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        <button
+                          type="button"
+                          onClick={() => setOverdueDialogOpen(true)}
+                          className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left hover:border-rose-300 hover:bg-rose-50/50 transition-colors cursor-pointer w-full"
+                        >
                           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Task trễ hạn</p>
                           <p className="mt-2 text-2xl font-semibold">{groupProgress.overdueTasks}</p>
-                        </div>
+                        </button>
                       </div>
 
                       <div className="rounded-2xl border border-border/70 bg-card p-4">
@@ -1156,6 +1175,47 @@ const StudentMyGroup = () => {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Overdue Tasks Dialog */}
+      <Dialog open={overdueDialogOpen} onOpenChange={setOverdueDialogOpen}>
+        <DialogContent className="sm:max-w-[560px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <TimerOff className="h-5 w-5 text-rose-500" />
+              Task trễ hạn
+            </DialogTitle>
+            <DialogDescription>
+              Danh sách các task đã quá hạn và chưa hoàn thành.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {overdueTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Không có task trễ hạn.</p>
+            ) : (
+              overdueTasks.map(task => (
+                <div key={task.id} className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-sm break-words">{task.name}</p>
+                    <Badge className="border-rose-200 bg-rose-100 text-rose-700 shrink-0">
+                      {task.daysOverdue} ngày
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {task.assigneeName}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarClock className="h-3 w-3" />
+                      {formatDate(task.deadline)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
