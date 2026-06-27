@@ -297,15 +297,11 @@ export const ShareProjectModal: React.FC = () => {
                       <p className="truncate text-xs text-slate-500">{member.id || profile?.email || "Teamfair user"}</p>
                     </div>
                     <span className="shrink-0 text-sm text-slate-500">
-<<<<<<< HEAD
-                      {member.role === "Leader" ? tr(language, "Chủ sở hữu", "Owner") : tr(language, "Thành viên", "Editor")}
-=======
                       {member.role === "Leader"
                         ? tr(language, "Chủ sở hữu", "Owner")
                         : member.role === "Lecturer"
                           ? tr(language, "Giảng viên", "Lecturer")
                           : tr(language, "Thành viên", "Editor")}
->>>>>>> 37d9af7cb10cf0253bc848b87c56d38fadcba20d
                     </span>
                   </div>
                 );
