@@ -13,6 +13,18 @@
       "skillPath": "design-and-refine/skills/design-lab/SKILL.md",
       "computedHash": "8879d318fcedccbae872a06b3d9a4ed3c5e75340a96d9c6baf765a4b19593c25"
     },
+    "detecting-ai-model-prompt-injection-attacks": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/detecting-ai-model-prompt-injection-attacks/SKILL.md",
+      "computedHash": "d36c1dafd9aa81b95e29a95a1a002a88fdba338173182707f3b6e5891d74ee2a"
+    },
+    "finance-metrics-quickref": {
+      "source": "deanpeters/Product-Manager-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/finance-metrics-quickref/SKILL.md",
+      "computedHash": "834cd4ea826af19888def4ee70f401ed7642030a2f7b036399bfd2fe311127d2"
+    },
     "gsap-core": {
       "source": "greensock/gsap-skills",
       "sourceType": "github",
@@ -55,11 +67,47 @@
       "skillPath": "skills/gsap-utils/SKILL.md",
       "computedHash": "72af4a036d417d6eaef7478eca2f28e760631fb78db822ba34a9c706797aab62"
     },
+    "hardening-docker-containers-for-production": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/hardening-docker-containers-for-production/SKILL.md",
+      "computedHash": "87eb08dd0b02de58ba5fc1bc2fee50dbeeac038b8c858034805f5c42dfef4263"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
       "computedHash": "87d128e3980037fa8e203062cd8fcf2f4d35c340fd8eb93b6c02ab050315bea8"
+    },
+    "implementing-api-rate-limiting-and-throttling": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/implementing-api-rate-limiting-and-throttling/SKILL.md",
+      "computedHash": "ec9371576a6a3eaa290d22bd1a25d4bbc25db021105e14e1c88d09d0cd6cbdb5"
+    },
+    "implementing-api-schema-validation-security": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/implementing-api-schema-validation-security/SKILL.md",
+      "computedHash": "5834546ed538c81de16d7c441a9732615f42e09f3e784d964a79a4c32d31d93c"
+    },
+    "implementing-llm-guardrails-for-security": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/implementing-llm-guardrails-for-security/SKILL.md",
+      "computedHash": "824c0a441d4ef15e619a9a55186434c58d6a88ee72d7d41f6c50cf5f9bc41412"
+    },
+    "implementing-secret-scanning-with-gitleaks": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/implementing-secret-scanning-with-gitleaks/SKILL.md",
+      "computedHash": "eab9e85ee5b5732bf73444ca9f06ce6fc02dc05c5a0d772181603f8cf3f70939"
+    },
+    "integrating-sast-into-github-actions-pipeline": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/integrating-sast-into-github-actions-pipeline/SKILL.md",
+      "computedHash": "922a099d582460a81f4a45ade538f63c6a393ec5e38a419be78fdeec664c7cfb"
     },
     "interface-design": {
       "source": "Dammyjay93/interface-design",
@@ -67,11 +115,95 @@
       "skillPath": ".claude/skills/interface-design/SKILL.md",
       "computedHash": "1c0e76c9ee32578bf362c82db2b8dda76ffe40c0548fe1c7e4113104117d93f3"
     },
+    "performing-sca-dependency-scanning-with-snyk": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/performing-sca-dependency-scanning-with-snyk/SKILL.md",
+      "computedHash": "5688cf7c6143c21e483dd06bd45f869dbd28fcc0013b89767bcb73872490dad3"
+    },
+    "performing-security-headers-audit": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/performing-security-headers-audit/SKILL.md",
+      "computedHash": "d3cfac17964fd398dc54468f1bfe92ea74433fb53c07601875ae3fc156f4e172"
+    },
+    "performing-serverless-function-security-review": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/performing-serverless-function-security-review/SKILL.md",
+      "computedHash": "9d2520c918a6145b25bb451724148ec777993ddaf21ff034e2783115daa219f6"
+    },
+    "saas-economics-efficiency-metrics": {
+      "source": "deanpeters/Product-Manager-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/saas-economics-efficiency-metrics/SKILL.md",
+      "computedHash": "d8c9b637b04ca35bb3bcb8d4d769d3076602066f2d9792ddd11685618284ee5f"
+    },
+    "scanning-docker-images-with-trivy": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/scanning-docker-images-with-trivy/SKILL.md",
+      "computedHash": "356828b2661c19b2f733237602869305383b5ea7eb140d14247c07c059c30b80"
+    },
+    "securing-github-actions-workflows": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/securing-github-actions-workflows/SKILL.md",
+      "computedHash": "5ebaa081720777fe7a0e1d7203afb70e564a6aa7df7fe3127b197aff597be5ea"
+    },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
       "computedHash": "0dc0edeeaec2ae491ae506806517866a3f9bd48d04e0458feb37e0252862891f"
+    },
+    "testing-api-authentication-weaknesses": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-api-authentication-weaknesses/SKILL.md",
+      "computedHash": "d94d54c19c7b48cff0f6abec18c86e6f70a736f6214cf960cf32d971490e5293"
+    },
+    "testing-api-for-broken-object-level-authorization": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-api-for-broken-object-level-authorization/SKILL.md",
+      "computedHash": "2b19a891253b3470b79c1fcfe58155e9d94ca1421e0fdaf83961aeb88aff1a0a"
+    },
+    "testing-api-security-with-owasp-top-10": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-api-security-with-owasp-top-10/SKILL.md",
+      "computedHash": "e875a210c3be927fa6360985353d97158737bb61ffbe55f9773aeb586fe1c6b0"
+    },
+    "testing-cors-misconfiguration": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-cors-misconfiguration/SKILL.md",
+      "computedHash": "cd0907ac40458740d7df91892ba91eb9962d8204a27bfb7f679e68ca5084f363"
+    },
+    "testing-for-broken-access-control": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-for-broken-access-control/SKILL.md",
+      "computedHash": "d9f19e9cdc7d013c397a8c692e2857236edfff1c2a73c4a577aa60394b76464a"
+    },
+    "testing-for-business-logic-vulnerabilities": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-for-business-logic-vulnerabilities/SKILL.md",
+      "computedHash": "5e94e426519e1975cdd6924575a64ff75992a3845ad1969746b20229d5a8e735"
+    },
+    "testing-for-sensitive-data-exposure": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-for-sensitive-data-exposure/SKILL.md",
+      "computedHash": "d920e9b134ae37f84178105ef29853f95cd162d06a95ffeff605af59a36e6159"
+    },
+    "testing-for-xss-vulnerabilities": {
+      "source": "mukul975/Anthropic-Cybersecurity-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-for-xss-vulnerabilities/SKILL.md",
+      "computedHash": "d84b5ade62a9541fba92f90171c756cb409759929af112950e7ad20e05e60bbf"
     }
   }
 }

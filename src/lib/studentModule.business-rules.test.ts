@@ -21,8 +21,8 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   ...overrides,
 });
 
-const studentAId = "11111111-1111-1111-1111-111111111111";
-const studentBId = "22222222-2222-2222-2222-222222222222";
+const studentAId = "11111111-1111-4111-8111-111111111111";
+const studentBId = "22222222-2222-4222-8222-222222222222";
 
 describe("Student module business rules", () => {
   it("blocks students from accessing another student's private contribution score", () => {

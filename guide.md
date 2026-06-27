@@ -14,3 +14,5 @@ Example: Adding a new status color (e.g., "In Review") to the Kanban board cards
 
 ### QUICK FIX Mode: For very minor, low-risk changes that do not need a plan.
 Example: Fixing a spelling error in a label or resolving a simple ESLint warning.
+
+

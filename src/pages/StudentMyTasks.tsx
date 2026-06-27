@@ -144,7 +144,7 @@ const statusMeta: Record<TaskWorkflowStatus, { label: string; className: string;
     order: 4,
   },
   approved: {
-    label: "Đã duyệt",
+    label: "Đã hoàn thành",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     order: 5,
   },
@@ -187,7 +187,7 @@ const difficultyMeta = (priority?: Task["priority"]) => {
 
 const reviewMeta = (status: ReviewStatus) => {
   if (status === "approved") {
-    return { label: "Đã duyệt", className: "text-emerald-700" };
+    return { label: "Đã hoàn thành", className: "text-emerald-700" };
   }
   if (status === "rejected") {
     return { label: "Bị từ chối", className: "text-rose-700" };
@@ -310,7 +310,7 @@ const StudentMyTasks = () => {
       { key: "in_progress" as const, label: tr(language, "Đang thực hiện", "In Progress") },
       { key: "submitted" as const, label: tr(language, "Đã nộp", "Submitted") },
       { key: "need_revision" as const, label: tr(language, "Cần chỉnh sửa", "Needs Revision") },
-      { key: "approved" as const, label: tr(language, "Đã duyệt", "Approved") },
+      { key: "approved" as const, label: tr(language, "Đã hoàn thành", "Completed") },
       { key: "rejected" as const, label: tr(language, "Bị từ chối", "Rejected") },
       { key: "overdue" as const, label: tr(language, "Trễ hạn", "Overdue") },
     ],
@@ -523,6 +523,7 @@ const StudentMyTasks = () => {
                                 </p>
                               </div>
 
+<<<<<<< HEAD
                               {/* Khối Hạn chót & Nút Nộp Bài */}
                               <div className="flex items-center gap-3 lg:justify-end self-start lg:self-center w-full lg:w-auto">
                                 {/* Ô Hạn chót */}
@@ -556,6 +557,12 @@ const StudentMyTasks = () => {
                                 <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">{tr(language, "Độ khó", "Difficulty")}</p>
                                 <div className="mt-2.5">
                                   <Badge className={cn("shadow-none rounded-md px-2.5 py-0.5 text-xs font-extrabold bg-white/90 border border-emerald-200", difficulty.className)}>{difficulty.label}</Badge>
+=======
+                              <div className="grid min-w-[280px] gap-3 rounded-2xl border border-border/70 bg-background/80 p-3 sm:grid-cols-2">
+                                <div>
+                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Hạn chót", "Deadline")}</p>
+                                  <p className="mt-1 text-sm font-medium">{formatDate(task.deadline)}</p>
+>>>>>>> 37d9af7cb10cf0253bc848b87c56d38fadcba20d
                                 </div>
                               </div>
 
@@ -570,11 +577,25 @@ const StudentMyTasks = () => {
                                 <p className="text-xs font-bold uppercase tracking-wider text-purple-800">{tr(language, "Trạng thái nộp", "Submission")}</p>
                                 <p className="mt-2 text-sm font-bold text-purple-900">{submissionStatus}</p>
                               </div>
+<<<<<<< HEAD
 
                               {/* Ô 4: Đánh giá - Tone Vàng Cam */}
                               <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-4 shadow-sm">
                                 <p className="text-xs font-bold uppercase tracking-wider text-amber-800">{tr(language, "Đánh giá", "Review")}</p>
                                 <div className={cn("mt-2 text-sm font-bold text-amber-900", review.className)}>{review.label}</div>
+=======
+                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Review", "Review")}</p>
+                                <p className={cn("mt-2 text-sm font-medium", review.className)}>{review.label}</p>
+                              </div>
+                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Minh chứng", "Evidence")}</p>
+                                <p className="mt-2 text-sm font-medium">{hasEvidence ? `${task.evidence?.length || 0} ${tr(language, "file", "file")}` : tr(language, "Chưa có file", "No files")}</p>
+>>>>>>> 37d9af7cb10cf0253bc848b87c56d38fadcba20d
+                              </div>
+                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Submission", "Submission")}</p>
+                                <p className="mt-2 text-sm font-medium">{submissionStatus}</p>
                               </div>
                             </div>
 
@@ -644,7 +665,16 @@ const StudentMyTasks = () => {
                                   <ClipboardPenLine className="mr-1.5 h-3.5 w-3.5 text-amber-500" />
                                   {tr(language, "Log công việc", "Log Work")}
                                 </Button>
+<<<<<<< HEAD
                               </div>
+=======
+                              ) : null}
+
+                              <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
+                                <MessageSquareQuote className="mr-2 h-4 w-4" />
+                                {tr(language, "Xem review feedback", "View Review Feedback")}
+                              </Button>
+>>>>>>> 37d9af7cb10cf0253bc848b87c56d38fadcba20d
                             </div>
 
                           </div>

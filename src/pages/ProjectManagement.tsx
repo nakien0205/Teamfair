@@ -72,6 +72,13 @@ const ProjectManagement: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
+    const inviteFromLink = new URLSearchParams(location.search).get("invite");
+    if (!inviteFromLink) return;
+    setProjectIdInput(inviteFromLink.toUpperCase());
+    setIsJoinOpen(true);
+  }, [location.search]);
+
+  useEffect(() => {
     if (user?.id) {
       const persisted = sessionStorage.getItem(`teamfair_dismissed_freestyle_${user.id}`) === "true";
       setDismissedFreestyle(persisted);
@@ -602,6 +609,7 @@ const ProjectManagement: React.FC = () => {
     );
 
     if (member) {
+      if (member.role === "Lecturer") return "Lecturer";
       return member.role === "Leader" ? "Owner" : "Member";
     }
 
