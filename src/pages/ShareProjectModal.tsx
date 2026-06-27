@@ -1,362 +1,404 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Check,
+  Copy,
+  Globe2,
+  Link2,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  UserCircle2,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { useTeam } from "@/context/TeamContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"; // Component Dialog (ví dụ Shadcn)
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { useTeam, type ProjectInvite } from "@/context/TeamContext";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner"; // Hoặc thư viện toast bạn đang dùng
-import { Share2, Clock, Users, Zap, ShieldCheck, Loader2, Check, Copy, Trash2, Shield } from "lucide-react";
-import { useShareModalStore } from "@/hooks/useShareModalStore"; // Store vừa tạo ở Bước 2
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { useShareModalStore } from "@/hooks/useShareModalStore";
+import {
+  createGroupEmailInvite,
+  listGroupEmailInvites,
+  sendGroupEmailInviteEmail,
+  type GroupEmailInvite,
+} from "@/lib/teamPersistence";
+import { tr } from "@/lib/i18n";
 
-// Hàm dịch ngôn ngữ (giữ nguyên hàm của bạn)
-const tr = (lang: string, vi: string, en: string) => (lang === "vi" ? vi : en);
+type AccessMode = "restricted" | "anyone";
+type ApprovalMode = "auto" | "requires_approval";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseEmailList(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,\s]+/)
+        .map(email => email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function isInviteUsable(invite: ProjectInvite) {
+  const expired = invite.expires_at ? new Date(invite.expires_at) <= new Date() : false;
+  const usedUp = invite.max_uses !== null && invite.uses_count >= invite.max_uses;
+  return !expired && !usedUp;
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "T").concat(parts[parts.length - 1]?.[0] ?? "").toUpperCase();
+}
 
 export const ShareProjectModal: React.FC = () => {
-    
-  // Lấy trạng thái đóng mở toàn cục từ Zustand Store
-  const { isOpen, closeShareModal, openShareModal } = useShareModalStore();
-  console.log("2. Trạng thái Modal hiện tại làisOpen =", isOpen);
-
-  // Các hook dữ liệu hiện tại của bạn
+  const { isOpen, closeShareModal } = useShareModalStore();
   const { profile } = useAuth();
   const { language } = useLanguage();
-  const { generateInviteCode, fetchActiveInvites, revokeInvite, activeInvites } = useTeam();
+  const {
+    groups,
+    currentGroupIndex,
+    members,
+    currentUserName,
+    activeInvites,
+    generateInviteCode,
+    fetchActiveInvites,
+    revokeInvite,
+  } = useTeam();
 
-  // Toàn bộ State cũ của panel Share Project
-  const [shareStep, setShareStep] = useState<"none" | "form">("form"); // Mặc định là "form" luôn vì đây là Modal Share riêng biệt
-  const [shareExpiration, setShareExpiration] = useState<string>("never");
-  const [shareMaxUses, setShareMaxUses] = useState<string>("");
-  const [shareApprovalMode, setShareApprovalMode] = useState<"auto" | "requires_approval">("auto");
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [codeCopied, setCodeCopied] = useState(false);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [accessMode, setAccessMode] = useState<AccessMode>("restricted");
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("requires_approval");
+  const [peopleInput, setPeopleInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [inviteRows, setInviteRows] = useState<GroupEmailInvite[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // --- TOÀN BỘ CÁC HÀM XỬ LÝ CỦA BẠN (GIỮ NGUYÊN LOGIC) ---
-  const handleCopyUid = () => {
-    if (profile?.id) {
-      void navigator.clipboard.writeText(profile.id);
-      setCopied(true);
-      toast.success(tr(language, "Đã sao chép UID!", "UID copied!"));
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  const currentGroup = groups[currentGroupIndex] || groups[0];
 
-  const getExpirationDate = (): Date | null => {
-    const now = new Date();
-    switch (shareExpiration) {
-      case "1h": return new Date(now.getTime() + 60 * 60 * 1000);
-      case "24h": return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      case "7d": return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      case "30d": return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      default: return null;
-    }
-  };
+  const generalInvite = useMemo(
+    () => activeInvites.find(invite => invite.max_uses === null && invite.approval_mode === approvalMode && isInviteUsable(invite))
+      ?? activeInvites.find(invite => invite.max_uses === null && isInviteUsable(invite))
+      ?? null,
+    [activeInvites, approvalMode],
+  );
 
-  const handleGenerateInvite = async () => {
-    setInviteLoading(true);
+  const shareUrl = useMemo(() => {
+    if (!generalInvite) return "";
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}/projects?invite=${generalInvite.id}`;
+  }, [generalInvite]);
+
+  const loadSharingState = useCallback(async () => {
+    if (!currentGroup?.id) return;
+    setLoadingInvites(true);
     try {
-      const maxUses = shareMaxUses.trim() ? parseInt(shareMaxUses, 10) : null;
-      if (maxUses !== null && (isNaN(maxUses) || maxUses <= 0)) {
-        toast.error(tr(language, "Số lượt sử dụng phải là số nguyên dương.", "Max uses must be a positive integer."));
-        return;
-      }
-      const invite = await generateInviteCode(getExpirationDate(), maxUses, shareApprovalMode);
-      setGeneratedCode(invite.id);
-      toast.success(tr(language, "Tạo mã mời thành công!", "Invite code generated!"));
-      void fetchActiveInvites(); // Tải lại danh sách sau khi tạo
-    } catch (err) {
-      console.error("Error generating invite:", err);
-      toast.error(tr(language, "Lỗi tạo mã mời", "Failed to generate invite"), {
-        description: err instanceof Error ? err.message : String(err),
+      await fetchActiveInvites();
+      const rows = await listGroupEmailInvites(currentGroup.id).catch(() => []);
+      setInviteRows(rows);
+    } finally {
+      setLoadingInvites(false);
+    }
+  }, [currentGroup?.id, fetchActiveInvites]);
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadSharingState();
+    }
+  }, [isOpen, loadSharingState]);
+
+  useEffect(() => {
+    setAccessMode(generalInvite ? "anyone" : "restricted");
+  }, [generalInvite]);
+
+  const ensureGeneralInvite = async () => {
+    if (generalInvite) return generalInvite;
+    const invite = await generateInviteCode(null, null, approvalMode);
+    await fetchActiveInvites();
+    return invite;
+  };
+
+  const copyText = async (value: string, copiedValue: string, label: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedCode(copiedValue);
+    toast.success(label);
+    window.setTimeout(() => setCopiedCode(null), 1800);
+  };
+
+  const handleCopyLink = async () => {
+    setLinkLoading(true);
+    try {
+      const invite = await ensureGeneralInvite();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      await copyText(
+        `${origin}/projects?invite=${invite.id}`,
+        invite.id,
+        tr(language, "Đã sao chép liên kết.", "Link copied."),
+      );
+    } catch (error) {
+      toast.error(tr(language, "Không thể tạo liên kết chia sẻ.", "Could not create share link."), {
+        description: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setInviteLoading(false);
+      setLinkLoading(false);
     }
   };
 
-  const handleCopyCode = (code: string) => {
-    void navigator.clipboard.writeText(code);
-    setCodeCopied(true);
-    toast.success(tr(language, "Đã sao chép mã mời!", "Invite code copied!"));
-    setTimeout(() => setCodeCopied(false), 2000);
+  const handleCopyCode = async (code: string) => {
+    await copyText(code, code, tr(language, "Đã sao chép mã mời.", "Invite code copied."));
   };
 
-  const handleRevokeInvite = async (inviteId: string) => {
+  const handleAccessModeChange = async (nextMode: AccessMode) => {
+    setAccessMode(nextMode);
+    setLinkLoading(true);
     try {
-      await revokeInvite(inviteId);
-      toast.success(tr(language, "Đã thu hồi mã mời.", "Invite revoked."));
-    } catch (err) {
-      toast.error(tr(language, "Lỗi thu hồi mã mời", "Failed to revoke invite"), {
-        description: err instanceof Error ? err.message : String(err),
+      if (nextMode === "anyone") {
+        await ensureGeneralInvite();
+      } else {
+        const revokes = activeInvites
+          .filter(invite => invite.max_uses === null)
+          .map(invite => revokeInvite(invite.id));
+        await Promise.all(revokes);
+        await fetchActiveInvites();
+      }
+    } catch (error) {
+      toast.error(tr(language, "Không thể cập nhật quyền truy cập.", "Could not update access."), {
+        description: error instanceof Error ? error.message : String(error),
       });
+    } finally {
+      setLinkLoading(false);
     }
   };
 
-  const formatInviteExpiry = (expiresAt: string | null): string => {
-    if (!expiresAt) return tr(language, "Không hết hạn", "Never");
-    const d = new Date(expiresAt);
-    const now = new Date();
-    if (d <= now) return tr(language, "Đã hết hạn", "Expired");
-    const diff = d.getTime() - now.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    return `${hours}h`;
+  const handleApprovalModeChange = async (value: ApprovalMode) => {
+    setApprovalMode(value);
+    if (accessMode !== "anyone") return;
+    setLinkLoading(true);
+    try {
+      const matching = activeInvites.find(invite => invite.max_uses === null && invite.approval_mode === value && isInviteUsable(invite));
+      if (!matching) {
+        await generateInviteCode(null, null, value);
+        await fetchActiveInvites();
+      }
+    } catch (error) {
+      toast.error(tr(language, "Không thể cập nhật chế độ tham gia.", "Could not update join mode."), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setLinkLoading(false);
+    }
   };
 
-  // Tự động gọi fetch danh sách khi modal mở ra
-  React.useEffect(() => {
-    if (isOpen) {
-      void fetchActiveInvites();
+  const handleSendPeopleInvites = async () => {
+    if (!currentGroup) return;
+    const emails = parseEmailList(peopleInput);
+    const invalid = emails.find(email => !EMAIL_RE.test(email));
+    if (emails.length === 0 || invalid) {
+      toast.error(tr(language, "Vui lòng nhập email hợp lệ.", "Enter valid email addresses."));
+      return;
     }
-  }, [isOpen]);
-  if (!isOpen) {
-    return null;
-  }
+
+    setSendLoading(true);
+    try {
+      for (const email of emails) {
+        const { invite } = await createGroupEmailInvite(currentGroup.id, email, message.trim() || null);
+        await sendGroupEmailInviteEmail({
+          recipientEmail: email,
+          senderName: currentUserName || profile?.full_name || profile?.email || "Teamfair",
+          groupName: currentGroup.name,
+          inviteCode: invite.id,
+          note: message.trim() || null,
+        }).catch(() => ({ skipped: true }));
+      }
+      setPeopleInput("");
+      setMessage("");
+      await loadSharingState();
+      toast.success(tr(language, "Đã gửi lời mời.", "Invites sent."));
+    } catch (error) {
+      toast.error(tr(language, "Không thể gửi lời mời.", "Could not send invites."), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  const recentEmailInvites = inviteRows
+    .filter(invite => invite.status === "pending" || invite.status === "sent")
+    .slice(0, 3);
+
+  if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeShareModal()}>
-      <DialogContent className="sm:max-w-[480px] bg-slate-900 border-slate-800 text-slate-100 max-h-[90vh] overflow-y-auto">
-        <div className="space-y-5">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
-            <Share2 className="h-5.5 w-5.5 text-indigo-400" />
-            {tr(language, "Chia sẻ Dự án", "Share Project")}
-          </DialogTitle>
-        </DialogHeader>
-        
-        {/* Đưa UID hiển thị vào bên trong Modal */}
-        <div className="space-y-2 mb-4">
-          <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5" />
-            UID
-          </Label>
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-inner">
-            <span className="font-mono text-xs text-slate-300 truncate tracking-tight select-all flex-1">
-              {profile?.id || "—"}
-            </span>
+      <DialogContent className="max-h-[92vh] overflow-y-auto border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl sm:max-w-[560px] sm:rounded-lg">
+        <div className="px-6 pb-5 pt-5">
+          <DialogHeader className="space-y-1 pr-10">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-[22px] font-normal leading-7 text-slate-900">
+                  {tr(language, "Chia sẻ", "Share")} "{currentGroup?.name ?? "Project"}"
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {tr(language, "Quản lý quyền chia sẻ dự án.", "Manage project sharing access.")}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="mt-5 flex gap-2">
+            <Input
+              value={peopleInput}
+              onChange={(event) => setPeopleInput(event.target.value)}
+              placeholder={tr(language, "Thêm người bằng email", "Add people by email")}
+              className="h-12 rounded border-slate-300 bg-white text-[15px] shadow-none focus-visible:ring-blue-600"
+            />
             <Button
               type="button"
-              variant="ghost"
-              onClick={handleCopyUid}
-              className="p-1 h-auto hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+              disabled={sendLoading || !peopleInput.trim()}
+              onClick={() => void handleSendPeopleInvites()}
+              className="h-12 rounded bg-blue-600 px-6 text-sm font-medium text-white shadow-none hover:bg-blue-700"
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400 animate-in fade-in" /> : <Copy className="h-3.5 w-3.5" />}
+              {sendLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr(language, "Gửi", "Send")}
             </Button>
           </div>
+
+          {peopleInput.trim() ? (
+            <Textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={tr(language, "Tin nhắn", "Message")}
+              className="mt-3 min-h-20 resize-none rounded border-slate-300 bg-white text-sm shadow-none focus-visible:ring-blue-600"
+            />
+          ) : null}
+
+          <section className="mt-6">
+            <h3 className="text-base font-medium text-slate-900">
+              {tr(language, "Người có quyền truy cập", "People with access")}
+            </h3>
+            <div className="mt-3 space-y-3">
+              {(members.length > 0 ? members : [{ id: profile?.id, name: currentUserName || "You", role: "Leader", completedTasks: 0, contributionPercent: 0, lecturerScore: null }]).map(member => {
+                const isCurrentUser = member.id === profile?.id;
+                const displayName = `${member.name}${isCurrentUser ? tr(language, " (bạn)", " (you)") : ""}`;
+                return (
+                  <div key={member.id ?? member.name} className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-medium text-white">
+                      {initials(member.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-900">{displayName}</p>
+                      <p className="truncate text-xs text-slate-500">{member.id || profile?.email || "Teamfair user"}</p>
+                    </div>
+                    <span className="shrink-0 text-sm text-slate-500">
+                      {member.role === "Leader" ? tr(language, "Chủ sở hữu", "Owner") : tr(language, "Thành viên", "Editor")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {recentEmailInvites.length > 0 ? (
+              <div className="mt-4 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600">
+                  <Mail className="h-3.5 w-3.5" />
+                  {tr(language, "Lời mời đang chờ", "Pending invites")}
+                </div>
+                <div className="space-y-1">
+                  {recentEmailInvites.map(invite => (
+                    <div key={invite.id} className="flex items-center justify-between gap-3 text-xs text-slate-600">
+                      <span className="truncate">{invite.invited_email}</span>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyCode(invite.invite_code)}
+                        className="shrink-0 rounded px-2 py-1 font-mono text-blue-700 hover:bg-blue-50"
+                      >
+                        {invite.invite_code}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <Separator className="my-5 bg-slate-200" />
+
+          <section>
+            <h3 className="text-base font-medium text-slate-900">
+              {tr(language, "Quyền truy cập chung", "General access")}
+            </h3>
+            <div className="mt-3 flex items-start gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${accessMode === "anyone" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                {accessMode === "anyone" ? <Globe2 className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="grid gap-2 sm:grid-cols-[1fr_150px]">
+                  <Select value={accessMode} onValueChange={(value: AccessMode) => void handleAccessModeChange(value)}>
+                    <SelectTrigger className="h-9 rounded border-0 bg-transparent px-0 text-left text-sm font-medium shadow-none focus:ring-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      <SelectItem value="restricted">{tr(language, "Bị hạn chế", "Restricted")}</SelectItem>
+                      <SelectItem value="anyone">{tr(language, "Bất kỳ ai có liên kết", "Anyone with the link")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={approvalMode} onValueChange={(value: ApprovalMode) => void handleApprovalModeChange(value)}>
+                    <SelectTrigger className="h-9 rounded border-0 bg-transparent px-0 text-left text-sm text-slate-700 shadow-none focus:ring-0 sm:justify-end">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      <SelectItem value="requires_approval">{tr(language, "Cần phê duyệt", "Needs approval")}</SelectItem>
+                      <SelectItem value="auto">{tr(language, "Có thể tham gia", "Can join")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-sm text-slate-500">
+                  {accessMode === "anyone"
+                    ? tr(language, "Bất kỳ ai có liên kết đều có thể yêu cầu tham gia dự án.", "Anyone with the link can request access to this project.")
+                    : tr(language, "Chỉ những người được thêm hoặc thành viên hiện tại mới có thể truy cập.", "Only added people and current members can access.")}
+                </p>
+                {generalInvite ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <Link2 className="h-3.5 w-3.5" />
+                    <span className="font-mono text-slate-700">{generalInvite.id}</span>
+                    <button type="button" className="text-blue-700 hover:underline" onClick={() => void handleCopyCode(generalInvite.id)}>
+                      {copiedCode === generalInvite.id ? tr(language, "Đã sao chép", "Copied") : tr(language, "Sao chép mã", "Copy code")}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Đoạn UI Share Form của bạn */}
-        {shareStep === "form" && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-indigo-300 bg-clip-text text-transparent flex items-center gap-2.5">
-                <Share2 className="h-5.5 w-5.5 text-indigo-400" />
-                {tr(language, "Chia sẻ Dự án", "Share Project")}
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-sm mt-1">
-                {tr(
-                  language,
-                  "Tạo mã mời với cấu hình bảo mật tùy chỉnh để chia sẻ dự án với người khác.",
-                  "Generate secure invite codes with custom settings to share your project."
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2">
-              {/* Expiration Dropdown */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  {tr(language, "Thời gian hết hạn", "Expiration")}
-                </Label>
-                <select
-                  value={shareExpiration}
-                  onChange={(e) => setShareExpiration(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-sm transition-all outline-none cursor-pointer"
-                >
-                  <option value="never">{tr(language, "Không hết hạn", "Never")}</option>
-                  <option value="1h">{tr(language, "1 giờ", "1 hour")}</option>
-                  <option value="24h">{tr(language, "24 giờ", "24 hours")}</option>
-                  <option value="7d">{tr(language, "7 ngày", "7 days")}</option>
-                  <option value="30d">{tr(language, "30 ngày", "30 days")}</option>
-                </select>
-              </div>
-
-              {/* Max Uses Input */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  {tr(language, "Số lượt sử dụng tối đa", "Max Uses")}
-                </Label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder={tr(language, "Không giới hạn", "Unlimited")}
-                  value={shareMaxUses}
-                  onChange={(e) => setShareMaxUses(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 py-3 font-medium"
-                />
-              </div>
-
-              {/* Approval Mode Selector */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  {tr(language, "Chế độ phê duyệt", "Approval Mode")}
-                </Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShareApprovalMode("auto")}
-                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${shareApprovalMode === "auto"
-                      ? "border-emerald-500/60 bg-emerald-500/5 shadow-md shadow-emerald-500/10"
-                      : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
-                    }`}
-                  >
-                    <Zap className={`h-4.5 w-4.5 mb-2 ${shareApprovalMode === "auto" ? "text-emerald-400" : "text-slate-500"}`} />
-                    <span className={`block text-xs font-bold ${shareApprovalMode === "auto" ? "text-emerald-300" : "text-slate-400"}`}>
-                      {tr(language, "Tham gia Ngay", "Join Instantly")}
-                    </span>
-                    <span className="block text-[10px] text-slate-500 mt-1 leading-snug">
-                      {tr(language, "Tự động phê duyệt", "Auto-approve")}
-                    </span>
-                    {shareApprovalMode === "auto" && (
-                      <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShareApprovalMode("requires_approval")}
-                    className={`relative p-3.5 rounded-xl border-2 text-left transition-all duration-200 ${shareApprovalMode === "requires_approval"
-                      ? "border-amber-500/60 bg-amber-500/5 shadow-md shadow-amber-500/10"
-                      : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
-                    }`}
-                  >
-                    <ShieldCheck className={`h-4.5 w-4.5 mb-2 ${shareApprovalMode === "requires_approval" ? "text-amber-400" : "text-slate-500"}`} />
-                    <span className={`block text-xs font-bold ${shareApprovalMode === "requires_approval" ? "text-amber-300" : "text-slate-400"}`}>
-                      {tr(language, "Cần Phê duyệt", "Requires Approval")}
-                    </span>
-                    <span className="block text-[10px] text-slate-500 mt-1 leading-snug">
-                      {tr(language, "Trưởng nhóm duyệt", "Leader approves")}
-                    </span>
-                    {shareApprovalMode === "requires_approval" && (
-                      <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50 animate-pulse" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Generate Button */}
-              <Button
-                type="button"
-                onClick={() => void handleGenerateInvite()}
-                disabled={inviteLoading}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl py-3 h-auto transition-all flex items-center justify-center gap-2 border-0 shadow-lg shadow-indigo-600/15"
-              >
-                {inviteLoading ? (
-                  <>
-                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                    {tr(language, "Đang tạo...", "Generating...")}
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    {tr(language, "Tạo mã mời", "Generate Invite Code")}
-                  </>
-                )}
-              </Button>
-
-              {/* Generated Code Display */}
-              {generatedCode && (
-                <div className="bg-gradient-to-r from-indigo-950/40 to-violet-950/40 border border-indigo-500/30 rounded-2xl p-4 animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">
-                    {tr(language, "Mã mời đã tạo", "Generated Invite Code")}
-                  </p>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-xl font-extrabold text-white tracking-wider select-all">
-                      {generatedCode}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleCopyCode(generatedCode)}
-                      className="p-2 h-auto hover:bg-indigo-500/20 rounded-xl text-indigo-400 hover:text-white transition-all"
-                    >
-                      {codeCopied ? <Check className="h-4.5 w-4.5 text-emerald-400" /> : <Copy className="h-4.5 w-4.5" />}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Active Invites List */}
-              {activeInvites.length > 0 && (
-                <div className="space-y-2.5 pt-3 border-t border-slate-800/60">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    {tr(language, "Mã mời đang hoạt động", "Active Invites")} ({activeInvites.length})
-                  </h4>
-                  <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                    {activeInvites.map((inv) => {
-                      const isExpired = inv.expires_at && new Date(inv.expires_at) <= new Date();
-                      const isMaxed = inv.max_uses !== null && inv.uses_count >= inv.max_uses;
-                      return (
-                        <div
-                          key={inv.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${isExpired || isMaxed
-                            ? "bg-slate-950/40 border-rose-900/30 opacity-60"
-                            : "bg-slate-950/60 border-slate-800/50 hover:border-slate-700"
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="font-mono text-xs font-bold text-slate-200 tracking-wide">
-                              {inv.id}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] text-slate-500">
-                                {inv.uses_count}/{inv.max_uses ?? "∞"} {tr(language, "lượt", "uses")}
-                              </span>
-                              <span className="text-[10px] text-slate-600">•</span>
-                              <span className={`text-[10px] ${isExpired ? "text-rose-400" : "text-slate-500"}`}>
-                                {formatInviteExpiry(inv.expires_at)}
-                              </span>
-                              <span className="text-[10px] text-slate-600">•</span>
-                              <span className={`text-[10px] font-semibold ${inv.approval_mode === "auto" ? "text-emerald-400" : "text-amber-400"}`}>
-                                {inv.approval_mode === "auto" ? tr(language, "Tự động", "Auto") : tr(language, "Duyệt", "Approval")}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleCopyCode(inv.id)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-950/20 transition-all"
-                              title="Copy"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleRevokeInvite(inv.id)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/20 transition-all"
-                              title="Revoke"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-          </div>
-          
-        )}
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={linkLoading || loadingInvites}
+            onClick={() => void handleCopyLink()}
+            className="h-9 rounded-full border-slate-300 px-4 text-sm font-medium text-blue-700 shadow-none hover:bg-blue-50 hover:text-blue-800"
+          >
+            {linkLoading || loadingInvites ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+            {generalInvite && copiedCode === generalInvite.id
+              ? tr(language, "Đã sao chép", "Copied")
+              : tr(language, "Sao chép liên kết", "Copy link")}
+          </Button>
+          <Button
+            type="button"
+            onClick={closeShareModal}
+            className="h-9 rounded-full bg-blue-600 px-6 text-sm font-medium text-white shadow-none hover:bg-blue-700"
+          >
+            {tr(language, "Xong", "Done")}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

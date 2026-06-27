@@ -87,7 +87,12 @@ CREATE POLICY groups_delete ON public.groups
   FOR DELETE
   USING (public.is_admin() OR lecturer_id = auth.uid());
 
--- Keep invite visibility limited to project managers, not every lecturer.
+-- Rebuild invite policies around a Google-style share boundary:
+-- project managers can create/list/revoke links, recipients can see their own
+-- join requests, and invite redemption still happens only through team-api.
+ALTER TABLE public.project_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.join_requests ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS project_invites_select ON public.project_invites;
 CREATE POLICY project_invites_select ON public.project_invites
   FOR SELECT
@@ -104,6 +109,176 @@ CREATE POLICY project_invites_select ON public.project_invites
       SELECT 1
       FROM public.group_members gm
       WHERE gm.group_id = project_invites.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  );
+
+DROP POLICY IF EXISTS project_invites_insert ON public.project_invites;
+CREATE POLICY project_invites_insert ON public.project_invites
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = created_by
+    AND (
+      public.is_admin()
+      OR EXISTS (
+        SELECT 1
+        FROM public.groups g
+        WHERE g.id = project_invites.group_id
+          AND g.lecturer_id = auth.uid()
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM public.group_members gm
+        WHERE gm.group_id = project_invites.group_id
+          AND gm.student_id = auth.uid()
+          AND gm.role = 'Leader'
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS project_invites_update ON public.project_invites;
+CREATE POLICY project_invites_update ON public.project_invites
+  FOR UPDATE
+  USING (
+    public.is_admin()
+    OR auth.uid() = created_by
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = project_invites.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = project_invites.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  )
+  WITH CHECK (
+    public.is_admin()
+    OR auth.uid() = created_by
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = project_invites.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = project_invites.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  );
+
+DROP POLICY IF EXISTS project_invites_delete ON public.project_invites;
+CREATE POLICY project_invites_delete ON public.project_invites
+  FOR DELETE
+  USING (
+    public.is_admin()
+    OR auth.uid() = created_by
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = project_invites.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = project_invites.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  );
+
+DROP POLICY IF EXISTS join_requests_select ON public.join_requests;
+CREATE POLICY join_requests_select ON public.join_requests
+  FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = join_requests.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = join_requests.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  );
+
+DROP POLICY IF EXISTS join_requests_insert ON public.join_requests;
+CREATE POLICY join_requests_insert ON public.join_requests
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() IS NOT NULL
+    AND (
+      public.is_admin()
+      OR auth.uid() = user_id
+    )
+  );
+
+DROP POLICY IF EXISTS join_requests_update ON public.join_requests;
+CREATE POLICY join_requests_update ON public.join_requests
+  FOR UPDATE
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = join_requests.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = join_requests.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  )
+  WITH CHECK (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = join_requests.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = join_requests.group_id
+        AND gm.student_id = auth.uid()
+        AND gm.role = 'Leader'
+    )
+  );
+
+DROP POLICY IF EXISTS join_requests_delete ON public.join_requests;
+CREATE POLICY join_requests_delete ON public.join_requests
+  FOR DELETE
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.groups g
+      WHERE g.id = join_requests.group_id
+        AND g.lecturer_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.group_members gm
+      WHERE gm.group_id = join_requests.group_id
         AND gm.student_id = auth.uid()
         AND gm.role = 'Leader'
     )
@@ -209,11 +384,9 @@ REVOKE ALL ON TABLE public.users FROM anon;
 GRANT SELECT ON TABLE public.users TO authenticated;
 GRANT UPDATE (full_name) ON TABLE public.users TO authenticated;
 
--- Keep the service-only invite helpers callable by Edge Functions and make the
--- grants explicit for projects using newer Data API defaults.
-REVOKE ALL ON FUNCTION public.increment_invite_use(text) FROM anon, authenticated;
-REVOKE ALL ON FUNCTION public.increment_invite_use(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.increment_invite_use(text) TO service_role;
+-- Remove the obsolete client-callable counter RPC. Invite use counts are now
+-- advanced only inside the service-only join/approval helpers.
+DROP FUNCTION IF EXISTS public.increment_invite_use(text);
 
 REVOKE ALL ON FUNCTION public.consume_project_invite(text, uuid) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_project_invite(text, uuid) TO service_role;

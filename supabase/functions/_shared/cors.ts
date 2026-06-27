@@ -14,7 +14,7 @@ export function isAllowedOrigin(req: Request): boolean {
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, sentry-trace, baggage",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
   };

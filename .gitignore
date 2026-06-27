@@ -251,3 +251,25 @@ note_to_self.txt
 .vercel
 .codex
 dist/
+scratch
+.vibecode-backup*/
+
+# Redundant/Leftover folders
+/frontend/
+/backend/
+note.md
+
+# VibeCode AI Agent Harness
+.claude/
+.agents/
+.antigravitycli/
+AGENTS.md
+CLAUDE.md
+.vc-installed-files
+.vc-version
+process/development-protocols/
+process/_seeds/
+process/context/generated-skills-catalog.json
+install.cmd
+scratch/
+guide.md

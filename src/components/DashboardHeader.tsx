@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, LogOut, Loader2 } from "lucide-react";
+import { Users, LogOut, Loader2, Sparkles } from "lucide-react";
 import LanguageSwitcherButton from "@/components/LanguageSwitcherButton";
 import { NotificationMailIcon } from "@/components/NotificationMailIcon";
 import { useLanguage } from "@/context/LanguageContext";
-import { t } from "@/lib/i18n";
+import { t,tr } from "@/lib/i18n";
+import { useNavigate } from 'react-router-dom';
 
 type DashboardRole = "student" | "lecturer";
 
@@ -21,7 +22,9 @@ interface Props {
   showRoleSelect?: boolean;
 }
 
+
 const DashboardHeader = ({ roleLabel, onExit, onHomeClick, leftSlot, rightSlot, roleValue, onRoleChange, showRoleSelect }: Props) => {
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const [isExiting, setIsExiting] = useState(false);
 
@@ -33,11 +36,22 @@ const DashboardHeader = ({ roleLabel, onExit, onHomeClick, leftSlot, rightSlot, 
       setIsExiting(false);
     }
   };
+  const handlePremiumCheckout = () => {
+    navigate('/checkout');
+  };
+
 
   return (
     <header className="border-b bg-card/80 supports-[backdrop-filter]:bg-card/60 backdrop-blur">
       <div className="w-full px-4 md:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          <Button
+                onClick={handlePremiumCheckout}
+                className="hidden sm:flex bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                {tr(language, 'Đăng ký Premium', 'Subscribe Premium')}
+              </Button>
           {/* {leftSlot} */}
           {/* <div 
             className={`flex items-center gap-2 transition-opacity ${onHomeClick ? 'cursor-pointer hover:opacity-80' : ''}`}

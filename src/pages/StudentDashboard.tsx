@@ -26,6 +26,9 @@ import VerifiedBadgesSection from '@/components/feature-groups/VerifiedBadgesSec
 import { useNotifications } from '@/context/NotificationContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SettingsModal } from '@/components/SettingsModal';
+import TaskApprovalDialog from '@/components/TaskApprovalDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
 
@@ -39,7 +42,7 @@ interface PeerEvaluation {
 }
 
 const StudentDashboard = () => {
-  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName } = useTeam();
+  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName, updateTask } = useTeam();
   const { toast } = useToast();
   const { sendNotification } = useNotifications();
   const navigate = useNavigate();
@@ -59,6 +62,22 @@ const StudentDashboard = () => {
   const [lockedSection, setLockedSection] = useState<LockedSection>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const anonymousFrom = t(language, 'anonymousFrom');
+  const [activeApproveTask, setActiveApproveTask] = useState<Task | null>(null);
+
+  const handleNeedRevision = (t: Task, feedback: string) => {
+    const currentDescription = t.description || "";
+    const newDescription = `[need_revision] ${feedback}\n\n${currentDescription}`;
+    updateTask(t.id, {
+      status: "In Progress",
+      description: newDescription,
+      approved: false
+    });
+    toast({
+      title: tr(language, 'Đã yêu cầu chỉnh sửa', 'Revision requested'),
+      description: tr(language, `Task "${t.name}" đã được trả lại cho ${t.assignedTo} sửa đổi`, `Task "${t.name}" has been returned to ${t.assignedTo} for revision`),
+    });
+  };
+
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -198,11 +217,13 @@ const StudentDashboard = () => {
     return 'bg-muted text-muted-foreground';
   };
 
+
   return (
     <>
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
         <div className="flex justify-end">
-          <Button
+          
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={() => setAiSidebarOpen(true)}
@@ -211,64 +232,87 @@ const StudentDashboard = () => {
           >
             <Sparkles className="h-4 w-4" />
             <span className="text-xs">AI Workspace</span>
-          </Button>
+          </Button> */}
         </div>
 
 
         {activeSection === 'work' ? (
           <div className="space-y-6">
-            <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} locked={lockedSection === 'work'} />
-
-            <section className="bg-card rounded-xl p-6 shadow-card border border-border">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-lg font-semibold">{tr(language, 'Danh sách Task', 'Task list')}</h2>
+            <Tabs defaultValue="kanban" className="w-full space-y-6">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <TabsList className="flex h-auto gap-2 rounded-[22px] border border-white/60 bg-white/70 p-1 shadow-[0_10px_30px_-15px_rgba(15,23,42,0.15)] backdrop-blur-2xl">
+                  <TabsTrigger
+                    value="kanban"
+                    className="rounded-[18px] px-5 py-2.5 text-xs font-semibold transition-all duration-300 ease-out data-[state=active]:animate-liquid-pop data-[state=active]:border-white/70 data-[state=active]:bg-gradient-to-br data-[state=active]:from-white data-[state=active]:to-indigo-50 data-[state=active]:text-indigo-900 data-[state=active]:shadow-[0_8px_20px_-12px_rgba(79,70,229,0.3)] hover:-translate-y-0.5"
+                  >
+                    {tr(language, 'Bảng Kanban', 'Kanban Board')}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="list"
+                    className="rounded-[18px] px-5 py-2.5 text-xs font-semibold transition-all duration-300 ease-out data-[state=active]:animate-liquid-pop data-[state=active]:border-white/70 data-[state=active]:bg-gradient-to-br data-[state=active]:from-white data-[state=active]:to-indigo-50 data-[state=active]:text-indigo-900 data-[state=active]:shadow-[0_8px_20px_-12px_rgba(79,70,229,0.3)] hover:-translate-y-0.5"
+                  >
+                    {tr(language, 'Danh sách Task', 'Task List')}
+                  </TabsTrigger>
+                </TabsList>
               </div>
 
-              {visibleTasks.length === 0 ? (
-                <p className="text-muted-foreground text-sm text-center py-8">{tr(language, 'Chưa có task nào', 'No tasks yet')}</p>
-              ) : (
-                <div className="space-y-3">
-                  {visibleTasks.map(t => (
-                    <div key={t.id} className="border border-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{t.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {t.assignedTo} · {t.contributionPercent}% · {t.deadline}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor(t.status)}`}>
-                          {t.status}
-                        </span>
-                        {t.approved && <span className="text-xs px-2.5 py-1 rounded-full bg-success text-success-foreground font-medium">Approved</span>}
+              <TabsContent value="kanban" className="space-y-6 focus-visible:outline-none animate-in fade-in-50 duration-200">
+                <KanbanBoard isLeader={isLeader} currentUser={kanbanUser} locked={lockedSection === 'work'} onApproveClick={setActiveApproveTask} />
+              </TabsContent>
 
-                        {!isLeader && t.status === 'Todo' && (
-                          <Button size="sm" variant="outline" onClick={() => handleStatusChange(t, 'In Progress')}>
-                            <Play className="h-3 w-3 mr-1" /> {tr(language, 'Bắt đầu', 'Start')}
-                          </Button>
-                        )}
-                        {!isLeader && t.status === 'In Progress' && (
-                          <Button size="sm" variant="outline" onClick={() => handleStatusChange(t, 'Done')}>
-                            <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Hoàn thành', 'Mark Done')}
-                          </Button>
-                        )}
+              <TabsContent value="list" className="space-y-6 focus-visible:outline-none animate-in fade-in-50 duration-200">
+                <section className="bg-card rounded-xl p-6 shadow-card border border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-lg font-semibold">{tr(language, 'Danh sách Task', 'Task list')}</h2>
+                  </div>
 
-                        {isLeader && t.status === 'Done' && !t.approved && (
-                          <Button size="sm" onClick={() => handleApprove(t)}>
-                            <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Duyệt', 'Approve')}
-                          </Button>
-                        )}
-                        {isLeader && (
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(t)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
+                  {visibleTasks.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-8">{tr(language, 'Chưa có task nào', 'No tasks yet')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {visibleTasks.map(t => (
+                        <div key={t.id} className="border border-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{t.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {t.assignedTo} · {t.contributionPercent}% · {t.deadline}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor(t.status)}`}>
+                              {t.status}
+                            </span>
+                            {t.approved && <span className="text-xs px-2.5 py-1 rounded-full bg-success text-success-foreground font-medium">Approved</span>}
+
+                            {!isLeader && t.status === 'Todo' && (
+                              <Button size="sm" variant="outline" onClick={() => handleStatusChange(t, 'In Progress')}>
+                                <Play className="h-3 w-3 mr-1" /> {tr(language, 'Bắt đầu', 'Start')}
+                              </Button>
+                            )}
+                            {!isLeader && t.status === 'In Progress' && (
+                              <Button size="sm" variant="outline" onClick={() => handleStatusChange(t, 'Done')}>
+                                <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Hoàn thành', 'Mark Done')}
+                              </Button>
+                            )}
+
+                            {isLeader && t.status === 'Done' && !t.approved && (
+                              <Button size="sm" onClick={() => setActiveApproveTask(t)}>
+                                <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Duyệt', 'Approve')}
+                              </Button>
+                            )}
+                            {isLeader && (
+                              <Button size="sm" variant="destructive" onClick={() => handleDelete(t)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
+                  )}
+                </section>
+              </TabsContent>
+            </Tabs>
           </div>
         ) : null}
 
@@ -465,6 +509,13 @@ const StudentDashboard = () => {
           currentUser={currentUserName}
         />
         <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        <TaskApprovalDialog
+          open={activeApproveTask !== null}
+          onOpenChange={(open) => !open && setActiveApproveTask(null)}
+          task={activeApproveTask}
+          onApprove={handleApprove}
+          onNeedRevision={handleNeedRevision}
+        />
       </div>
     </>
   );

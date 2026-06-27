@@ -38,6 +38,13 @@ The `team-api` and `delete-user-auth` Edge Functions run server-side and read se
 
 Local function testing can use `supabase functions serve --env-file <file>`. Never commit Edge Function env files.
 
+### CORS and Distributed Tracing (Sentry)
+If frontend client-side Sentry error tracking is enabled, browser fetch requests to Edge Functions (like `team-api`) will carry Sentry distributed tracing headers (`sentry-trace`, `baggage`). 
+
+To prevent CORS preflight blocks in the browser:
+- Ensure the Edge Function's allowed preflight headers (`Access-Control-Allow-Headers`) include both `sentry-trace` and `baggage`.
+- This configuration resides in `supabase/functions/_shared/cors.ts`.
+
 ## Google Cloud Console (Web OAuth client)
 Use these when creating or editing the OAuth 2.0 **Web application** client that you attach to Supabase Google provider.
 
@@ -75,12 +82,12 @@ Order matters; examples in this repo:
 13. `20260529120000_project_sharing.sql` - `project_invites` and `join_requests` tables to support invite code sharing and join request workflow, complete with RLS policies, constraints, indexes, and grants.
 14. `20260529130000_allow_users_insert_self.sql` - `users_insert_self` RLS policy and `set_signup_role` RPC function hardening to automatically restore missing/deleted profile rows in `public.users`.
 15. `20260529140000_delete_account_rpc.sql` - self-service account deletion and cascade updates.
-16. `20260529150000_invite_rls_fixes.sql` - secure invite counter update RPC and group leader membership insert RLS fix.
+16. `20260529150000_invite_rls_fixes.sql` - cleanup migration that removes the obsolete invite counter RPC and tightens group leader membership insert RLS.
 17. `20260604120000_storage_buckets.sql` - private Supabase Storage buckets for materials/evidence, material storage metadata columns, and Storage RLS policies.
 18. `20260604130000_enable_realtime.sql` - Supabase Realtime publication setup for dashboard-core Postgres Changes subscriptions.
 19. `20260604140000_api_layer_invite_security.sql` - tightens invite row visibility and adds service-only RPC helpers for atomic invite consumption and approval-required invite usage.
 20. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
-21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite visibility, service-only invite RPC grants, lecturer project scoping, and guarded signup role/name completion.
+21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite/share visibility, resets invite and join-request RLS policies, keeps invite redemption service-only, fixes lecturer project scoping, and guards signup role/name completion.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
@@ -135,6 +142,7 @@ Recommended production target: **Railway**.
    - `OPENROUTER_HTTP_REFERER=https://teamfair.company`
    - `OPENROUTER_X_TITLE=Teamfair`
    - `STUDENT_AGENT_CORS_ORIGINS=https://teamfair.company,https://www.teamfair.company,https://teamfair.vercel.app,http://localhost:8080,http://127.0.0.1:8080`
+   - Optional: `STUDENT_AGENT_CORS_ORIGIN_REGEX=^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$` to allow Teamfair Vercel preview deployments. The server uses this regex by default when the variable is unset.
    - If the Railway public domain target port is manually set to `8010`, also add `PORT=8010`. Otherwise, leave `PORT` unset and let Railway inject/expose its own port.
 6. After Railway creates the public HTTPS URL, add it to Vercel as `VITE_STUDENT_AGENT_URL=https://teamfair.up.railway.app` with no trailing slash, then redeploy the frontend.
 

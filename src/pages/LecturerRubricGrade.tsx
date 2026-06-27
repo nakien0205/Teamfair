@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTeam } from "@/context/TeamContext";
+import { useNotifications } from "@/context/NotificationContext";
 import { tr } from "@/lib/i18n";
 import { canAccessRubricProject } from "@/lib/rubricProjectAccess";
 import {
+  fetchGroupMembers,
   fetchRubricGrade,
   fetchRubricWithTemplate,
   insertRubricAuditLog,
@@ -79,6 +81,7 @@ const LecturerRubricGrade = () => {
   const { profile, user } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { sendNotification } = useNotifications();
   const navigate = useNavigate();
 
   const group = useMemo(() => groups.find((item) => item.id === groupId), [groupId, groups]);
@@ -325,6 +328,21 @@ const LecturerRubricGrade = () => {
             ? tr(language, "Bảng chấm điểm đã được gửi và chuyển sang chế độ chỉ xem.", "The grade sheet has been submitted and is now read-only.")
             : tr(language, "Tiến trình chấm điểm đã được lưu.", "Your grading progress has been saved."),
       });
+
+      if (nextStatus === "submitted" && groupId) {
+        try {
+          const groupMembers = await fetchGroupMembers(groupId);
+          const rubricName = rubric?.name || "Rubric";
+          const msg = language === "vi"
+            ? `Giảng viên ${lecturerDisplayName} đã chấm điểm rubric "${rubricName}" cho nhóm: ${totalScore.toFixed(1)}/${maxTotalScore.toFixed(1)}`
+            : `Lecturer ${lecturerDisplayName} submitted rubric grade "${rubricName}" for your group: ${totalScore.toFixed(1)}/${maxTotalScore.toFixed(1)}`;
+          for (const member of groupMembers) {
+            void sendNotification(member.id, lecturerDisplayName, msg);
+          }
+        } catch (notifError) {
+          console.warn("[Rubric] Failed to send grade notifications:", notifError);
+        }
+      }
     } catch (error) {
       toast({
         title: tr(language, "Không thể lưu bảng điểm", "Unable to save grade sheet"),

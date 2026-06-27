@@ -195,8 +195,7 @@ EXCEPTION
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.increment_invite_use(text) FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_invite_use(text) TO service_role;
+DROP FUNCTION IF EXISTS public.increment_invite_use(text);
 
 REVOKE ALL ON FUNCTION public.consume_project_invite(text, uuid) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_project_invite(text, uuid) TO service_role;

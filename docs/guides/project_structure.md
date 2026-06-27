@@ -122,7 +122,12 @@ Primary entry: [src/pages/LecturerDashboard.tsx](src/pages/LecturerDashboard.tsx
 - `node_modules/` - dependencies (gitignored).
 - `.env` - local environment variables (gitignored).
 - `.venv/` - local Python virtual environment (gitignored).
+- `frontend/` - unused legacy folder (gitignored).
+- `backend/` - unused legacy folder (gitignored).
 
 ## Change History
 - **2026-06-10**: Cleaned up [.gitignore](../../.gitignore) by removing `index.html` (which is a required Vite entry point and must be committed) and converting line endings to LF to prevent carriage returns from causing Git to mistakenly ignore all untracked directories.
+- **2026-06-11**: Fixed an ESLint warning/error in `src/lib/teamPersistence.ts` (empty block statement in `findUserByEmail`) which caused `pnpm lint` to fail and block CI/CD runs.
+- **2026-06-17**: Initialized and configured the AI agent harness via `vc-setup`. Scaffolding process/context/ all-context.md, all-tests.md, and custom context groups for uxui/, database/, and auth/ based on the React, Vitest, and Supabase stack. Set up student_workspace, lecturer_workspace, and project_management feature folders with corresponding guide templates.
+- **2026-06-17**: Added `/frontend/` and `/backend/` to [.gitignore](../../.gitignore) after confirming they are redundant legacy directories with no project source files.
 

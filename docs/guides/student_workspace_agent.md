@@ -21,7 +21,8 @@ All agent code is under **[`python/student_workspace_agent/`](../../python/stude
 | `tools.py` | OpenAI Chat Completions `tools` JSON (function names + JSON Schema for arguments). |
 | `tool_handlers.py` | Maps each tool name to store reads/writes; returns **JSON strings** as tool results for the model. |
 | `agent.py` | OpenAI SDK client pointed at OpenRouter; **tool loop** on the light model; optional **heavy** synthesis pass; `run_agent_detailed` returns answer + **tool_trace** + optional **reasoning** fragments. |
-| `server.py` | FastAPI app: `POST /chat`, `GET /health`. CORS allows local Vite, **<https://teamfair.company>**, **<https://www.teamfair.company>**, and **<https://teamfair.vercel.app>** (override with `STUDENT_AGENT_CORS_ORIGINS`). |
+| `contribution_analyzer.py` | AI-powered contribution analysis. `analyze_contribution()` accepts student data (tasks, work logs, reviews, score), builds a structured Vietnamese prompt for DeepSeek, parses JSON into `AnalysisResult` dataclass (effort_summary, anomalies, timeline_assessment, recommendations, confidence_tag, reasoning). Fallback on LLM failure. |
+| `server.py` | FastAPI app: `POST /chat`, `POST /analyze-contribution`, `GET /health`. The `/analyze-contribution` endpoint accepts student contribution data and returns AI analysis. Includes in-memory rate limiting (1 req/student/30s). CORS allows local Vite, **<https://teamfair.company>**, **<https://www.teamfair.company>**, and **<https://teamfair.vercel.app>** (override with `STUDENT_AGENT_CORS_ORIGINS`). |
 | `__main__.py` | CLI entrypoint. |
 | `requirements.txt` | `openai`, `python-dotenv`, `pydantic`, `fastapi`, `uvicorn`. |
 
@@ -29,7 +30,8 @@ All agent code is under **[`python/student_workspace_agent/`](../../python/stude
 
 - **`OPENROUTER_API_KEY`** (required): read from the project `.env` at the repo root (see `config.py` path logic: two levels up from the package).
 - Optional: **`OPENROUTER_HTTP_REFERER`**, **`OPENROUTER_X_TITLE`** for OpenRouter attribution headers. Default referer is **`https://teamfair.company`** so production traffic matches the custom Vercel domain.
-- Optional: **`STUDENT_AGENT_CORS_ORIGINS`** — comma-separated list to replace the default CORS allowlist for the HTTP server.
+- Optional: **`STUDENT_AGENT_CORS_ORIGINS`** — comma-separated list to replace the default exact-origin CORS allowlist for the HTTP server.
+- Optional: **`STUDENT_AGENT_CORS_ORIGIN_REGEX`** — regex for additional allowed origins. When unset, the server allows Teamfair Vercel preview hosts matching `^https://teamfair(?:-[a-z0-9-]+)*\.vercel\.app$`.
 
 ### Models (hard rule in code)
 
@@ -85,6 +87,17 @@ answer = run_agent("Summarize tasks for the current group.", store=store, use_he
 result = run_agent_detailed("List materials.", store=store, use_heavy=False)
 print(result.answer, result.tool_trace, result.reasoning)
 ```
+
+### AI Contribution Analysis
+
+Added in June 2026. The `contribution_analyzer.py` module provides AI-powered analysis of student contributions:
+
+- **Endpoint**: `POST /analyze-contribution` — accepts student name, group name, deterministic score, tasks, work logs, leader reviews, peer review average.
+- **Response**: `AnalysisResult` with `effort_summary`, `anomalies`, `timeline_assessment` (regular/front_loaded/back_loaded/sporadic), `recommendations`, `confidence_tag` (well_supported/partially_supported/insufficient_evidence), `reasoning`.
+- **Rate limit**: 1 request per student_name per 30 seconds (in-memory).
+- **Frontend integration**: `src/lib/contributionAi.ts` handles fetching, caching (Supabase `contribution_ai_analysis` table), and hash-based staleness detection.
+- **Page integration**: `src/pages/StudentMyContribution.tsx` loads AI analysis in a separate non-blocking `useEffect` and shows effort summary, anomalies, recommendations, and confidence badges.
+- **Scoring fix**: `src/lib/studentContribution.ts` no longer fabricates 60% defaults when peer review or leader evaluation data is missing; weight is redistributed proportionally.
 
 ### Related docs
 
