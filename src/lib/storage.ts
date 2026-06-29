@@ -96,7 +96,7 @@ export async function uploadTeamFile(
   file: File,
 ): Promise<UploadedStorageFile> {
   const validation = validateStorageFile(bucket, file);
-  if (!validation.valid) throw new Error(validation.message);
+  if (validation.valid==false) throw new Error(validation.message);
 
   const path = buildStoragePath(groupId, userId, validation.sanitizedName);
   const { error } = await supabase.storage.from(bucket).upload(path, file, {

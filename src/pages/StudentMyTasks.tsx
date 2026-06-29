@@ -47,7 +47,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { TaskListSkeleton } from "@/components/skeletons";
 import { useTeam, type Task } from "@/context/TeamContext";
-import {tr} from "@/lib/i18n";
+import { tr } from "@/lib/i18n";
 import {
   STUDENT_TASK_PROGRESS_MESSAGES,
   canStudentEditSubmission,
@@ -314,7 +314,7 @@ const StudentMyTasks = () => {
       { key: "rejected" as const, label: tr(language, "Bị từ chối", "Rejected") },
       { key: "overdue" as const, label: tr(language, "Trễ hạn", "Overdue") },
     ],
-    [],
+    [language],
   );
 
   const handleStartTask = (task: Task) => {
@@ -493,53 +493,88 @@ const StudentMyTasks = () => {
                       <Card
                         key={task.id}
                         className={cn(
-                          "rounded-3xl border-0 shadow-card",
-                          workflowStatus === "overdue" ? "ring-1 ring-red-200" : "",
+                          // Đổi bg-white thành bg-slate-50/80 để làm nền dịu hơn, giúp các ô màu pastel bên trong nổi bật hẳn lên
+                          "rounded-2xl border-t-[6px] border-l border-r border-b border-slate-200 bg-slate-50/80 shadow-md transition-all duration-200 hover:shadow-lg border-t-blue-600",
+                          workflowStatus === "overdue" ? "border-t-red-500 bg-red-50/30 border-red-200" : ""
                         )}
                       >
-                        <CardContent className="p-5">
-                          <div className="flex flex-col gap-5">
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                              <div className="space-y-2">
+                        <CardContent className="p-6">
+                          <div className="flex flex-col gap-6">
+
+                            {/* SECTION 1: HEADER (Tiêu đề & Hạn chót + Submit) */}
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between pb-4 border-b border-slate-200/60">
+
+                              {/* Tiêu đề & Mô tả */}
+                              <div className="space-y-2 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-lg font-semibold">{task.name}</p>
-                                  <Badge className={cn("border", status.className)}>{status.label}</Badge>
+                                  <h3 className="text-xl font-bold tracking-tight text-slate-800">{task.name}</h3>
+                                  <Badge className={cn("px-2.5 py-0.5 text-xs font-bold rounded-full shadow-none", status.className)}>
+                                    {status.label}
+                                  </Badge>
                                   {workflowStatus === "overdue" ? (
-                                    <Badge className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-50">
-                                      <TimerOff className="mr-1 h-3 w-3" />
-                                      {tr(language, "Task đang trễ hạn", "Task Overdue")}
+                                    <Badge className="bg-red-500 text-white hover:bg-red-500 rounded-full px-2.5 py-0.5 font-bold text-xs shadow-none">
+                                      <TimerOff className="mr-1 h-3.5 w-3.5" />
+                                      {tr(language, "Trễ hạn", "Overdue")}
                                     </Badge>
                                   ) : null}
                                 </div>
-                                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                                <p className="max-w-3xl text-sm leading-relaxed text-slate-600 font-medium">
                                   {task.description?.trim() || tr(language, "Chưa có mô tả chi tiết cho task này.", "No detailed description for this task.")}
                                 </p>
                               </div>
 
-                              <div className="grid min-w-[280px] gap-3 rounded-2xl border border-border/70 bg-background/80 p-3 sm:grid-cols-2">
-                                <div>
-                                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Hạn chót", "Deadline")}</p>
-                                  <p className="mt-1 text-sm font-medium">{formatDate(task.deadline)}</p>
+                              {/* Khối Hạn chót & Nút Nộp Bài */}
+                              <div className="flex items-center gap-3 lg:justify-end self-start lg:self-center w-full lg:w-auto">
+                                {/* Ô Hạn chót */}
+                                <div className="rounded-xl bg-orange-100/70 border border-orange-200 px-4 py-2 text-center min-w-[120px] shadow-sm">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700">
+                                    {tr(language, "Hạn chót", "Deadline")}
+                                  </p>
+                                  <p className="text-sm font-extrabold text-orange-800 mt-0.5">
+                                    {formatDate(task.deadline)}
+                                  </p>
                                 </div>
+
+                                {/* Nút Submit */}
+                                {canSubmitEvidence ? (
+                                  <Button
+                                    className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-white shadow-md shadow-blue-200 hover:opacity-90 h-11 px-5 text-sm transition-all active:scale-95 border-0"
+                                    onClick={() => navigate(`/student/tasks/${task.id}/submit`)}
+                                  >
+                                    <FileUp className="mr-2 h-4 w-4" />
+                                    {hasEvidence && canEditSubmission ? "Edit submission" : "Submit evidence"}
+                                  </Button>
+                                ) : null}
                               </div>
                             </div>
 
-                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Độ khó", "Difficulty")}</p>
-                                <Badge className={cn("mt-2 border", difficulty.className)}>{difficulty.label}</Badge>
+                            {/* SECTION 2: 4 Ô THÔNG SỐ (Giữ nguyên màu các ô như bạn ưng ý, thêm nền trắng cho Badge để tăng tương phản) */}
+                            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+
+                              {/* Ô 1: Độ khó - Tone Xanh Ngọc */}
+                              <div className="rounded-xl bg-emerald-50 border border-emerald-200/80 p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">{tr(language, "Độ khó", "Difficulty")}</p>
+                                <div className="mt-2.5">
+                                  <Badge className={cn("shadow-none rounded-md px-2.5 py-0.5 text-xs font-extrabold bg-white/90 border border-emerald-200", difficulty.className)}>{difficulty.label}</Badge>
+                                </div>
                               </div>
-                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Weight", "Weight")}</p>
-                                <p className="mt-2 text-lg font-semibold">{task.contributionPercent}%</p>
+
+                              {/* Ô 2: Trọng số - Tone Xanh Dương */}
+                              <div className="rounded-xl bg-sky-50 border border-sky-200/80 p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-wider text-sky-800">{tr(language, "Trọng số", "Weight")}</p>
+                                <p className="mt-1 text-2xl font-black text-sky-900">{task.contributionPercent}%</p>
                               </div>
-                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Review", "Review")}</p>
-                                <p className={cn("mt-2 text-sm font-medium", review.className)}>{review.label}</p>
+
+                              {/* Ô 3: Trạng thái nộp - Tone Tím */}
+                              <div className="rounded-xl bg-purple-50 border border-purple-200/80 p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-wider text-purple-800">{tr(language, "Trạng thái nộp", "Submission")}</p>
+                                <p className="mt-2 text-sm font-bold text-purple-900">{submissionStatus}</p>
                               </div>
-                              <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Minh chứng", "Evidence")}</p>
-                                <p className="mt-2 text-sm font-medium">{hasEvidence ? `${task.evidence?.length || 0} ${tr(language, "file", "file")}` : tr(language, "Chưa có file", "No files")}</p>
+
+                              {/* Ô 4: Đánh giá - Tone Vàng Cam */}
+                              <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-wider text-amber-800">{tr(language, "Đánh giá", "Review")}</p>
+                                <div className={cn("mt-2 text-sm font-bold text-amber-900", review.className)}>{review.label}</div>
                               </div>
                               <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{tr(language, "Submission", "Submission")}</p>
@@ -547,37 +582,73 @@ const StudentMyTasks = () => {
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                {tr(language, "Xem chi tiết", "View Details")}
-                              </Button>
+                            {/* SECTION 3: FOOTER (Minh chứng & Hàng nút bấm) */}
+                            <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
 
-                              {canStart ? (
-                                <Button className="rounded-2xl" onClick={() => setStartTaskCandidate(task)}>
-                                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                                  {tr(language, "Bắt đầu task", "Start Task")}
+                              {/* Minh chứng tag */}
+                              <div className="flex items-center gap-2 bg-slate-200/60 border border-slate-300/40 px-3 py-1.5 rounded-full text-xs font-bold text-slate-700 w-fit">
+                                <span className={cn("h-2.5 w-2.5 rounded-full", hasEvidence ? "bg-emerald-500" : "bg-slate-400")} />
+                                <span>{tr(language, "Minh chứng", "Evidence")}:</span>
+                                <span className="text-slate-900 font-black">
+                                  {hasEvidence ? `${task.evidence?.length || 0} ${tr(language, "file", "file")}` : tr(language, "Chưa có file", "No files")}
+                                </span>
+                              </div>
+
+                              {/* Hàng nút bấm phía dưới */}
+                              <div className="flex flex-wrap gap-2 justify-end">
+                                {/* Nút Chi tiết (Màu xám/Slate) */}
+                                <Button
+                                  variant="outline"
+                                  className="rounded-xl border-slate-300 bg-white text-slate-700 font-bold text-xs h-9 hover:bg-slate-100 hover:text-slate-800 active:bg-slate-200 active:text-slate-900 transition-colors"
+                                  onClick={() => navigate(`/student/tasks/${task.id}`)}
+                                >
+                                  <Eye className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+                                  {tr(language, "Chi tiết", "Details")}
                                 </Button>
-                              ) : null}
 
-                              {canSubmitEvidence ? (
-                                <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}/submit`)}>
-                                  <FileUp className="mr-2 h-4 w-4" />
-                                  {hasEvidence && canEditSubmission ? "Edit submission" : "Submit evidence"}
+                                {/* Nút Bắt đầu (Màu xanh lá/Emerald - Dạng nền đặc) */}
+                                {canStart ? (
+                                  <Button
+                                    className="rounded-xl bg-emerald-600 text-white font-bold text-xs h-9 shadow-sm hover:bg-emerald-700 hover:text-white active:bg-emerald-800 active:text-white transition-colors"
+                                    onClick={() => setStartTaskCandidate(task)}
+                                  >
+                                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                                    {tr(language, "Bắt đầu", "Start")}
+                                  </Button>
+                                ) : null}
+
+                                {/* Nút Sửa bài nộp (Màu hồng/đỏ/Rose) */}
+                                {canEditSubmission && hasEvidence ? (
+                                  <Button
+                                    variant="outline"
+                                    className="rounded-xl border-rose-300 text-rose-700 bg-white font-bold text-xs h-9 hover:bg-rose-50 hover:text-rose-800 active:bg-rose-100 active:text-rose-900 transition-colors"
+                                    onClick={() => navigate(`/student/tasks/${task.id}/submit`)}
+                                  >
+                                    <FilePenLine className="mr-1.5 h-3.5 w-3.5" />
+                                    {tr(language, "Sửa bài nộp", "Edit Submission")}
+                                  </Button>
+                                ) : null}
+
+                                {/* Nút Phản hồi (Màu tím/Purple) */}
+                                <Button
+                                  variant="outline"
+                                  className="rounded-xl border-purple-300 bg-white text-purple-700 font-bold text-xs h-9 hover:bg-purple-50 hover:text-purple-800 active:bg-purple-100 active:text-purple-900 transition-colors"
+                                  onClick={() => navigate(`/student/tasks/${task.id}`)}
+                                >
+                                  <MessageSquareQuote className="mr-1.5 h-3.5 w-3.5 text-purple-500" />
+                                  {tr(language, "Phản hồi", "Feedback")}
                                 </Button>
-                              ) : null}
 
-                              {canEditSubmission && hasEvidence ? (
-                                <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}/submit`)}>
-                                  <FilePenLine className="mr-2 h-4 w-4" />
-                                  {tr(language, "Chỉnh sửa submission", "Edit Submission")}
+                                {/* Nút Log công việc (Màu hổ phách/Amber) */}
+                                <Button
+                                  variant="outline"
+                                  className="rounded-xl border-amber-300 bg-white text-amber-700 font-bold text-xs h-9 hover:bg-amber-50 hover:text-amber-800 active:bg-amber-100 active:text-amber-900 transition-colors"
+                                  onClick={() => navigate(`/student/work-logs?taskId=${task.id}`)}
+                                >
+                                  <ClipboardPenLine className="mr-1.5 h-3.5 w-3.5 text-amber-500" />
+                                  {tr(language, "Log công việc", "Log Work")}
                                 </Button>
-                              ) : null}
-
-                              <Button variant="outline" className="rounded-2xl" onClick={() => navigate(`/student/tasks/${task.id}`)}>
-                                <MessageSquareQuote className="mr-2 h-4 w-4" />
-                                {tr(language, "Xem review feedback", "View Review Feedback")}
-                              </Button>
+                              </div>
                             </div>
                           </div>
                         </CardContent>

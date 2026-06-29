@@ -250,11 +250,13 @@ const StudentDashboard = () => {
     return 'bg-muted text-muted-foreground';
   };
 
+
   return (
     <>
       <div className="container mx-auto px-6 py-6 max-w-6xl space-y-6">
         <div className="flex justify-end">
-          <Button
+          
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={() => setAiSidebarOpen(true)}
@@ -263,7 +265,7 @@ const StudentDashboard = () => {
           >
             <Sparkles className="h-4 w-4" />
             <span className="text-xs">AI Workspace</span>
-          </Button>
+          </Button> */}
         </div>
 
 

@@ -26,6 +26,7 @@ type StudentNavKey =
   | "overview"
   | "my-group"
   | "my-tasks"
+  | "calendar"
   // | "work-logs"
   | "peer-review"
   | "contribution"
@@ -49,6 +50,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
   const group = groups[currentGroupIndex] || groups[0];
   const sidebarItems: DashboardSidebarItem[] = [
     { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <Sparkles className="h-4 w-4" />, section: "student" },    { key: "my-group", label: "Nhóm của tôi", icon: <Users className="h-4 w-4" />, section: "student" },
+    { key: "calendar", label: tr(language, "Lịch dự án", "Project Calendar"), icon: <BellRing className="h-4 w-4" />, section: "student" },
     { key: "my-group", label: tr(language, "Nhóm của tôi", "My Group"), icon: <Users className="h-4 w-4" />, section: "student" },
     { key: "my-tasks", label: tr(language, "Task của tôi", "My Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "student" },
     // { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "student" },
@@ -77,6 +79,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
   const handleSelect = (key: string) => {
     if (key === "overview") return navigate("/student/dashboard");
     if (key === "my-group") return navigate("/student/my-group");
+    if (key === "calendar") return navigate("/student/calendar");
     if (key === "my-tasks") return navigate("/student/my-tasks");
     // if (key === "work-logs") return navigate("/student/work-logs");
     if (key === "peer-review") return navigate("/student/peer-review");
@@ -107,6 +110,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
           leftSlot={<SidebarTrigger />}
           rightSlot={
             <div className="hidden items-center gap-2 lg:flex">
+              
               {group?.name ? (
                 <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
                   {group.name}
@@ -117,6 +121,7 @@ const StudentShell = ({ activeKey, children }: Props) => {
                   <BellRing className="mr-1 h-3 w-3" />
                   {unreadCount} chưa đọc
                 </Badge>
+                
               ) : null}
             </div>
           }

@@ -11,7 +11,18 @@ import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Clock } fr
 import { useLanguage } from '@/context/LanguageContext';
 import { tr } from '@/lib/i18n';
 
-export type { EventType, CalendarEvent } from '@/context/TeamContext';
+
+export type EventType = 'Meeting' | 'Task Deadline' | 'Milestone';
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: EventType;
+  date: string; // YYYY-MM-DD
+  time: string;
+  description: string;
+  createdBy: string;
+}
+
 
 const EVENT_COLORS: Record<EventType, { bg: string; text: string; dot: string; border: string }> = {
   'Meeting': { bg: 'bg-blue-500/10 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500', border: 'border-l-2 border-blue-500' },
@@ -461,6 +472,7 @@ const ProjectCalendar = ({ isLeader, locked }: Props) => {
           )}
         </DialogContent>
       </Dialog>
+      
       </div>
     </section>
   );

@@ -1212,5 +1212,3 @@ export async function validateInviteCode(inviteCode: string): Promise<JoinInvite
 export async function calculateContributionSnapshot(groupId: string): Promise<ContributionSnapshotMember[]> {
   return invokeTeamApi<ContributionSnapshotMember[]>("calculate_contribution_snapshot", { groupId });
 }
-
-

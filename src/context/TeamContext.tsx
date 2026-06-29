@@ -264,9 +264,9 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const group = groups[currentGroupIndex] || groups[0];
-  const tasks = group?.tasks ?? [];
-  const members = group?.members ?? [];
-  const activityLog = group?.activityLog ?? [];
+  const tasks = useMemo(() => group?.tasks ?? [], [group?.tasks]);
+  const members = useMemo(() => group?.members ?? [], [group?.members]);
+  const activityLog = useMemo(() => group?.activityLog ?? [], [group?.activityLog]);
   const materials = useMemo(() => group ? (materialsByGroupId[group.id] ?? []) : [], [group, materialsByGroupId]);
   const calendarEvents = useMemo(() => group ? (calendarEventsByGroupId[group.id] ?? []) : [], [group, calendarEventsByGroupId]);
 
@@ -1116,7 +1116,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setGroups(prev => [...prev, ...mockGroups]);
     return created;
-  }, [canPersist, user?.id, loadPersistedState, currentUserName]);
+  }, [canPersist, user?.id, loadPersistedState, currentUserName, profile?.role]);
 
   const joinProject = useCallback(async (inviteCode: string): Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }> => {
     if (canPersist && user?.id) {

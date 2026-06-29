@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { Folder, Calendar, History, Settings, Plus, Copy, Trash2, ArrowLeft, Users, Compass, Laptop, LogOut, CheckCircle, XCircle, Clock, Inbox, Mail, MailOpen, Bell, Check, AlertTriangle, UserX, Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { supabase } from "@/lib/supabaseClient";
 import { getAccessibleProjectGroups } from "@/lib/projectAccess";
+import { Task } from "@/context/TeamContext";
 
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
@@ -53,6 +55,12 @@ const ProjectManagement: React.FC = () => {
   const [showAddOptions, setShowAddOptions] = useState<boolean>(false);
   const [hoveredButton, setHoveredButton] = useState<"create" | "join" | null>(null);
 
+  // States phục vụ tính năng Lịch chung (Global Calendar)
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
+  const [selectedTaskInfo, setSelectedTaskInfo] = useState<{ groupName: string; groupColor: string; task: Task } | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
+
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [isJoinOpen, setIsJoinOpen] = useState<boolean>(false);
@@ -76,6 +84,14 @@ const ProjectManagement: React.FC = () => {
   const [deleteAccountProceedInput, setDeleteAccountProceedInput] = useState("");
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [ledProjects, setLedProjects] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
+
+
+  useEffect(() => {
+    const inviteFromLink = new URLSearchParams(location.search).get("invite");
+    if (!inviteFromLink) return;
+    setProjectIdInput(inviteFromLink.toUpperCase());
+    setIsJoinOpen(true);
+  }, [location.search]);
 
   useEffect(() => {
     const inviteFromLink = new URLSearchParams(location.search).get("invite");
@@ -157,6 +173,7 @@ const ProjectManagement: React.FC = () => {
     });
     setTimeout(() => setWsCopied(false), 2000);
   };
+
 
   // Delete Account: Step 1 -> check if name matches -> check if Leader of any project
   const handleDeleteAccountVerifyName = async () => {
@@ -319,6 +336,8 @@ const ProjectManagement: React.FC = () => {
     role: string;
   }
 
+
+
   interface AddedMember extends SearchedUser {
     projectRole: string;
   }
@@ -432,6 +451,68 @@ const ProjectManagement: React.FC = () => {
         variant: "destructive",
       });
     }
+  };
+  const renderCalendarCells = () => {
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0: Chủ Nhật, 1: Thứ 2...
+    const cells = [];
+
+    // Tạo các ô trống đầu tháng nếu tháng không bắt đầu từ Chủ nhật
+    for (let i = 0; i < firstDayIndex; i++) {
+      cells.push(<div key={`empty-${i}`} className="bg-slate-950/10 border border-slate-900/30 min-h-[110px] rounded-xl opacity-30" />);
+    }
+
+    // Tạo các ô ngày chính xác trong tháng
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const deadlinedTasks: Array<{ groupName: string; groupColor: string; task: Task }> = [];
+
+      // 'myGroups' là mảng chứa các group đã lọc quyền truy cập ở file của bạn
+      myGroups.forEach((g) => {
+        if (g.tasks) {
+          g.tasks.forEach((t) => {
+            const taskDate = t.deadline.includes("T") ? t.deadline.split("T")[0] : t.deadline;
+            if (taskDate === dateStr) {
+              deadlinedTasks.push({
+                groupName: g.name,
+                groupColor: getProjectColor(g.id), // Hàm lấy màu dựa vào ID dự án của bạn
+                task: t,
+              });
+            }
+          });
+        }
+      });
+
+      const isToday = new Date().toDateString() === new Date(currentYear, currentMonth, day).toDateString();
+
+      cells.push(
+        <div
+          key={`day-${day}`}
+          className={`bg-slate-900/30 border p-2 min-h-[110px] rounded-xl flex flex-col justify-between transition-all ${isToday ? "border-indigo-500 bg-indigo-950/10 shadow-lg shadow-indigo-500/5" : "border-slate-800/50 hover:border-slate-700"
+            }`}
+        >
+          <span className={`text-xs font-bold ${isToday ? "text-indigo-400" : "text-slate-500"}`}>{day}</span>
+
+          <div className="space-y-1 mt-1.5 flex-1 overflow-y-auto max-h-[72px] scrollbar-thin">
+            {deadlinedTasks.map((item, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  setSelectedTaskInfo(item);
+                  setIsTaskModalOpen(true);
+                }}
+                className="p-1 rounded bg-slate-950/70 border-l-2 border-indigo-500 text-[10px] leading-tight cursor-pointer hover:bg-slate-800 transition-colors"
+              >
+                <span className="block font-bold text-indigo-400 truncate text-[8px] uppercase">{item.groupName}</span>
+                <span className="block text-slate-200 truncate font-medium">{item.task.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return cells;
   };
 
   const handleCreateProject = () => {
@@ -660,7 +741,7 @@ const ProjectManagement: React.FC = () => {
 
   const sidebarItems = [
     { name: "All Projects", labelVi: "Tất cả dự án", labelEn: "All Projects", icon: Folder },
-    // { name: "Global Calendar", labelVi: "Lịch chung", labelEn: "Global Calendar", icon: Calendar },
+    { name: "Global Calendar", labelVi: "Lịch chung", labelEn: "Global Calendar", icon: Calendar },
     { name: "Activity Logs", labelVi: "Nhật ký hoạt động", labelEn: "Activity Logs", icon: History },
     { name: "Notification", labelVi: "Thông báo", labelEn: "Notification", icon: Bell },
     { name: "Workspace Settings", labelVi: "Cấu hình Workspace", labelEn: "Workspace Settings", icon: Settings },
@@ -1082,7 +1163,7 @@ const ProjectManagement: React.FC = () => {
                       return;
                     }
                     setActiveTab(item.name);
-                    if (item.name !== "Notification" && item.name !== "All Projects") {
+                    if (item.name !== "Notification" && item.name !== "All Projects" && item.name !== "Global Calendar") {
                       toast({
                         title: tr(
                           language,
@@ -1499,237 +1580,299 @@ const ProjectManagement: React.FC = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
-          ) : activeTab === "Notification" ? (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              {/* Filter controls and mark all read */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800/80 backdrop-blur-md">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setNotifFilter("all")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
-                      notifFilter === "all"
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
-                        : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
-                    }`}
+            </div>) : activeTab === "Global Calendar" ? (
+              /* ==================== GLOBAL CALENDAR TAB ==================== */
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-slate-800/80">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-400 hover:text-white rounded-xl"
+                      onClick={() => {
+                        if (currentMonth === 0) {
+                          setCurrentMonth(11);
+                          setCurrentYear(prev => prev - 1);
+                        } else {
+                          setCurrentMonth(prev => prev - 1);
+                        }
+                      }}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <span className="text-base font-extrabold text-slate-100 px-2 min-w-[120px] text-center">
+                      {language === "vi" ? `Tháng ${currentMonth + 1}, ${currentYear}` : `${new Date(currentYear, currentMonth).toLocaleString('en-US', { month: 'long' })} ${currentYear}`}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-400 hover:text-white rounded-xl"
+                      onClick={() => {
+                        if (currentMonth === 11) {
+                          setCurrentMonth(0);
+                          setCurrentYear(prev => prev + 1);
+                        } else {
+                          setCurrentMonth(prev => prev + 1);
+                        }
+                      }}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCurrentYear(new Date().getFullYear());
+                      setCurrentMonth(new Date().getMonth());
+                    }}
+                    className="border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold"
                   >
-                    {tr(language, "Tất cả thông báo", "All Notifications")} ({notifications.length})
-                  </button>
-                  <button
-                    onClick={() => setNotifFilter("unread")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 relative ${
-                      notifFilter === "unread"
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
-                        : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
-                    }`}
-                  >
-                    {tr(language, "Chưa đọc", "Unread")} ({unreadCount})
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                      </span>
-                    )}
-                  </button>
+                    {tr(language, "Hôm nay", "Today")}
+                  </Button>
                 </div>
 
-                {unreadCount > 0 && (
-                  <Button
-                    onClick={markAllAsRead}
-                    variant="ghost"
-                    className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/20 rounded-xl flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
-                  >
-                    <Check className="h-4 w-4" />
-                    {tr(language, "Đánh dấu tất cả đã đọc", "Mark all as read")}
-                  </Button>
+                <div className="bg-slate-900/20 border border-slate-800/60 rounded-3xl p-4 shadow-xl">
+                  <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                    {(language === "vi" ? ["CN", "T2", "T3", "T4", "T5", "T6", "T7"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]).map((w) => (
+                      <span key={w} className="text-xs font-bold text-slate-500 uppercase py-1">{w}</span>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2">
+                    {renderCalendarCells()}
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "Notification" ? (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                {/* Filter controls and mark all read */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800/80 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setNotifFilter("all")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${notifFilter === "all"
+                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
+                          : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
+                        }`}
+                    >
+                      {tr(language, "Tất cả thông báo", "All Notifications")} ({notifications.length})
+                    </button>
+                    <button
+                      onClick={() => setNotifFilter("unread")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 relative ${notifFilter === "unread"
+                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
+                          : "text-slate-400 hover:text-slate-200 bg-slate-950/40 hover:bg-slate-950/60 border border-transparent"
+                        }`}
+                    >
+                      {tr(language, "Chưa đọc", "Unread")} ({unreadCount})
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+
+                  {unreadCount > 0 && (
+                    <Button
+                      onClick={markAllAsRead}
+                      variant="ghost"
+                      className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/20 rounded-xl flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                    >
+                      <Check className="h-4 w-4" />
+                      {tr(language, "Đánh dấu tất cả đã đọc", "Mark all as read")}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Notifications List */}
+                {notifications.filter(n => notifFilter === "all" || !n.isRead).length === 0 ? (
+                  <div className="flex flex-col items-center justify-center min-h-[350px] bg-slate-900/20 border-2 border-dashed border-slate-800/80 rounded-3xl p-8 shadow-inner animate-in fade-in duration-300">
+                    <div className="p-5 rounded-full bg-slate-900 border border-slate-800 shadow-md text-slate-500 mb-4 animate-bounce">
+                      <Mail className="h-10 w-10 opacity-60" />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-200">
+                      {tr(language, "Không có thông báo nào", "No Notifications Found")}
+                    </h3>
+                    <p className="text-sm text-slate-400 text-center max-w-xs mt-2">
+                      {notifFilter === "unread"
+                        ? tr(language, "Tất cả các thông báo của bạn đã được đọc.", "All of your notifications have been marked as read.")
+                        : tr(language, "Hiện tại hộp thư thông báo của bạn trống.", "Your notification inbox is currently empty.")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {notifications
+                      .filter(n => notifFilter === "all" || !n.isRead)
+                      .map((notif) => {
+                        const sourceGroup = notif.groupId
+                          ? groups.find(g => g.id === notif.groupId) || findSourceProject(notif.content, notif.senderName)
+                          : findSourceProject(notif.content, notif.senderName);
+                        const initials = notif.senderName.split(" ").pop()?.substring(0, 2).toUpperCase() || "US";
+                        const isUnread = !notif.isRead;
+
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => handleNotifClick(notif)}
+                            className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${
+                              isUnread
+                                ? "border-indigo-500/30 hover:border-indigo-500/50 bg-indigo-950/5"
+                                : "border-slate-800/80 hover:border-slate-700/80 opacity-70"
+                            }`}
+                          >
+                            {/* Unread Left Border Highlight */}
+                            {isUnread && (
+                              <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-indigo-500 rounded-l-2xl shadow-lg shadow-indigo-500/50" />
+                            )}
+
+                            {/* Avatar */}
+                            <div
+                              className="h-12 w-12 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-md shrink-0 transition-transform duration-300 group-hover:scale-105"
+                              style={{ background: getAvatarGradient(notif.senderName) }}
+                            >
+                              {initials}
+                            </div>
+
+                            {/* Content area */}
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-sm text-slate-100 group-hover:text-white transition-colors">
+                                    {notif.senderName}
+                                  </span>
+
+                                  {/* Source Project Badge */}
+                                  {sourceGroup ? (
+                                    <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
+                                      {tr(language, `Dự án: ${sourceGroup.name}`, `Project: ${sourceGroup.name}`)}
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-slate-800 text-slate-400 border-0 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
+                                      {tr(language, "Chung", "General")}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[11px] text-slate-500 font-medium">
+                                    {formatTime(notif.createdAt)}
+                                  </span>
+                                  {isUnread && (
+                                    <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-md shadow-indigo-500/50 animate-pulse shrink-0" />
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed break-words font-medium">
+                                {notif.content}
+                              </p>
+                            </div>
+
+                            {/* Mark single as read hover action button */}
+                            {isUnread && (
+                              <div className="absolute right-4 bottom-4 sm:top-5 sm:bottom-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all shadow-md">
+                                  <MailOpen className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
                 )}
               </div>
-
-              {/* Notifications List */}
-              {notifications.filter(n => notifFilter === "all" || !n.isRead).length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[350px] bg-slate-900/20 border-2 border-dashed border-slate-800/80 rounded-3xl p-8 shadow-inner animate-in fade-in duration-300">
-                  <div className="p-5 rounded-full bg-slate-900 border border-slate-800 shadow-md text-slate-500 mb-4 animate-bounce">
-                    <Mail className="h-10 w-10 opacity-60" />
-                  </div>
-                  <h3 className="font-bold text-lg text-slate-200">
-                    {tr(language, "Không có thông báo nào", "No Notifications Found")}
-                  </h3>
-                  <p className="text-sm text-slate-400 text-center max-w-xs mt-2">
-                    {notifFilter === "unread"
-                      ? tr(language, "Tất cả các thông báo của bạn đã được đọc.", "All of your notifications have been marked as read.")
-                      : tr(language, "Hiện tại hộp thư thông báo của bạn trống.", "Your notification inbox is currently empty.")}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {notifications
-                    .filter(n => notifFilter === "all" || !n.isRead)
-                    .map((notif) => {
-                      const sourceGroup = notif.groupId
-                        ? groups.find(g => g.id === notif.groupId) || findSourceProject(notif.content, notif.senderName)
-                        : findSourceProject(notif.content, notif.senderName);
-                      const initials = notif.senderName.split(" ").pop()?.substring(0, 2).toUpperCase() || "US";
-                      const isUnread = !notif.isRead;
-
-                      return (
-                        <div
-                          key={notif.id}
-                          onClick={() => handleNotifClick(notif)}
-                          className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${
-                            isUnread
-                              ? "border-indigo-500/30 hover:border-indigo-500/50 bg-indigo-950/5"
-                              : "border-slate-800/80 hover:border-slate-700/80 opacity-70"
-                          }`}
-                        >
-                          {/* Unread Left Border Highlight */}
-                          {isUnread && (
-                            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-indigo-500 rounded-l-2xl shadow-lg shadow-indigo-500/50" />
-                          )}
-
-                          {/* Avatar */}
-                          <div
-                            className="h-12 w-12 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-md shrink-0 transition-transform duration-300 group-hover:scale-105"
-                            style={{ background: getAvatarGradient(notif.senderName) }}
-                          >
-                            {initials}
-                          </div>
-
-                          {/* Content area */}
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-sm text-slate-100 group-hover:text-white transition-colors">
-                                  {notif.senderName}
-                                </span>
-
-                                {/* Source Project Badge */}
-                                {sourceGroup ? (
-                                  <Badge className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
-                                    {tr(language, `Dự án: ${sourceGroup.name}`, `Project: ${sourceGroup.name}`)}
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-slate-800 text-slate-400 border-0 text-[10px] font-semibold tracking-wide uppercase py-0.5 px-2.5 rounded-lg">
-                                    {tr(language, "Chung", "General")}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[11px] text-slate-500 font-medium">
-                                  {formatTime(notif.createdAt)}
-                                </span>
-                                {isUnread && (
-                                  <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-md shadow-indigo-500/50 animate-pulse shrink-0" />
-                                )}
-                              </div>
-                            </div>
-
-                            <p className="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed break-words font-medium">
-                              {notif.content}
-                            </p>
-                          </div>
-
-                          {/* Mark single as read hover action button */}
-                          {isUnread && (
-                            <div className="absolute right-4 bottom-4 sm:top-5 sm:bottom-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all shadow-md">
-                                <MailOpen className="h-3.5 w-3.5" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          ) : myGroups.length === 0 ? (
-            /* EMPTY STATE OR REVEAL SPLIT BUTTON */
-            <div className="flex items-center justify-center min-h-[450px]">
-              {!showAddOptions ? (
-                /* 1. Dotted Rounded Rectangle "+ Add Projects" */
-                <button
-                  onClick={() => setShowAddOptions(true)}
-                  className="group w-full max-w-xl aspect-[16/10] border-2 border-dashed border-slate-800/80 hover:border-indigo-500/60 rounded-3xl p-8 flex flex-col items-center justify-center bg-slate-900/20 hover:bg-slate-900/40 shadow-inner transition-all duration-500 transform hover:scale-[1.01]"
-                  id="add-projects-empty-btn"
-                >
-                  <div className="p-5 rounded-full bg-slate-900/80 border border-slate-800 group-hover:border-indigo-500/30 group-hover:bg-indigo-950/20 shadow-md transition-all duration-500 mb-5 relative overflow-hidden">
-                    <Plus className="h-10 w-10 text-slate-400 group-hover:text-indigo-400 transition-colors duration-500 relative z-10" />
-                    <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-500" />
-                  </div>
-                  <h3 className="font-bold text-lg text-slate-200 group-hover:text-indigo-300 transition-colors duration-500">
-                    {tr(language, "Thêm Dự án", "Add Projects")}
-                  </h3>
-                  <p className="text-sm text-slate-400 text-center max-w-xs mt-2 group-hover:text-slate-300 transition-colors duration-500">
-                    {tr(
-                      language,
-                      "Bắt đầu bằng cách tạo một không gian làm việc mới hoặc tham gia vào nhóm dự án hiện có bằng ID.",
-                      "Get started by creating a new workspace or joining an existing project group using an ID."
-                    )}
-                  </p>
-                </button>
-              ) : (
-                /* 2. Split Button with Sibling Hover Opacity Drop */
-                <div className="flex flex-col items-center gap-6 animate-in fade-in-0 zoom-in-95 duration-300">
-                  <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-3xl border border-slate-800/80 shadow-2xl relative group-hover-container">
-                    {/* Create Button */}
-                    <button
-                      onClick={() => setIsCreateOpen(true)}
-                      onMouseEnter={() => setHoveredButton("create")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-900 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-indigo-950/20 overflow-hidden group ${hoveredButton === "join" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
-                        }`}
-                      id="create-project-split-btn"
-                    >
-                      <Laptop className="h-8 w-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="block text-slate-100 font-bold tracking-wide">
-                        {tr(language, "Tạo dự án mới", "Create a new project")}
-                      </span>
-                      <span className="block text-xs text-indigo-300/70 font-medium text-center max-w-[140px] mt-2">
-                        {tr(
-                          language,
-                          "Khởi tạo một workspace hoàn toàn mới với tư cách là chủ sở hữu.",
-                          "Start a brand new workspace as the owner."
-                        )}
-                      </span>
-                    </button>
-
-                    {/* Join Button */}
-                    <button
-                      onClick={() => setIsJoinOpen(true)}
-                      onMouseEnter={() => setHoveredButton("join")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                      className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-900 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-emerald-950/20 overflow-hidden group ${hoveredButton === "create" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
-                        }`}
-                      id="join-project-split-btn"
-                    >
-                      <Users className="h-8 w-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="block text-slate-100 font-bold tracking-wide">
-                        {tr(language, "Tham gia dự án", "Join a project")}
-                      </span>
-                      <span className="block text-xs text-emerald-300/70 font-medium text-center max-w-[140px] mt-2">
-                        {tr(
-                          language,
-                          "Kết nối tới dự án hiện có bằng mã ID dự án.",
-                          "Connect to an existing workspace with a project ID."
-                        )}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Cancel / Return Button */}
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowAddOptions(false)}
-                    className="text-slate-400 hover:text-slate-200 gap-2 hover:bg-slate-900/60 rounded-xl"
+            ) : myGroups.length === 0 ? (
+              /* EMPTY STATE OR REVEAL SPLIT BUTTON */
+              <div className="flex items-center justify-center min-h-[450px]">
+                {!showAddOptions ? (
+                  /* 1. Dotted Rounded Rectangle "+ Add Projects" */
+                  <button
+                    onClick={() => setShowAddOptions(true)}
+                    className="group w-full max-w-xl aspect-[16/10] border-2 border-dashed border-slate-800/80 hover:border-indigo-500/60 rounded-3xl p-8 flex flex-col items-center justify-center bg-slate-900/20 hover:bg-slate-900/40 shadow-inner transition-all duration-500 transform hover:scale-[1.01]"
+                    id="add-projects-empty-btn"
                   >
-                    <ArrowLeft className="h-4 w-4" />
-                    {tr(language, "Quay lại", "Back to Add Projects")}
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
+                    <div className="p-5 rounded-full bg-slate-900/80 border border-slate-800 group-hover:border-indigo-500/30 group-hover:bg-indigo-950/20 shadow-md transition-all duration-500 mb-5 relative overflow-hidden">
+                      <Plus className="h-10 w-10 text-slate-400 group-hover:text-indigo-400 transition-colors duration-500 relative z-10" />
+                      <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-500" />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-200 group-hover:text-indigo-300 transition-colors duration-500">
+                      {tr(language, "Thêm Dự án", "Add Projects")}
+                    </h3>
+                    <p className="text-sm text-slate-400 text-center max-w-xs mt-2 group-hover:text-slate-300 transition-colors duration-500">
+                      {tr(
+                        language,
+                        "Bắt đầu bằng cách tạo một không gian làm việc mới hoặc tham gia vào nhóm dự án hiện có bằng ID.",
+                        "Get started by creating a new workspace or joining an existing project group using an ID."
+                      )}
+                    </p>
+                  </button>
+                ) : (
+                  /* 2. Split Button with Sibling Hover Opacity Drop */
+                  <div className="flex flex-col items-center gap-6 animate-in fade-in-0 zoom-in-95 duration-300">
+                    <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-3xl border border-slate-800/80 shadow-2xl relative group-hover-container">
+                      {/* Create Button */}
+                      <button
+                        onClick={() => setIsCreateOpen(true)}
+                        onMouseEnter={() => setHoveredButton("create")}
+                        onMouseLeave={() => setHoveredButton(null)}
+                        className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-indigo-500/40 bg-slate-900 hover:bg-indigo-950/15 hover:border-indigo-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-indigo-950/20 overflow-hidden group ${hoveredButton === "join" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
+                          }`}
+                        id="create-project-split-btn"
+                      >
+                        <Laptop className="h-8 w-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
+                        <span className="block text-slate-100 font-bold tracking-wide">
+                          {tr(language, "Tạo dự án mới", "Create a new project")}
+                        </span>
+                        <span className="block text-xs text-indigo-300/70 font-medium text-center max-w-[140px] mt-2">
+                          {tr(
+                            language,
+                            "Khởi tạo một workspace hoàn toàn mới với tư cách là chủ sở hữu.",
+                            "Start a brand new workspace as the owner."
+                          )}
+                        </span>
+                      </button>
+
+                      {/* Join Button */}
+                      <button
+                        onClick={() => setIsJoinOpen(true)}
+                        onMouseEnter={() => setHoveredButton("join")}
+                        onMouseLeave={() => setHoveredButton(null)}
+                        className={`relative flex flex-col items-center justify-center p-8 w-60 aspect-square rounded-2xl border-2 border-emerald-500/40 bg-slate-900 hover:bg-emerald-950/15 hover:border-emerald-500 font-semibold text-white transition-all duration-300 shadow-lg shadow-emerald-950/20 overflow-hidden group ${hoveredButton === "create" ? "opacity-30 blur-[0.5px] border-slate-800" : "opacity-100"
+                          }`}
+                        id="join-project-split-btn"
+                      >
+                        <Users className="h-8 w-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
+                        <span className="block text-slate-100 font-bold tracking-wide">
+                          {tr(language, "Tham gia dự án", "Join a project")}
+                        </span>
+                        <span className="block text-xs text-emerald-300/70 font-medium text-center max-w-[140px] mt-2">
+                          {tr(
+                            language,
+                            "Kết nối tới dự án hiện có bằng mã ID dự án.",
+                            "Connect to an existing workspace with a project ID."
+                          )}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Cancel / Return Button */}
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowAddOptions(false)}
+                      className="text-slate-400 hover:text-slate-200 gap-2 hover:bg-slate-900/60 rounded-xl"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      {tr(language, "Quay lại", "Back to Add Projects")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
             /* ACTIVE PROJECTS GRID */
             <div className="space-y-6">
               {/* Pending Join Requests — applicant view */}
@@ -2100,6 +2243,115 @@ const ProjectManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* MODAL CHI TIẾT TASK TỪ LỊCH */}
+      <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95">
+          {selectedTaskInfo && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <Badge className={`bg-gradient-to-r ${selectedTaskInfo.groupColor} text-white border-0 text-[10px] font-bold uppercase tracking-wider`}>
+                    {selectedTaskInfo.groupName}
+                  </Badge>
+
+                  {selectedTaskInfo.task.priority && (
+                    <Badge className={`text-[10px] border-0 uppercase ${selectedTaskInfo.task.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
+                        selectedTaskInfo.task.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-emerald-500/20 text-emerald-400'
+                      }`}>
+                      {selectedTaskInfo.task.priority}
+                    </Badge>
+                  )}
+                </div>
+                <DialogTitle className="text-xl font-bold tracking-tight text-white leading-tight">
+                  {selectedTaskInfo.task.name}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-2 whitespace-pre-wrap">
+                  {selectedTaskInfo.task.description || tr(language, "Không có mô tả chi tiết cho task này.", "No description provided for this task.")}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-4 grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
+                      {tr(language, "Phụ trách", "Assignee")}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-200 truncate">
+                      {selectedTaskInfo.task.assignedTo || tr(language, "Chưa chỉ định", "Unassigned")}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
+                      {tr(language, "Hạn chót", "Deadline")}
+                    </p>
+                    <p className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {new Date(selectedTaskInfo.task.deadline).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
+                      {tr(language, "Trạng thái", "Status")}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className={`text-xs border-0 ${selectedTaskInfo.task.status === 'Done' ? 'bg-emerald-500 text-white' :
+                          selectedTaskInfo.task.status === 'In Progress' ? 'bg-indigo-500 text-white' :
+                            'bg-slate-700 text-slate-200'
+                        }`}>
+                        {selectedTaskInfo.task.status}
+                      </Badge>
+                      {selectedTaskInfo.task.approved && (
+                        <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-400">
+                          Approved ✓
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 flex flex-col justify-center">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
+                      {tr(language, "Trọng số (%)", "Contribution")}
+                    </p>
+                    <p className="text-xl font-black text-indigo-400">
+                      {selectedTaskInfo.task.contributionPercent}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="sm:justify-end pt-2 border-t border-slate-800/50">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsTaskModalOpen(false)}
+                  className="text-slate-400 hover:text-white rounded-xl hover:bg-slate-800"
+                >
+                  {tr(language, "Đóng", "Close")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    const originalIndex = groups.findIndex(g => g.name === selectedTaskInfo.groupName);
+                    if (originalIndex !== -1) {
+                      handleLaunchWorkspace(originalIndex, selectedTaskInfo.groupName);
+                    }
+                    setIsTaskModalOpen(false);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
+                >
+                  {tr(language, "Đến dự án", "Go to Project")}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* UID MEMBER ADD MODAL */}
       <Dialog open={isUidAddOpen} onOpenChange={(open) => !searchLoading && setIsUidAddOpen(open)}>
@@ -2117,6 +2369,7 @@ const ProjectManagement: React.FC = () => {
               )}
             </DialogDescription>
           </DialogHeader>
+
 
           <div className="space-y-5 py-4">
             {/* Search Input Box */}
