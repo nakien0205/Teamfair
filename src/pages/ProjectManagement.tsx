@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useTeam, type Group, type MemberStat } from "@/context/TeamContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { useNotifications } from "@/context/NotificationContext";
+import { useNotifications, type Notification } from "@/context/NotificationContext";
+import NotificationDetailModal from "@/components/NotificationDetailModal";
 import { tr } from "@/lib/i18n";
 import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -26,7 +27,28 @@ const ProjectManagement: React.FC = () => {
   const { language } = useLanguage();
   const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
   const { user, profile, signOut, updateProfileName } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+
+  const [detailNotif, setDetailNotif] = useState<Notification | null>(null);
+  const [detailOpen, setDetailOpen] = useState<boolean>(false);
+
+  const resolveProjectName = (notif: Notification): string | undefined => {
+    if (notif.groupId) {
+      const group = groups.find(g => g.id === notif.groupId);
+      if (group) return group.name;
+    }
+    // Fallback to heuristic
+    const found = findSourceProject(notif.content, notif.senderName);
+    return found?.name;
+  };
+
+  const handleNotifClick = (notif: Notification) => {
+    if (!notif.isRead) {
+      void markAsRead(notif.id);
+    }
+    setDetailNotif(notif);
+    setDetailOpen(true);
+  };
 
   const [activeTab, setActiveTab] = useState<string>("All Projects");
   const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all");
@@ -2443,6 +2465,14 @@ const ProjectManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NotificationDetailModal
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        notification={detailNotif}
+        projectName={detailNotif ? resolveProjectName(detailNotif) : undefined}
+        onDelete={deleteNotification}
+      />
     </div>
   );
 };

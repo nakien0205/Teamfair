@@ -9,6 +9,8 @@ interface RequestBody {
   deadline?: string;
   priority?: string;
   groupName?: string;
+  type?: "assigned" | "revision";
+  feedback?: string;
 }
 
 Deno.serve(async (req) => {
@@ -30,7 +32,7 @@ Deno.serve(async (req) => {
       throw new ApiError("bad_request", "Thiếu thông tin người nhận hoặc tên nhiệm vụ.");
     }
 
-    const { assigneeId, taskName, taskDescription, deadline, priority, groupName } = body;
+    const { assigneeId, taskName, taskDescription, deadline, priority, groupName, type = "assigned", feedback } = body;
 
     const admin = getSupabaseAdmin();
     
@@ -49,18 +51,37 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("SEND_EMAIL_FROM") || "onboarding@resend.dev";
 
-    const emailSubject = `[Teamfair] Nhiệm vụ mới được giao / New Task Assigned: ${taskName}`;
+    let emailSubject = `[Teamfair] Nhiệm vụ mới được giao / New Task Assigned: ${taskName}`;
+    let emailTitle = `Nhiệm vụ mới / New Task`;
+    let emailHeading = `Bạn đã được giao một nhiệm vụ mới trong nhóm <strong>${groupName || "Chưa xác định"}</strong>.`;
+
+    if (type === "revision") {
+      emailSubject = `[Teamfair] Yêu cầu chỉnh sửa nhiệm vụ / Task Revision Required: ${taskName}`;
+      emailTitle = `Yêu cầu chỉnh sửa / Revision Requested`;
+      emailHeading = `Nhiệm vụ của bạn trong nhóm <strong>${groupName || "Chưa xác định"}</strong> cần được chỉnh sửa theo yêu cầu của Leader.`;
+    }
+
+    let feedbackSection = "";
+    if (type === "revision" && feedback) {
+      feedbackSection = `
+        <div style="background-color: #fef2f2; border: 1px solid #fee2e2; padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+          <strong style="color: #991b1b;">Yêu cầu chỉnh sửa / Feedback:</strong>
+          <p style="margin: 8px 0 0 0; color: #7f1d1d;">${feedback}</p>
+        </div>
+      `;
+    }
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Nhiệm vụ mới được giao</title>
+        <title>${emailTitle}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; margin: 0; padding: 0; background-color: #f8fafc; }
           .container { max-width: 600px; margin: 40px auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
           .header { text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 24px; }
-          .header h2 { color: #4f46e5; margin: 0; font-size: 24px; font-weight: 700; }
+          .header h2 { color: ${type === "revision" ? "#dc2626" : "#4f46e5"}; margin: 0; font-size: 24px; font-weight: 700; }
           .content { font-size: 16px; color: #334155; }
           .task-details { background-color: #f1f5f9; padding: 20px; border-radius: 12px; margin: 24px 0; border: 1px solid #e2e8f0; }
           .task-row { display: flex; margin-bottom: 12px; }
@@ -73,11 +94,12 @@ Deno.serve(async (req) => {
       <body>
         <div class="container">
           <div class="header">
-            <h2>Nhiệm vụ mới / New Task</h2>
+            <h2>${emailTitle}</h2>
           </div>
           <div class="content">
             <p>Xin chào <strong>${assignee.full_name}</strong>,</p>
-            <p>Bạn đã được giao một nhiệm vụ mới trong nhóm <strong>${groupName || "Chưa xác định"}</strong>.</p>
+            <p>${emailHeading}</p>
+            ${feedbackSection}
             <div class="task-details">
               <div class="task-row">
                 <div class="task-label">Tên nhiệm vụ:</div>

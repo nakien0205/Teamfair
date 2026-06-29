@@ -1,6 +1,7 @@
 export interface Notification {
   id: string;
   recipientId: string;
+  groupId?: string;
   senderName: string;
   content: string;
   isRead: boolean;
@@ -10,6 +11,7 @@ export interface Notification {
 export interface DbNotificationRow {
   id: string;
   recipient_id: string;
+  group_id?: string;
   sender_name: string;
   content: string;
   is_read: boolean;
@@ -20,6 +22,7 @@ export function mapNotificationRow(row: DbNotificationRow): Notification {
   return {
     id: row.id,
     recipientId: row.recipient_id,
+    groupId: row.group_id || undefined,
     senderName: row.sender_name,
     content: row.content,
     isRead: row.is_read,

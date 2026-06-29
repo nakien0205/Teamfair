@@ -337,7 +337,7 @@ const LecturerRubricGrade = () => {
             ? `Giảng viên ${lecturerDisplayName} đã chấm điểm rubric "${rubricName}" cho nhóm: ${totalScore.toFixed(1)}/${maxTotalScore.toFixed(1)}`
             : `Lecturer ${lecturerDisplayName} submitted rubric grade "${rubricName}" for your group: ${totalScore.toFixed(1)}/${maxTotalScore.toFixed(1)}`;
           for (const member of groupMembers) {
-            void sendNotification(member.id, lecturerDisplayName, msg);
+            void sendNotification(member.id, lecturerDisplayName, msg, groupId);
           }
         } catch (notifError) {
           console.warn("[Rubric] Failed to send grade notifications:", notifError);

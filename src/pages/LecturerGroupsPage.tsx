@@ -474,6 +474,7 @@ const LecturerGroupsPage = () => {
           recipient.id,
           profile?.full_name || profile?.email || "Lecturer",
           `Bạn được mời vào nhóm "${selectedGroup.name}". Mã tham gia: ${invite.invite_code}.`,
+          selectedGroup?.id,
         );
       }
 

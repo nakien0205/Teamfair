@@ -367,7 +367,7 @@ const StudentMyGroup = () => {
         p_target_user_id: kickTarget.id,
       });
       if (error) throw new Error(error.message);
-      
+
       toast({
         title: "Đã xóa thành viên",
         description: `Thành viên ${kickTarget.name} đã bị xóa khỏi nhóm thành công.`,
@@ -912,9 +912,6 @@ const StudentMyGroup = () => {
                           <Crown className="h-5 w-5 text-indigo-400" />
                           Quản trị Trưởng nhóm
                         </CardTitle>
-                        <CardDescription className="text-slate-400">
-                          Các công cụ quản trị dành riêng cho Trưởng nhóm dự án.
-                        </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col gap-3">
