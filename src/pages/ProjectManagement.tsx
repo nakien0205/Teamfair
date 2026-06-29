@@ -1708,18 +1708,21 @@ const ProjectManagement: React.FC = () => {
                     {notifications
                       .filter(n => notifFilter === "all" || !n.isRead)
                       .map((notif) => {
-                        const sourceGroup = findSourceProject(notif.content, notif.senderName);
+                        const sourceGroup = notif.groupId
+                          ? groups.find(g => g.id === notif.groupId) || findSourceProject(notif.content, notif.senderName)
+                          : findSourceProject(notif.content, notif.senderName);
                         const initials = notif.senderName.split(" ").pop()?.substring(0, 2).toUpperCase() || "US";
                         const isUnread = !notif.isRead;
 
                         return (
                           <div
                             key={notif.id}
-                            onClick={() => isUnread && markAsRead(notif.id)}
-                            className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${isUnread
+                            onClick={() => handleNotifClick(notif)}
+                            className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${
+                              isUnread
                                 ? "border-indigo-500/30 hover:border-indigo-500/50 bg-indigo-950/5"
                                 : "border-slate-800/80 hover:border-slate-700/80 opacity-70"
-                              }`}
+                            }`}
                           >
                             {/* Unread Left Border Highlight */}
                             {isUnread && (
@@ -1733,7 +1736,6 @@ const ProjectManagement: React.FC = () => {
                             >
                               {initials}
                             </div>
-
 
                             {/* Content area */}
                             <div className="flex-1 min-w-0 space-y-2">
