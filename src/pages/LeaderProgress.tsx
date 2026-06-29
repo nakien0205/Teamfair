@@ -23,12 +23,12 @@ const COLORS = [
 
 const LeaderProgress = () => {
   const { language } = useLanguage();
-  const teamContext = useTeam() as any; 
+  const teamContext = useTeam(); 
 
   // Tự động tìm mảng chứa danh sách nhóm trong TeamContext để đồng bộ sidebar
-  const groupsList = Object.values(teamContext || {}).find(val => Array.isArray(val)) as any[] || [];
-  const activeIndex = teamContext?.currentGroupIndex ?? 0;
-  const currentGroupId = groupsList[activeIndex]?.id || groupsList[activeIndex]?.group_id;
+  const groupsList = teamContext.groups || [];
+  const activeIndex = teamContext.currentGroupIndex ?? 0;
+  const currentGroupId = groupsList[activeIndex]?.id;
 
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);

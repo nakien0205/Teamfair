@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Mail, Clock3, Copy, UserPlus, Loader2, Trash2, CheckCircle2 } from "lucide-react";
-import { useTeam } from "@/context/TeamContext";
+import { useTeam, type Group, type ProjectInvite } from "@/context/TeamContext";
+import type { User } from "@supabase/supabase-js";
 
 export type GroupEmailInvite = {
     id: string;
@@ -29,7 +30,7 @@ function generateRandomInviteCode() {
     return code;
 }
 
-export function GroupInviteManager({ selectedGroup, user }: { selectedGroup: any; user: any; language?: any }) {
+export function GroupInviteManager({ selectedGroup, user }: { selectedGroup: (Group & { project_name?: string }) | null; user: User | null; language?: string }) {
     const rawTeamContext = useTeam();
     
     const [projectId, setProjectId] = useState<string | null>(null);
@@ -101,7 +102,7 @@ export function GroupInviteManager({ selectedGroup, user }: { selectedGroup: any
             
             // Tìm thử xem hệ thống có mã tổng khả dụng chưa
             if (rawTeamContext?.activeInvites && rawTeamContext.activeInvites.length > 0) {
-                const groupInvite = rawTeamContext.activeInvites.find((inv: any) => inv.group_id === projectId);
+                const groupInvite = rawTeamContext.activeInvites.find((inv: ProjectInvite) => inv.group_id === projectId);
                 if (groupInvite) {
                     validInviteCode = groupInvite.invite_code || groupInvite.id; 
                 }
@@ -128,9 +129,10 @@ export function GroupInviteManager({ selectedGroup, user }: { selectedGroup: any
             setEmailInput("");
             setNoteInput("");
             fetchInvites(projectId); // Cập nhật lại UI danh sách
-        } catch (error: any) {
-            console.error("Chi tiết lỗi gửi mời:", error);
-            toast.error(error.message || "Lỗi hệ thống không thể chèn lời mời");
+        } catch (error) {
+            const err = error as { message?: string };
+            console.error("Chi tiết lỗi gửi mời:", err);
+            toast.error(err.message || "Lỗi hệ thống không thể chèn lời mời");
         } finally {
             setIsSubmitting(false);
         }
@@ -149,7 +151,7 @@ export function GroupInviteManager({ selectedGroup, user }: { selectedGroup: any
             if (error) throw error;
             toast.success("Đã thu hồi lời mời thành công.");
             if (projectId) fetchInvites(projectId);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Lỗi thu hồi:", err);
             toast.error("Không thể xóa lời mời.");
         } finally {

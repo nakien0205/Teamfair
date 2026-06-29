@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext"; 
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export function PendingInvitesList() {
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   // 1. Hàm lấy danh sách lời mời và map theo cột 'project_name'
-  const fetchPendingInvites = async () => {
+  const fetchPendingInvites = useCallback(async () => {
     if (!user?.email) return;
 
     try {
@@ -57,16 +57,16 @@ export function PendingInvitesList() {
       );
 
       setInvites(formattedInvites);
-    } catch (err: any) {
-      console.error("Lỗi lấy danh sách lời mời:", err.message);
+    } catch (err) {
+      console.error("Lỗi lấy danh sách lời mời:", err instanceof Error ? err.message : String(err));
     } finally {
       setLoadingFetch(false);
     }
-  };
+  }, [user?.email]);
 
   useEffect(() => {
     fetchPendingInvites();
-  }, [user?.email]);
+  }, [fetchPendingInvites]);
 
   // 2. Xử lý khi bấm nút "Chấp nhận" - Thêm bản ghi vào bảng group_members
   const handleAccept = async (invite: InviteItem) => {
@@ -121,9 +121,10 @@ export function PendingInvitesList() {
         window.location.reload();
       }, 1000);
 
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { message?: string };
       console.error("Lỗi xử lý gia nhập nhóm:", err);
-      toast.error(err.message || "Không thể chấp nhận lời mời, vui lòng thử lại.");
+      toast.error(errorObj.message || "Không thể chấp nhận lời mời, vui lòng thử lại.");
     } finally {
       setProcessingId(null);
     }
@@ -147,9 +148,10 @@ export function PendingInvitesList() {
       
       toast.success("Đã từ chối lời mời.");
       fetchPendingInvites(); // Tải lại danh sách lời mời ngay trên UI
-    } catch (err: any) {
+    } catch (err) {
+      const errorObj = err as { message?: string };
       console.error("Lỗi chi tiết khi từ chối lời mời:", err);
-      toast.error(`Lỗi hệ thống: ${err.message || "Không thể xử lý từ chối"}`);
+      toast.error(`Lỗi hệ thống: ${errorObj.message || "Không thể xử lý từ chối"}`);
     } finally {
       setProcessingId(null); // Mở khóa nút bấm
     }

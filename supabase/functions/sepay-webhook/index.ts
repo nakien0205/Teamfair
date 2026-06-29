@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       status: 200,
     })
 
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500 })
   }
 })

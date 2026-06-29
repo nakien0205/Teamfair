@@ -5,15 +5,13 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function GroupInvitePage() {
   // Tránh lỗi TypeScript bắt bẻ property bằng cách tạm thời ép kiểu context
-  const teamContext = useTeam() as any;
+  const teamContext = useTeam();
   const { user } = useAuth();
   const { language } = useLanguage();
 
-  // Tự động kiểm tra tất cả các biến chứa object nhóm khả thi trong TeamContext của bạn
-  const activeGroup = teamContext?.selectedGroup || 
-                      teamContext?.currentTeam || 
-                      teamContext?.team || 
-                      (teamContext?.id ? teamContext : null);
+  const activeGroup = teamContext.groups && typeof teamContext.currentGroupIndex === "number"
+    ? teamContext.groups[teamContext.currentGroupIndex] || null
+    : null;
 
   if (!user) {
     return (

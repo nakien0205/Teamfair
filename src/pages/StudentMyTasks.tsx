@@ -314,7 +314,7 @@ const StudentMyTasks = () => {
       { key: "rejected" as const, label: tr(language, "Bị từ chối", "Rejected") },
       { key: "overdue" as const, label: tr(language, "Trễ hạn", "Overdue") },
     ],
-    [],
+    [language],
   );
 
   const handleStartTask = (task: Task) => {

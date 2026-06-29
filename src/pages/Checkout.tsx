@@ -208,7 +208,7 @@ export default function Checkout() {
       setQrValue(vietQrUrl);
       setShowQrModal(true); 
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Payment error:', err);
       setError(language === 'vi' ? 'Lỗi tạo đơn hàng.' : 'Order initialization error');
     } finally {
