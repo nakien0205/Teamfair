@@ -36,6 +36,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTeam, type LecturerStudentReview, type Task } from "@/context/TeamContext";
 import { cn } from "@/lib/utils";
 import { tr, } from "@/lib/i18n";
+import { PendingInvitesList } from "@/pages/PendingInvitesList";
 
 type RiskLevel = "normal" | "attention" | "high";
 
@@ -376,6 +377,7 @@ const StudentOverview = () => {
               </CardContent>
             </Card>
           ) : null}
+          {!dataLoading && <PendingInvitesList />}
 
           {!dataLoading && !connectionError && !group ? (
             <Card className="rounded-3xl border-0 shadow-card">
@@ -398,28 +400,28 @@ const StudentOverview = () => {
           {!dataLoading && !connectionError && group ? (
             <>
               <Card className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-  <CardContent className="p-0">
-    <div className="bg-slate-50/80 px-6 py-6 border-b border-slate-200">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-4">
-          {/* Khu vực Badge */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-0 bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs tracking-wide">
-  {tr(language, "Thành viên", "User")}
-</Badge>
-            <Badge variant="outline" className="border-slate-200 bg-slate-50/70 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg text-[11px]">
-              {group.name}
-            </Badge>
-          </div>
+                <CardContent className="p-0">
+                  <div className="bg-slate-50/80 px-6 py-6 border-b border-slate-200">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-4">
+                        {/* Khu vực Badge */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="border-0 bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs tracking-wide">
+                            {tr(language, "Thành viên", "User")}
+                          </Badge>
+                          <Badge variant="outline" className="border-slate-200 bg-slate-50/70 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg text-[11px]">
+                            {group.name}
+                          </Badge>
+                        </div>
                         <div>
-            <p className="text-xs font-black text-amber-600 uppercase tracking-widest">
-  {tr(language, "Chào mừng quay lại", "Welcome back")}
-</p>
-            <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-slate-800 md:text-5xl flex items-center gap-2.5">
-  {currentUserName}
-  <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active" />
-</h1>
-          </div>
+                          <p className="text-xs font-black text-amber-600 uppercase tracking-widest">
+                            {tr(language, "Chào mừng quay lại", "Welcome back")}
+                          </p>
+                          <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-slate-800 md:text-5xl flex items-center gap-2.5">
+                            {currentUserName}
+                            <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active" />
+                          </h1>
+                        </div>
                         {/* <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                           "{tr(language, "Theo dõi task được giao, deadline sắp tới, điểm đóng góp tham khảo và phản hồi gần đây trong một màn hình đơn giản, dễ theo dõi.", "Track assigned tasks, upcoming deadlines, reference contribution points, and recent feedback in a simple, easy-to-follow screen.")}"
                         </p> */}
@@ -447,7 +449,7 @@ const StudentOverview = () => {
                   </div>
                 </CardContent>
               </Card>
-
+                
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {summary.cards.map(card => {
                   const Icon = card.icon;
@@ -466,6 +468,7 @@ const StudentOverview = () => {
                         </div>
                       </CardContent>
                     </Card>
+                    
                   );
                 })}
               </div>

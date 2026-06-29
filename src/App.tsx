@@ -51,12 +51,15 @@ import LeaderTasks from "./pages/LeaderTasks";
 import LeaderSubmissions from "./pages/LeaderSubmissions";
 import LeaderEvaluations from "./pages/LeaderEvaluations";
 import LeaderProgress from "./pages/LeaderProgress";
+import ProjectCalendar from "@/components/ProjectCalendar";
+import GroupInvitePage from "./pages/GroupInvitePage";
+import Checkout from "./pages/Checkout";
 
-export  function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-layout">
       {children}
-      
+
       {/* Đặt cố định ở đây, nó sẽ ẩn đi cho đến khi được gọi */}
       <ShareProjectModal />
     </div>
@@ -89,7 +92,7 @@ const App = () => (
                     <Route path="/login" element={<Login />} />
 
                     <Route path="/dashboard-student" element={<Navigate to="/student/dashboard" replace />} />
-                    
+
                     {/* Student Workspace Routes wrapped in StudentLayout */}
                     <Route
                       path="/"
@@ -101,6 +104,7 @@ const App = () => (
                     >
                       <Route path="student/dashboard" element={<StudentOverview />} />
                       <Route path="student/my-group" element={<StudentMyGroup />} />
+                      <Route path="student/calendar" element={<ProjectCalendar isLeader={true} locked={false} />} />
                       <Route path="student/my-tasks" element={<StudentMyTasks />} />
                       <Route path="student/tasks/:taskId" element={<StudentTaskDetail />} />
                       <Route path="student/tasks/:taskId/submit" element={<StudentTaskSubmit />} />
@@ -114,10 +118,10 @@ const App = () => (
                       <Route path="leader/tasks" element={<LeaderTasks />} />
                       <Route path="leader/submissions" element={<LeaderSubmissions />} />
                       <Route path="leader/member-evaluations" element={<LeaderEvaluations />} />
-                      <Route path="leader/progress-report" element={<LeaderProgress />} />
-                    </Route>
+                      <Route path="/leader/progress-report/" element={<LeaderProgress />} />
+                      <Route path="leader/invite-member" element={<GroupInvitePage />} />                    </Route>
                     <Route path="/dashboard-lecturer" element={<Navigate to="/lecturer/dashboard" replace />} />
-                    
+
                     {/* Lecturer Workspace Routes wrapped in LecturerLayout */}
                     <Route
                       path="/lecturer"
@@ -132,21 +136,21 @@ const App = () => (
                       <Route path="groups/:groupId" element={<LecturerGroupsPage />} />
                       <Route path="progress" element={<LecturerProgressPage />} />
                       <Route path="reports" element={<LecturerReportsPage />} />
-                      
+
                       <Route path="rubrics" element={<LecturerRubricsList />} />
                       <Route path="rubrics/upload" element={<LecturerRubricUpload />} />
                       <Route path="rubrics/preview" element={<LecturerRubricPreview />} />
                       <Route path="rubrics/:rubricId" element={<LecturerRubricDetail />} />
                       <Route path="rubrics/:rubricId/edit" element={<LecturerRubricEdit />} />
-                      
+
                       <Route path="grading" element={<Navigate to="/lecturer/rubrics?tab=grading" replace />} />
                       <Route path="grading/projects/:projectId/groups/:groupId" element={<LecturerGradingProjectGroups />} />
                       <Route path="grading/projects/:projectId/groups/:groupId/rubrics/:rubricId" element={<LecturerRubricGrade />} />
-                      
+
                       <Route path="student-evaluations" element={<LecturerStudentEvaluationsPage />} />
                       <Route path="contribution" element={<LecturerContributionPage />} />
                       <Route path="export-reports" element={<LecturerExportReportsPage />} />
-                      
+
                       <Route path="documents" element={<LecturerDocumentsPage />} />
                       <Route path="activity" element={<LecturerActivityPage />} />
                     </Route>
@@ -161,6 +165,7 @@ const App = () => (
                     />
                     <Route path="/project-management-sandbox" element={<Navigate to="/projects" replace />} />
                     <Route path="*" element={<NotFound />} />
+                    <Route path="/checkout" element={<Checkout />} />
                   </Routes>
                 </BrowserRouter>
               </NotificationProvider>

@@ -32,6 +32,7 @@ const StudentLayout = () => {
   if (pathname.includes("/student/my-group")) activeKey = "my-group";
   else if (pathname.includes("/student/my-tasks") || pathname.includes("/student/tasks/")) activeKey = "tasks";
   else if (pathname.includes("/student/work-logs")) activeKey = "work-logs";
+  else if (pathname.includes("/student/calendar")) activeKey = "calendar";
   else if (pathname.includes("/student/peer-review")) activeKey = "peer-review";
   else if (pathname.includes("/student/my-contribution")) activeKey = "my-contribution";
   else if (pathname.includes("/student/feedback")) activeKey = "feedback";
@@ -39,6 +40,7 @@ const StudentLayout = () => {
   else if (pathname.includes("/student/documents")) activeKey = "materials";
   else if (pathname.includes("/leader/tasks") || pathname.includes("/student/workspace")) activeKey = "leader-tasks";
   else if (pathname.includes("/leader/submissions")) activeKey = "leader-submissions";
+  else if (pathname.includes("/leader/invite-member")) activeKey = "invite-member";
   else if (pathname.includes("/leader/member-evaluations")) activeKey = "leader-evaluations";
   else if (pathname.includes("/leader/progress-report")) activeKey = "leader-progress";
 
@@ -52,6 +54,7 @@ const StudentLayout = () => {
     switch (key) {
       case "overview": navigate("/student/dashboard"); break;
       case "my-group": navigate("/student/my-group"); break;
+      case "calendar": navigate("/student/calendar"); break;
       case "tasks": navigate("/student/my-tasks"); break;
       case "work-logs": navigate("/student/work-logs"); break;
       case "peer-review": navigate("/student/peer-review"); break;
@@ -64,6 +67,7 @@ const StudentLayout = () => {
       case "leader-submissions": navigate("/leader/submissions"); break;
       case "leader-evaluations": navigate("/leader/member-evaluations"); break;
       case "leader-progress": navigate("/leader/progress-report"); break;
+      case "invite-member": navigate("/leader/invite-member"); break;
     }
   };
 
@@ -74,12 +78,14 @@ const StudentLayout = () => {
       // Workspace
       { key: "overview", label: tr(language, "Tổng quan", "Overview"), icon: <Sparkles className="h-4 w-4" />, section: "workspace" },
       { key: "my-group", label: tr(language, "Nhóm của tôi", "My Group"), icon: <Users className="h-4 w-4" />, section: "workspace" },
+      { key: "calendar", label: tr(language, "Lịch dự án", "Project Calendar"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
       { key: "tasks", label: tr(language, "Task của tôi", "My Tasks"), icon: <FolderOpen className="h-4 w-4" />, section: "workspace" },
       // { key: "work-logs", label: tr(language, "Nhật ký làm việc", "Work Logs"), icon: <ClipboardPenLine className="h-4 w-4" />, section: "workspace" },
       { key: "peer-review", label: tr(language, "Đánh giá chéo", "Peer Review"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "workspace" },
       { key: "my-contribution", label: tr(language, "Điểm đóng góp", "Contribution"), icon: <CheckCircle className="h-4 w-4" />, section: "workspace" },
       { key: "feedback", label: tr(language, "Phản hồi", "Feedback"), icon: <Scale className="h-4 w-4" />, section: "workspace" },
       // { key: "appeals", label: tr(language, "Giải trình", "Appeals"), icon: <Brain className="h-4 w-4" />, section: "workspace" },
+        { key: "leader-progress", label: tr(language, "Quản lý tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "workspace" },
 
       // Resources
       { key: "materials", label: tr(language, "Tài liệu", "Resources"), icon: <FileUp className="h-4 w-4" />, section: "resources" },
@@ -94,8 +100,8 @@ const StudentLayout = () => {
         { key: "leader-tasks", label: tr(language, "Tạo task", "Create Task"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
         // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
         // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-progress", label: tr(language, "Báo cáo tiến độ", "Progress Report"), icon: <ArrowRight className="h-4 w-4" />, section: "leader" },
         { key: "share-project", label: tr(language, "Chia sẻ dự án", "Share Project"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
+        // { key: "invite-member", label: tr(language, "Mời thành viên", "Invite member"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
 
       );
     }
