@@ -28,6 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SettingsModal } from '@/components/SettingsModal';
 import TaskApprovalDialog from '@/components/TaskApprovalDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabaseClient';
 
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
@@ -42,7 +43,7 @@ interface PeerEvaluation {
 }
 
 const StudentDashboard = () => {
-  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName, updateTask } = useTeam();
+  const { tasks, members, activityLog, addTask, deleteTask, updateTaskStatus, approveTask, studentRole, setStudentRole, currentUserName, updateTask, groups, currentGroupIndex } = useTeam();
   const { toast } = useToast();
   const { sendNotification } = useNotifications();
   const navigate = useNavigate();
@@ -72,6 +73,37 @@ const StudentDashboard = () => {
       description: newDescription,
       approved: false
     });
+
+    const assigneeMember = members.find(m => m.name === t.assignedTo);
+    if (assigneeMember) {
+      void sendNotification(
+        assigneeMember.id || assigneeMember.name,
+        currentUserName,
+        tr(
+          language,
+          `Yêu cầu chỉnh sửa task: "${t.name}". Nội dung: ${feedback}`,
+          `Task "${t.name}" requires revision. Reason: ${feedback}`
+        ),
+        groups[currentGroupIndex]?.id
+      );
+
+      if (assigneeMember.id) {
+        const currentGroup = groups[currentGroupIndex];
+        void supabase.functions.invoke('send-task-email', {
+          body: {
+            assigneeId: assigneeMember.id,
+            taskName: t.name,
+            taskDescription: t.description || '',
+            deadline: t.deadline || '',
+            priority: t.priority || 'Medium',
+            groupName: currentGroup?.name || '',
+            type: 'revision',
+            feedback: feedback,
+          },
+        });
+      }
+    }
+
     toast({
       title: tr(language, 'Đã yêu cầu chỉnh sửa', 'Revision requested'),
       description: tr(language, `Task "${t.name}" đã được trả lại cho ${t.assignedTo} sửa đổi`, `Task "${t.name}" has been returned to ${t.assignedTo} for revision`),
@@ -129,6 +161,7 @@ const StudentDashboard = () => {
 
   const handleApprove = (t: Task) => {
     approveTask(t.id);
+    deleteTask(t.id);
     toast({ title: tr(language, 'Đã duyệt', 'Approved'), description: tr(language, `Task "${t.name}" đã được approve`, `Task "${t.name}" has been approved`) });
   };
 

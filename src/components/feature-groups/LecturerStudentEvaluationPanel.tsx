@@ -75,7 +75,7 @@ const LecturerStudentEvaluationPanel = () => {
       const msg = language === "vi"
         ? `Giảng viên đã đánh giá hiệu suất của bạn: ${rating} sao. ${awardBadge ? "Bạn nhận được badge Verified!" : ""}`
         : `Lecturer published your performance review: ${rating} stars. ${awardBadge ? "You received a Verified badge!" : ""}`;
-      void sendNotification(targetStudent.id, "Lecturer", msg);
+      void sendNotification(targetStudent.id, "Lecturer", msg, group?.id);
     } else {
       console.warn("[Evaluation] Could not resolve student UUID for notification:", studentName);
     }

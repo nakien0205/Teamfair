@@ -171,7 +171,8 @@ const MaterialsSection = ({ uploaderName }: Props) => {
                 language,
                 `Đã tải lên tài liệu mới: "${uploaded.fileName}"`,
                 `Uploaded a new document: "${uploaded.fileName}"`
-              )
+              ),
+              groups[currentGroupIndex]?.id
             );
           });
       }
@@ -313,7 +314,8 @@ const MaterialsSection = ({ uploaderName }: Props) => {
                 language,
                 `Đã thêm liên kết mới: "${linkTitle}"`,
                 `Added a new link: "${linkTitle}"`
-              )
+              ),
+              groups[currentGroupIndex]?.id
             );
           });
       }

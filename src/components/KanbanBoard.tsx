@@ -85,16 +85,18 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
     addTask({ ...newTask });
     if (notifyTeam) {
       members
-        .filter(m => m.name !== currentUserName)
+        .filter(m => m.id ? m.id !== user?.id : m.name !== currentUserName)
         .forEach(member => {
+          const recipientId = member.id || member.name;
           void sendNotification(
-            member.id || member.name,
+            recipientId,
             currentUserName,
             tr(
               language,
               `Đã giao task mới: "${newTask.name}"`,
               `Assigned a new task: "${newTask.name}"`
-            )
+            ),
+            groups[currentGroupIndex]?.id
           );
         });
     }
@@ -353,8 +355,6 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                         onClick={(event) => {
                           event.stopPropagation();
                           if (onApproveClick) onApproveClick(t);
-                          // Delete task from board after approval
-                          setTimeout(() => deleteTask(t.id), 300);
                         }}
                       >
                         <CheckCircle className="h-3 w-3 mr-1" /> {tr(language, 'Duyệt', 'Approve')}

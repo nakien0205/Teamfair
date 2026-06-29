@@ -17,9 +17,10 @@ export type { Notification } from "@/lib/notificationState";
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  sendNotification: (recipientId: string, senderName: string, content: string) => Promise<void>;
+  sendNotification: (recipientId: string, senderName: string, content: string, groupId?: string) => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -128,27 +129,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return notifications.filter(n => !n.isRead).length;
   }, [notifications]);
 
-  const sendNotification = useCallback(async (recipientId: string, senderName: string, content: string) => {
+  const sendNotification = useCallback(async (recipientId: string, senderName: string, content: string, groupId?: string) => {
     try {
       if (canPersist) {
-        const { data, error } = await supabase
-          .from("notifications")
-          .insert({
-            recipient_id: recipientId,
-            sender_name: senderName,
-            content,
-            is_read: false,
-          })
-          .select()
-          .single();
+        if (recipientId === user?.id) {
+          const { data, error } = await supabase
+            .from("notifications")
+            .insert({
+              recipient_id: recipientId,
+              sender_name: senderName,
+              content,
+              is_read: false,
+              group_id: groupId || null,
+            })
+            .select()
+            .single();
 
-        if (error) throw error;
+          if (error) throw error;
 
-        if (data) {
-          const newNotif = mapNotificationRow(data as DbNotificationRow);
+          if (data) {
+            const newNotif = mapNotificationRow(data as DbNotificationRow);
 
-          // Only update state if the current user is the recipient
-          if (newNotif.recipientId === user?.id) {
             let shouldToast = false;
             setNotifications(prev => {
               const result = mergeNotificationInsert(prev, newNotif);
@@ -158,9 +159,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (shouldToast) {
               showNotificationToast(newNotif);
             }
-          } else {
-            showNotificationToast(newNotif);
           }
+        } else {
+          // RLS: If current user is not recipient, we cannot SELECT the row after insert.
+          // Omit .select() to perform a write-only insert.
+          const { error } = await supabase
+            .from("notifications")
+            .insert({
+              recipient_id: recipientId,
+              sender_name: senderName,
+              content,
+              is_read: false,
+              group_id: groupId || null,
+            });
+
+          if (error) throw error;
         }
       } else {
         // In-memory demo mode
@@ -171,6 +184,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const newNotif: Notification = {
           id: generatedId,
           recipientId,
+          groupId: groupId || undefined,
           senderName,
           content,
           isRead: false,
@@ -236,13 +250,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [canPersist, user?.id]);
 
+  const deleteNotification = useCallback(async (id: string) => {
+    try {
+      if (canPersist) {
+        const { error } = await supabase
+          .from("notifications")
+          .delete()
+          .eq("id", id);
+        if (error) throw error;
+      }
+      setNotifications(prev => removeNotificationById(prev, id));
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
+  }, [canPersist]);
+
   const value = useMemo(() => ({
     notifications,
     unreadCount,
     sendNotification,
     markAsRead,
     markAllAsRead,
-  }), [notifications, unreadCount, sendNotification, markAsRead, markAllAsRead]);
+    deleteNotification,
+  }), [notifications, unreadCount, sendNotification, markAsRead, markAllAsRead, deleteNotification]);
 
   return (
     <NotificationContext.Provider value={value}>

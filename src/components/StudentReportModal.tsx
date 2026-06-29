@@ -26,7 +26,7 @@ const REASONS = [
 ];
 
 const StudentReportModal = ({ open, onOpenChange, targetMember, currentUser }: Props) => {
-  const { addReport } = useTeam();
+  const { addReport, groups, currentGroupIndex } = useTeam();
   const { toast } = useToast();
   const { language } = useLanguage();
   const { sendNotification } = useNotifications();
@@ -47,7 +47,8 @@ const StudentReportModal = ({ open, onOpenChange, targetMember, currentUser }: P
         language,
         `Đã gửi báo cáo về ${targetMember.name}: ${reason}`,
         `Submitted a report on ${targetMember.name}: ${reason}`
-      )
+      ),
+      groups[currentGroupIndex]?.id
     );
 
     toast({

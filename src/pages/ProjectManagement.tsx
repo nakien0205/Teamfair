@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useTeam, type Group, type MemberStat } from "@/context/TeamContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { useNotifications } from "@/context/NotificationContext";
+import { useNotifications, type Notification } from "@/context/NotificationContext";
+import NotificationDetailModal from "@/components/NotificationDetailModal";
 import { tr } from "@/lib/i18n";
 import { OnboardingNameModal } from "@/components/OnboardingNameModal";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -24,7 +25,28 @@ const ProjectManagement: React.FC = () => {
   const { language } = useLanguage();
   const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
   const { user, profile, signOut, updateProfileName } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+
+  const [detailNotif, setDetailNotif] = useState<Notification | null>(null);
+  const [detailOpen, setDetailOpen] = useState<boolean>(false);
+
+  const resolveProjectName = (notif: Notification): string | undefined => {
+    if (notif.groupId) {
+      const group = groups.find(g => g.id === notif.groupId);
+      if (group) return group.name;
+    }
+    // Fallback to heuristic
+    const found = findSourceProject(notif.content, notif.senderName);
+    return found?.name;
+  };
+
+  const handleNotifClick = (notif: Notification) => {
+    if (!notif.isRead) {
+      void markAsRead(notif.id);
+    }
+    setDetailNotif(notif);
+    setDetailOpen(true);
+  };
 
   const [activeTab, setActiveTab] = useState<string>("All Projects");
   const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all");
@@ -1543,14 +1565,16 @@ const ProjectManagement: React.FC = () => {
                   {notifications
                     .filter(n => notifFilter === "all" || !n.isRead)
                     .map((notif) => {
-                      const sourceGroup = findSourceProject(notif.content, notif.senderName);
+                      const sourceGroup = notif.groupId
+                        ? groups.find(g => g.id === notif.groupId) || findSourceProject(notif.content, notif.senderName)
+                        : findSourceProject(notif.content, notif.senderName);
                       const initials = notif.senderName.split(" ").pop()?.substring(0, 2).toUpperCase() || "US";
                       const isUnread = !notif.isRead;
 
                       return (
                         <div
                           key={notif.id}
-                          onClick={() => isUnread && markAsRead(notif.id)}
+                          onClick={() => handleNotifClick(notif)}
                           className={`group relative bg-slate-900/40 hover:bg-slate-900/80 border rounded-2xl p-5 flex items-start gap-4 transition-all duration-300 transform hover:scale-[1.005] cursor-pointer shadow-lg select-none ${
                             isUnread
                               ? "border-indigo-500/30 hover:border-indigo-500/50 bg-indigo-950/5"
@@ -2190,6 +2214,14 @@ const ProjectManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NotificationDetailModal
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        notification={detailNotif}
+        projectName={detailNotif ? resolveProjectName(detailNotif) : undefined}
+        onDelete={deleteNotification}
+      />
     </div>
   );
 };
