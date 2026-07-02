@@ -89,7 +89,7 @@ describe("Student module business rules", () => {
       milestoneLabel: null,
       status: "open" as const,
       startAt: "2026-06-01T00:00:00.000Z",
-      endAt: "2026-06-30T23:59:59.000Z",
+      endAt: "2036-06-30T23:59:59.000Z",
       allowLeaderSummary: false,
     };
     const targets = [{ id: "student-b", fullName: "Student B", role: "Member" as const }];
@@ -145,7 +145,7 @@ describe("Student module business rules", () => {
       milestoneLabel: null,
       status: "closed" as const,
       startAt: "2026-06-01T00:00:00.000Z",
-      endAt: "2026-06-30T23:59:59.000Z",
+      endAt: "2036-06-30T23:59:59.000Z",
       allowLeaderSummary: false,
     };
     const openPeriod = { ...closedPeriod, status: "open" as const };

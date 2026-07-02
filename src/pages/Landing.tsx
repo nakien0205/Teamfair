@@ -44,6 +44,7 @@ const Landing = () => {
             <a href="#cach-hoat-dong" className="hover:text-indigo-600 transition-colors">{tr(language, "Cách hoạt động", "How it Works")}</a>
             <a href="#tinh-nang" className="hover:text-indigo-600 transition-colors">{tr(language, "Tính năng", "Features")}</a>
             <a href="#vai-tro" className="hover:text-indigo-600 transition-colors">{tr(language, "Đối tượng sử dụng", "Target Users")}</a>
+            <a href="#video-guide" className="hover:text-indigo-600 transition-colors">{tr(language, "Video hướng dẫn", "Video Guide")}</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -789,6 +790,37 @@ const Landing = () => {
                 <p className="text-slate-600 text-sm leading-relaxed">{item.desc[language as keyof typeof item.desc] || item.desc.en}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Video Guide Section */}
+      <section id="video-guide" className="py-20 md:py-28 bg-slate-50 border-t border-b border-slate-100">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              {language === 'vi' ? 'Video hướng dẫn sử dụng' : 'Video Guide'}
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              {language === 'vi' 
+                ? 'Xem video ngắn dưới đây để hiểu rõ cách hoạt động và các tính năng chính của TeamFair.' 
+                : 'Watch the short video below to understand how TeamFair works and its core features.'}
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="relative rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200 border-4 border-white bg-slate-900 aspect-video">
+              <video 
+                className="w-full h-full object-cover" 
+                controls 
+                preload="metadata"
+              >
+                <source src="/guide.mp4" type="video/mp4" />
+                {language === 'vi' 
+                  ? 'Trình duyệt của bạn không hỗ trợ thẻ video.' 
+                  : 'Your browser does not support the video tag.'}
+              </video>
+            </div>
           </div>
         </div>
       </section>
