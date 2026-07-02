@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
     })
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500 })
+    console.error('sepay-webhook unexpected error:', err)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 })
   }
 })
