@@ -553,9 +553,13 @@ const ProjectManagement: React.FC = () => {
         setIsUidAddOpen(true);
       } catch (err) {
         setIsLoading(false);
+        const rawMessage = String(err);
+        const message = rawMessage.includes("billing_group_limit_reached")
+          ? tr(language, "Gói hiện tại chỉ cho phép tạo 1 nhóm. Nâng cấp Pro Max để tạo không giới hạn.", "Your current plan allows one owned team. Upgrade to Pro Max for unlimited teams.")
+          : rawMessage;
         toast({
           title: tr(language, "Lỗi tạo dự án", "Error Creating Project"),
-          description: String(err),
+          description: message,
           variant: "destructive",
         });
       }

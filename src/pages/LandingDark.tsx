@@ -519,7 +519,7 @@ const Landing = () => {
       name: 'Free',
       price: '0đ',
       suffix: tr(language, '/ tháng', '/ month'),
-      desc: tr(language, 'Dùng mãi miễn phí cho một nhóm sinh viên.', 'Free forever for one student team.'),
+       desc: tr(language, 'Dùng mãi miễn phí cho một nhóm bạn sở hữu.', 'Free forever for one team you own.'),
       cta: tr(language, 'Bắt đầu miễn phí', 'Start free'),
       features: [
         tr(language, '1 nhóm, tối đa 6 thành viên', '1 team, up to 6 members'),
@@ -531,8 +531,8 @@ const Landing = () => {
       icon: WalletCards,
       name: 'Pro Group',
       price: '69.000đ',
-      suffix: tr(language, '/ nhóm / tháng', '/ team / month'),
-      desc: tr(language, 'Khoảng 11.500đ mỗi người với nhóm 6; hoặc 590.000đ mỗi học kỳ.', 'About 11,500 VND per person for a team of 6; or 590,000 VND per semester.'),
+       suffix: tr(language, '/ người / tháng', '/ user / month'),
+       desc: tr(language, 'Chỉ tài khoản đã thanh toán nhận quyền Pro; thành viên khác vẫn dùng Free.', 'Only the paid account receives Pro access; other members remain Free.'),
       cta: tr(language, 'Chọn Pro Group', 'Choose Pro Group'),
       featured: true,
       features: [
@@ -543,15 +543,15 @@ const Landing = () => {
     },
     {
       icon: Building2,
-      name: 'Class Pack',
-      price: '790.000đ',
-      suffix: tr(language, '/ học kỳ', '/ semester'),
-      desc: tr(language, 'Cho một lớp học 30-60 sinh viên và một giảng viên.', 'For one class of 30-60 students and one lecturer.'),
-      cta: tr(language, 'Liên hệ cho lớp học', 'Talk to us'),
+       name: 'Pro Max',
+       price: '129.000đ',
+       suffix: tr(language, '/ người / tháng', '/ user / month'),
+       desc: tr(language, 'Gói cá nhân leader cho nhóm không giới hạn.', 'Personal leader plan for unlimited owned teams.'),
+       cta: tr(language, 'Chọn Pro Max', 'Choose Pro Max'),
       features: [
-        tr(language, 'Bao gồm Pro Group cho cả lớp', 'Includes Pro Group for the whole class'),
-        tr(language, 'GV quản lý tất cả nhóm', 'Lecturer manages every team'),
-        tr(language, 'Xuất báo cáo và bảng điểm', 'Export reports and grade sheets'),
+         tr(language, 'Bao gồm toàn bộ Pro Group', 'Includes all Pro Group features'),
+         tr(language, 'Tạo nhóm không giới hạn', 'Create unlimited teams'),
+         tr(language, 'Dashboard đa project', 'Multi-project dashboard'),
       ],
     },
   ];

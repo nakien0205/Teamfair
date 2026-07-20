@@ -2,6 +2,8 @@ import { useTeam } from '@/context/TeamContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download } from 'lucide-react';
+import { useEntitlements } from '@/context/EntitlementContext';
+import { hasProGroupFeatures } from '@/lib/billing';
 
 const getGrade = (score: number): string => {
   if (score >= 8.5) return 'A';
@@ -14,6 +16,7 @@ const getGrade = (score: number): string => {
 const ExportReport = () => {
   const { groups, currentGroupIndex } = useTeam();
   const { toast } = useToast();
+  const { plan } = useEntitlements();
   const group = groups[currentGroupIndex];
 
   const generateData = () => {
@@ -30,6 +33,7 @@ const ExportReport = () => {
   };
 
   const exportCSV = () => {
+    if (!hasProGroupFeatures(plan)) return;
     const data = generateData();
     const header = 'Student Name,Contribution,Rubric Score,Final Score\n';
     const rows = data.map(d => `${d.name},${d.contribution},${d.rubricScore},${d.finalGrade}`).join('\n');
@@ -44,6 +48,7 @@ const ExportReport = () => {
   };
 
   const exportExcel = () => {
+    if (!hasProGroupFeatures(plan)) return;
     // Simulate Excel export with tab-separated values
     const data = generateData();
     const header = 'Student Name\tContribution\tRubric Score\tFinal Score\n';

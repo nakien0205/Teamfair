@@ -959,7 +959,7 @@ export async function createPersistedGroup(projectName: string, userId: string, 
   const isLecturer = creatorRole === "lecturer" || creatorRole === "admin";
   const { data, error } = await supabase
     .from("groups")
-    .insert({ project_name: projectName, lecturer_id: isLecturer ? userId : null })
+    .insert({ project_name: projectName, lecturer_id: isLecturer ? userId : null, owner_id: userId })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

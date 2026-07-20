@@ -1,320 +1,166 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Check, Star, X } from 'lucide-react';
-import Swal from 'sweetalert2'; // Thư viện popup thông báo xịn mịn
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Check, Star, X } from "lucide-react";
+import Swal from "sweetalert2";
+import { PRO_GROUP_PRICE_VND, PRO_MAX_PRICE_VND, type BillingPlan } from "@/lib/billing";
+import { useAuth } from "@/context/AuthContext";
+import { useEntitlements } from "@/context/EntitlementContext";
 
-type PricingPlan = 'free' | 'pro_group' | 'pro_max';
+type PricingPlan = Exclude<BillingPlan, "free"> | "free";
 
-interface Plan {
+type Plan = {
   id: PricingPlan;
   name: string;
-  nameVi: string;
   price: number;
-  priceVi: string;
   cycle: string;
-  cycleVi: string;
   popular?: boolean;
   features: string[];
-  featuresVi: string[];
-}
+};
+
+type CheckoutResponse = {
+  ok: true;
+  data: { orderId: string; orderReference: string; amount: number; qrUrl: string };
+};
 
 const PLANS: Plan[] = [
   {
-    id: 'free',
-    name: 'Free',
-    nameVi: 'Miễn phí',
+    id: "free",
+    name: "Miễn phí",
     price: 0,
-    priceVi: '0đ',
-    cycle: '/month',
-    cycleVi: '/tháng',
-    features: [
-      'Create 1 group, max 6 members',
-      'Max 20 tasks/group',
-      'Basic task assignment & progress tracking',
-      'Task submission on platform',
-      'Basic work calendar',
-      'Connect 1 lecturer for results',
-      'AI task suggestions & analysis',
-      'Detailed performance charts',
-    ],
-    featuresVi: [
-      'Tạo 1 nhóm, tối đa 6 thành viên',
-      'Tối đa 20 task/nhóm',
-      'Phân công & theo dõi tiến độ cơ bản',
-      'Submit task trên nền tảng',
-      'Lịch làm việc (calendar cơ bản)',
-      'Kết nối 1 giảng viên xem kết quả',
-      'AI gợi ý task & phân tích',
-      'Biểu đồ hiệu suất chi tiết',
-    ],
+    cycle: "mãi miễn phí",
+    features: ["1 nhóm sở hữu, tối đa 6 thành viên", "Tối đa 20 task/nhóm", "200 MB storage/nhóm", "Task, deadline và calendar cơ bản"],
   },
   {
-    id: 'pro_group',
-    name: 'Pro Group',
-    nameVi: 'Pro Group',
-    price: 2000,
-    priceVi: '2.000đ',
-    cycle: '/group/month',
-    cycleVi: '/nhóm/tháng',
+    id: "pro_group",
+    name: "Pro Group",
+    price: PRO_GROUP_PRICE_VND,
+    cycle: "/người/tháng",
     popular: true,
-    features: [
-      'Unlimited members (max 30)',
-      'Unlimited tasks & projects',
-      'AI task suggestions & progress analysis',
-      'Individual contribution charts',
-      'Real-time lecturer integration',
-      'Export group PDF reports',
-      'Advanced work calendar + reminders',
-      '5GB file storage/group',
-      'Advanced AI summarization',
-      'Multi-project dashboard',
-    ],
-    featuresVi: [
-      'Không giới hạn thành viên (tối đa 30)',
-      'Không giới hạn task & project',
-      'AI gợi ý task & phân tích tiến độ',
-      'Biểu đồ đóng góp cá nhân',
-      'Tích hợp GV xem real-time',
-      'Xuất báo cáo nhóm PDF',
-      'Lịch làm việc nâng cao + reminder',
-      'Storage file 5GB/nhóm',
-      'AI tóm tắt thông minh (Advanced)',
-      'Multi-project dashboard',
-    ],
+    features: ["Dành riêng cho tài khoản đã trả phí", "Nhóm bạn sở hữu: tối đa 30 thành viên", "Task không giới hạn, storage 5 GB", "Analytics, export và AI nâng cao"],
   },
   {
-    id: 'pro_max',
-    name: 'Pro Max',
-    nameVi: 'Pro Max',
-    price: 129000,
-    priceVi: '129.000đ',
-    cycle: '/group/month',
-    cycleVi: '/nhóm/tháng',
-    features: [
-      'All Pro Group features',
-      'Unlimited parallel projects',
-      'Advanced AI summarization',
-      'AI bottleneck analysis & reallocation suggestions',
-      'Multi-project leader dashboard',
-      '20GB file storage/group',
-      'Priority support',
-      'Custom group branding',
-    ],
-    featuresVi: [
-      'Tất cả tính năng Pro Group',
-      'Nhiều project song song (không giới hạn)',
-      'AI tóm tắt thông minh (Advanced)',
-      'AI phân tích bottleneck & đề xuất phân công lại',
-      'Dashboard multi-project cho leader',
-      'Storage 20GB/nhóm',
-      'Priority support',
-      'Custom branding nhóm',
-    ],
+    id: "pro_max",
+    name: "Pro Max",
+    price: PRO_MAX_PRICE_VND,
+    cycle: "/người/tháng",
+    features: ["Bao gồm toàn bộ Pro Group", "Tạo nhóm không giới hạn", "Dashboard đa project", "Storage 20 GB/nhóm"],
   },
 ];
 
+const currency = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
+
 export default function Checkout() {
-  const [loading, setLoading] = useState(false);
-  const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<PricingPlan | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<CheckoutResponse["data"] | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [qrValue, setQrValue] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
-  
-  const [language] = useState<'vi' | 'en'>('vi'); 
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { plan: activePlan, refreshEntitlements } = useEntitlements();
 
-  // LUỒNG REALTIME: Lắng nghe trạng thái thay đổi ngầm từ Supabase
   useEffect(() => {
-    if (!currentOrderId) return;
-
-    const channel = supabase
-      .channel(`order-status-${currentOrderId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `order_id=eq.${currentOrderId}`,
-        },
-        (payload) => {
-          if (
-            payload.new.status === 'PAID' ||
-            payload.new.status === 'success'
-          ) {
-            setError(null);
-            setShowQrModal(false); // 1. Tự đóng hộp thoại QR
-
-            // Tìm thông tin tên gói tiếng Việt vừa thanh toán dựa vào plan_id từ DB trả ra
-            const matchedPlan = PLANS.find(p => p.id === payload.new.plan_id);
-            const planName = matchedPlan ? matchedPlan.nameVi : 'Gói dịch vụ';
-
-            // 2. Kích hoạt Popup thông báo đăng ký thành công hoành tráng
-            Swal.fire({
-              title: '🎉 Thanh toán thành công!',
-              html: `Chúc mừng bạn đã đăng ký thành công gói <strong>${planName}</strong>.<br/>Hệ thống đang đưa bạn quay lại giao diện chính.`,
-              icon: 'success',
-              timer: 3000, // Thông báo chạy trong 3 giây
-              timerProgressBar: true,
-              showConfirmButton: false,
-              allowOutsideClick: false
-            }).then(() => {
-              // 3. Trả người dùng về trang giao diện sinh viên
-              navigate('/dashboard-student');
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+    if (!currentOrder) return;
+    let completed = false;
+    const checkOrder = async () => {
+      const { data, error: statusError } = await supabase
+        .from("orders")
+        .select("status,plan_id")
+        .eq("id", currentOrder.orderId)
+        .maybeSingle();
+      if (statusError || !data || data.status !== "PAID" || completed) return;
+      completed = true;
+      await refreshEntitlements();
+      setShowQrModal(false);
+      const matchedPlan = PLANS.find((item) => item.id === data.plan_id);
+      await Swal.fire({
+        title: "Thanh toán thành công!",
+        text: `Gói ${matchedPlan?.name || "dịch vụ"} đã được kích hoạt trong 30 ngày.`,
+        icon: "success",
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+      });
+      navigate("/student/dashboard");
     };
-  }, [currentOrderId, navigate, selectedPlan]);
+    void checkOrder();
+    const timer = window.setInterval(() => void checkOrder(), 3000);
+    return () => window.clearInterval(timer);
+  }, [currentOrder, navigate, refreshEntitlements]);
 
   const handlePayment = async (plan: Plan) => {
-    if (plan.id === 'free') {
-      navigate('/dashboard-student');
+    if (plan.id === "free") {
+      navigate(user ? "/student/dashboard" : "/login");
+      return;
+    }
+    if (!user) {
+      navigate("/login");
       return;
     }
 
-    setLoading(true);
+    setLoadingPlan(plan.id);
     setError(null);
-
     try {
-      const orderId = Math.floor(100000 + Math.random() * 900000);
-      
-      const { error: dbError } = await supabase
-        .from('orders')
-        .insert([
-          { order_id: orderId, plan_id: plan.id, amount: plan.price, status: 'PENDING' }
-        ]);
-
-      if (dbError) throw dbError;
-
-      const BANK_ID = 'TPB'; 
-      const ACCOUNT_NO = '03170155756'; 
-      const ACCOUNT_NAME = 'TRUONG MONG HUYEN'; 
-      const MEMO = `TF${orderId}`; 
-
-      const vietQrUrl = `https://api.vietqr.io/${BANK_ID}/${ACCOUNT_NO}/${plan.price}/${encodeURIComponent(MEMO)}/qr_only.png?accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
-      
-      setCurrentOrderId(orderId);
+      const { data, error: invokeError } = await supabase.functions.invoke<CheckoutResponse>("billing-api", {
+        body: { planId: plan.id },
+      });
+      if (invokeError || !data?.ok) throw invokeError ?? new Error("Could not create payment order.");
+      setCurrentOrder(data.data);
       setSelectedPlan(plan);
-      setQrValue(vietQrUrl);
-      setShowQrModal(true); 
-
-    } catch (err) {
-      console.error('Payment error:', err);
-      setError(language === 'vi' ? 'Lỗi tạo đơn hàng.' : 'Order initialization error');
+      setShowQrModal(true);
+    } catch (paymentError) {
+      console.error("Payment order creation failed:", paymentError);
+      setError("Không thể tạo đơn thanh toán. Vui lòng thử lại sau.");
     } finally {
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {language === 'vi' ? 'Chọn gói dành cho bạn' : 'Choose your plan'}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {language === 'vi' ? 'Nâng cấp để mở khóa các tính năng cao cấp' : 'Upgrade to unlock premium features'}
-          </p>
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-12 text-center">
+          <h1 className="mb-4 text-4xl font-bold text-gray-900">Chọn gói dành cho bạn</h1>
+          <p className="text-lg text-gray-600">Pro là quyền cá nhân. Thành viên khác trong cùng nhóm không tự nhận quyền Pro.</p>
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
-          {PLANS.map((plan) => (
-            <div key={plan.id} className={`relative transition-transform duration-300 ${plan.popular ? 'md:scale-105' : ''}`}>
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-current" />
-                    {language === 'vi' ? 'Phổ biến nhất' : 'Most Popular'}
-                  </span>
-                </div>
-              )}
-
-              <Card className={`h-full flex flex-col ${plan.popular ? 'border-amber-500 border-2 shadow-lg' : 'border-gray-200'}`}>
-                <CardHeader>
-                  <CardTitle className="text-2xl">{language === 'vi' ? plan.nameVi : plan.name}</CardTitle>
-                  <div className="mt-4">
-                    <div className="text-4xl font-bold text-gray-900">{language === 'vi' ? plan.priceVi : `$${(plan.price / 23000).toFixed(2)}`}</div>
-                    <div className="text-sm text-gray-600 mt-2">{language === 'vi' ? plan.cycleVi : plan.cycle}</div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex-1 flex flex-col">
-                  <ul className="space-y-3 mb-6 flex-1">
-                    {(language === 'vi' ? plan.featuresVi : plan.features).map((feature, idx) => (
-                      <li key={idx} className="flex gap-3 text-sm">
-                        <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    onClick={() => handlePayment(plan)}
-                    disabled={loading}
-                    className={`w-full ${plan.popular ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600' : ''}`}
-                    size="lg"
-                  >
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : plan.id === 'free' ? (
-                      language === 'vi' ? 'Sử dụng miễn phí' : 'Use Free'
-                    ) : (
-                      language === 'vi' ? 'Thanh toán ngay' : 'Upgrade Now'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
+        <div className="mb-12 grid gap-8 md:grid-cols-3">
+          {PLANS.map((plan) => {
+            const isCurrent = activePlan === plan.id;
+            return (
+              <div key={plan.id} className={`relative transition-transform duration-300 ${plan.popular ? "md:scale-105" : ""}`}>
+                {plan.popular && <div className="absolute -top-4 left-1/2 z-10 -translate-x-1/2"><span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1 text-sm font-semibold text-white"><Star className="h-4 w-4 fill-current" />Phổ biến nhất</span></div>}
+                <Card className={`flex h-full flex-col ${plan.popular ? "border-2 border-amber-500 shadow-lg" : "border-gray-200"}`}>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    <div className="mt-4"><div className="text-4xl font-bold text-gray-900">{plan.price === 0 ? "0đ" : `${currency(plan.price)}đ`}</div><div className="mt-2 text-sm text-gray-600">{plan.cycle}</div></div>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col">
+                    <ul className="mb-6 flex-1 space-y-3">{plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm"><Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" /><span className="text-gray-700">{feature}</span></li>)}</ul>
+                    <Button onClick={() => void handlePayment(plan)} disabled={loadingPlan !== null || isCurrent} className={`w-full ${plan.popular ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" : ""}`} size="lg">
+                      {loadingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isCurrent ? "Đang sử dụng" : plan.id === "free" ? "Sử dụng miễn phí" : "Thanh toán ngay"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="max-w-md mx-auto p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-6 text-center">
-            {error}
-          </div>
-        )}
+        {error && <div className="mx-auto mb-6 max-w-md rounded-lg border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700">{error}</div>}
 
-        {/* POPUP MODAL HIỂN THỊ MÃ QR */}
-        {showQrModal && selectedPlan && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 relative shadow-2xl text-center">
-              <button 
-                onClick={() => setShowQrModal(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
-              
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Quét mã thanh toán</h3>
-              <p className="text-sm text-gray-500 mb-4">Gói dịch vụ: <span className="font-semibold text-gray-800">{selectedPlan.nameVi}</span></p>
-              
-              <div className="bg-slate-50 p-4 rounded-xl inline-block mb-4 border border-gray-100">
-                <img src={qrValue} alt="VietQR Thanh Toan" className="w-64 h-64 mx-auto object-contain" />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-left text-xs text-blue-800 space-y-1 mb-4">
-                <p><strong>Số tiền:</strong> {selectedPlan.priceVi}</p>
-                <p><strong>Nội dung CK bắt buộc:</strong> <span className="text-red-600 font-bold bg-red-50 px-1 rounded">TF{currentOrderId}</span></p>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-sm text-amber-600 font-medium animate-pulse">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Đang đợi hệ thống nhận tiền đơn hàng #{currentOrderId}...
-              </div>
+        {showQrModal && selectedPlan && currentOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+              <button onClick={() => setShowQrModal(false)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600" aria-label="Đóng"><X className="h-6 w-6" /></button>
+              <h3 className="mb-2 text-xl font-bold text-gray-900">Quét mã thanh toán</h3>
+              <p className="mb-4 text-sm text-gray-500">Gói: <span className="font-semibold text-gray-800">{selectedPlan.name}</span></p>
+              <div className="mb-4 inline-block rounded-xl border border-gray-100 bg-slate-50 p-4"><img src={currentOrder.qrUrl} alt="VietQR thanh toán" className="mx-auto h-64 w-64 object-contain" /></div>
+              <div className="mb-4 space-y-1 rounded-xl border border-blue-100 bg-blue-50 p-3 text-left text-xs text-blue-800"><p><strong>Số tiền:</strong> {currency(currentOrder.amount)}đ</p><p><strong>Nội dung CK:</strong> <span className="rounded bg-red-50 px-1 font-bold text-red-600">{currentOrder.orderReference}</span></p></div>
+              <div className="flex items-center justify-center gap-2 text-sm font-medium text-amber-600"><Loader2 className="h-4 w-4 animate-spin" />Đang đợi xác nhận thanh toán...</div>
             </div>
           </div>
         )}

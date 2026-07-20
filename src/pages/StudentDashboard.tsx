@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, CheckCircle, Play, Brain, ArrowLeftRight, Clock, Star, Flag, LayoutGrid, CalendarDays, Scale, FileText, Activity, Sparkles, Folder, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
+import { PremiumGate } from '@/components/PremiumGate';
 import DashboardHeader from '@/components/DashboardHeader';
 import DashboardShell from '@/components/DashboardShell';
 import DashboardSidebar from '@/components/DashboardSidebar';
@@ -356,6 +357,7 @@ const StudentDashboard = () => {
         ) : null}
 
         {activeSection === 'fairness' ? (
+          <PremiumGate>
           <div className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
               <section className="bg-card rounded-xl p-6 shadow-card border border-border">
@@ -498,6 +500,7 @@ const StudentDashboard = () => {
               )}
             </section>
           </div>
+          </PremiumGate>
         ) : null}
 
         {activeSection === 'materials' ? (

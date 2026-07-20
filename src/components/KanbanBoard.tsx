@@ -14,6 +14,8 @@ import { STUDENT_TASK_PROGRESS_MESSAGES, canStudentStartTask } from '@/lib/stude
 import { useAuth } from '@/context/AuthContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNotifications } from '@/context/NotificationContext';
+import { useEntitlements } from '@/context/EntitlementContext';
+import { hasProGroupFeatures } from '@/lib/billing';
 import { supabase } from '@/lib/supabaseClient';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
@@ -50,6 +52,8 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
   const { toast } = useToast();
   const { language } = useLanguage();
   const { sendNotification } = useNotifications();
+  const { plan } = useEntitlements();
+  const canUsePriority = hasProGroupFeatures(plan);
   const [createOpen, setCreateOpen] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium' as 'Low' | 'Medium' | 'High', contributionPercent: 10 });
   const [notifyTeam, setNotifyTeam] = useState(false);
@@ -82,7 +86,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
       toast({ title: tr(language, 'Lỗi', 'Error'), description: tr(language, 'Vui lòng điền đầy đủ', 'Please fill in all required fields'), variant: 'destructive' });
       return;
     }
-    addTask({ ...newTask });
+    addTask({ ...newTask, priority: canUsePriority ? newTask.priority : 'Medium' });
     if (notifyTeam) {
       members
         .filter(m => m.id ? m.id !== user?.id : m.name !== currentUserName)
@@ -247,7 +251,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                   </div>
                   <div className="space-y-1.5">
                     <Label className="font-medium">{tr(language, 'Ưu tiên', 'Priority')}</Label>
-                    <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))}>
+                    <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))} disabled={!canUsePriority}>
                       <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
                         <SelectValue />
                       </SelectTrigger>
@@ -257,6 +261,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                         <SelectItem value="High">{tr(language, 'Cao', 'High')}</SelectItem>
                       </SelectContent>
                     </Select>
+                    {!canUsePriority && <p className="text-xs text-amber-700">Pro Group mở khóa độ ưu tiên task.</p>}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 py-2 border-t border-slate-100 mt-2">
@@ -343,7 +348,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                         <Clock className="h-3 w-3" /> {t.deadline}
                       </span>
                     )}
-                    {t.priority && (
+                    {canUsePriority && t.priority && (
                       <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[t.priority]}`}>{getPriorityLabel(t.priority)}</span>
                     )}
                   </div>

@@ -54,6 +54,7 @@ import LeaderProgress from "./pages/LeaderProgress";
 import ProjectCalendar from "@/components/ProjectCalendar";
 import GroupInvitePage from "./pages/GroupInvitePage";
 import Checkout from "./pages/Checkout";
+import { EntitlementProvider } from "./context/EntitlementContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -82,8 +83,9 @@ const App = () => (
       <TooltipProvider>
         <LanguageProvider>
           <AuthProvider>
-            <TeamProvider>
-              <NotificationProvider>
+            <EntitlementProvider>
+              <TeamProvider>
+                <NotificationProvider>
                 <Toaster />
                 <Sonner />
                 <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
@@ -168,8 +170,9 @@ const App = () => (
                     <Route path="/checkout" element={<Checkout />} />
                   </Routes>
                 </BrowserRouter>
-              </NotificationProvider>
-            </TeamProvider>
+                </NotificationProvider>
+              </TeamProvider>
+            </EntitlementProvider>
           </AuthProvider>
         </LanguageProvider>
       </TooltipProvider>
