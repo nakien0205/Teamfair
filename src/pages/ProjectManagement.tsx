@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useTeam, type Group, type MemberStat } from "@/context/TeamContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -20,12 +21,16 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 import { Task } from "@/context/TeamContext";
 
+export function isExactProjectNameConfirmation(typedName: string, projectName: string | undefined): boolean {
+  return Boolean(projectName) && typedName === projectName;
+}
+
 const ProjectManagement: React.FC = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { groups, setCurrentGroupIndex, createProject, joinProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
+  const { groups, setCurrentGroupIndex, createProject, joinProject, deleteProject, currentUserName, dataLoading, pendingJoinRequests, fetchPendingJoinRequests, approveJoinRequest, rejectJoinRequest } = useTeam();
   const { user, profile, signOut, updateProfileName } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
 
@@ -67,6 +72,10 @@ const ProjectManagement: React.FC = () => {
   const [projectName, setProjectName] = useState<string>("");
   const [projectIdInput, setProjectIdInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [projectPendingDeletion, setProjectPendingDeletion] = useState<Group | null>(null);
+  const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState("");
+  const [deleteProjectLoading, setDeleteProjectLoading] = useState(false);
+  const [deleteProjectError, setDeleteProjectError] = useState<string | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [dismissedFreestyle, setDismissedFreestyle] = useState<boolean>(false);
@@ -645,6 +654,45 @@ const ProjectManagement: React.FC = () => {
     }
 
     return "Member";
+  };
+
+  const canRequestProjectDeletion = (group: Group) => Boolean(
+    user?.id && (
+      profile?.role === "admin"
+      || group.owner_id === user.id
+      || group.lecturer_id === user.id
+    ),
+  );
+
+  const closeProjectDeletionDialog = () => {
+    if (deleteProjectLoading) return;
+    setProjectPendingDeletion(null);
+    setDeleteProjectConfirmation("");
+    setDeleteProjectError(null);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectPendingDeletion || !isExactProjectNameConfirmation(deleteProjectConfirmation, projectPendingDeletion.name)) return;
+
+    setDeleteProjectLoading(true);
+    setDeleteProjectError(null);
+    try {
+      await deleteProject(projectPendingDeletion.id, deleteProjectConfirmation);
+      setProjectPendingDeletion(null);
+      setDeleteProjectConfirmation("");
+      toast({
+        title: tr(language, "Đã xóa dự án", "Project deleted"),
+        description: tr(language, "Dự án và dữ liệu ứng dụng liên quan đã bị xóa. Tệp trong Storage có thể vẫn còn.", "The project and related application records were deleted. Storage files may remain."),
+      });
+    } catch {
+      setDeleteProjectError(tr(
+        language,
+        "Không thể xóa dự án. Hãy kiểm tra tên dự án và quyền của bạn rồi thử lại.",
+        "The project could not be deleted. Check the project name and your access, then try again.",
+      ));
+    } finally {
+      setDeleteProjectLoading(false);
+    }
   };
 
   const getProjectColor = (id: string) => {
@@ -2125,6 +2173,21 @@ const ProjectManagement: React.FC = () => {
                           {tr(language, "Vào Workspace", "Launch Workspace")}
                           <ArrowLeft className="h-4 w-4 rotate-180 transition-transform duration-300 group-hover/launch:translate-x-1" />
                         </Button>
+                        {canRequestProjectDeletion(group) && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setProjectPendingDeletion(group);
+                              setDeleteProjectConfirmation("");
+                              setDeleteProjectError(null);
+                            }}
+                            className="w-full text-rose-300 hover:bg-rose-950/40 hover:text-rose-200"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {tr(language, "Xóa dự án", "Delete project")}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -2356,6 +2419,50 @@ const ProjectManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(projectPendingDeletion)} onOpenChange={(open) => !open && closeProjectDeletionDialog()}>
+        <AlertDialogContent className="border-rose-900/60 bg-slate-950 text-slate-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tr(language, "Xóa vĩnh viễn dự án", "Permanently delete project")}</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-slate-300">
+              <span className="block">
+                {tr(language, "Thao tác này không thể hoàn tác. Dự án và các bản ghi ứng dụng liên quan sẽ bị xóa theo quy tắc cơ sở dữ liệu.", "This cannot be undone. The project and related application records will be deleted according to database rules.")}
+              </span>
+              <span className="block text-amber-200">
+                {tr(language, "Cảnh báo: các tệp trong Storage không được bảo đảm xóa vì chúng không có liên kết khóa ngoại với dự án.", "Warning: Storage files are not guaranteed to be removed because they are not foreign-keyed to this project.")}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-project-confirmation">
+              {tr(language, `Nhập chính xác “${projectPendingDeletion?.name ?? ""}” để xác nhận`, `Type “${projectPendingDeletion?.name ?? ""}” exactly to confirm`)}
+            </Label>
+            <Input
+              id="delete-project-confirmation"
+              value={deleteProjectConfirmation}
+              onChange={(event) => setDeleteProjectConfirmation(event.target.value)}
+              disabled={deleteProjectLoading}
+              autoComplete="off"
+            />
+            {deleteProjectError && <p role="alert" className="text-sm text-rose-300">{deleteProjectError}</p>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteProjectLoading} onClick={closeProjectDeletionDialog}>
+              {tr(language, "Hủy", "Cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteProjectLoading || !isExactProjectNameConfirmation(deleteProjectConfirmation, projectPendingDeletion?.name)}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteProject();
+              }}
+              className="bg-rose-700 hover:bg-rose-600"
+            >
+              {deleteProjectLoading ? tr(language, "Đang xóa...", "Deleting...") : tr(language, "Xóa vĩnh viễn", "Delete permanently")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* UID MEMBER ADD MODAL */}
       <Dialog open={isUidAddOpen} onOpenChange={(open) => !searchLoading && setIsUidAddOpen(open)}>
