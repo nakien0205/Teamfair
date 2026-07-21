@@ -17,10 +17,14 @@ export type PeerReviewTarget = {
   id: string;
   fullName: string;
   role: "Leader" | "Member";
+  periodTaskId?: string;
+  taskTitle?: string;
+  taskSnapshot?: Record<string, unknown>;
 };
 
 export type PeerReviewInput = {
   revieweeId: string;
+  periodTaskId?: string;
   completionScore: number;
   deadlineScore: number;
   collaborationScore: number;
@@ -65,6 +69,14 @@ type DbPeerReviewStatusRow = {
   submitted_at: string;
 };
 
+type DbPeerReviewPeriodTask = {
+  id: string;
+  reviewee_id: string;
+  task_title: string;
+  task_snapshot: Record<string, unknown>;
+  users?: { full_name?: string | null } | null;
+};
+
 export function getPeerReviewTargets(group: Group | undefined, currentUserId?: string | null): PeerReviewTarget[] {
   if (!group) return [];
   return group.members
@@ -74,6 +86,13 @@ export function getPeerReviewTargets(group: Group | undefined, currentUserId?: s
       fullName: member.name,
       role: member.role === "Leader" ? "Leader" : "Member",
     }));
+}
+
+export function getTaskScopedPeerReviewTargets(
+  periodTasks: Array<Pick<PeerReviewTarget, "id" | "fullName" | "role" | "periodTaskId" | "taskTitle" | "taskSnapshot">>,
+  currentUserId?: string | null,
+): PeerReviewTarget[] {
+  return periodTasks.filter(target => target.id !== currentUserId && Boolean(target.periodTaskId));
 }
 
 export function validatePeerReviewSubmission(params: {
@@ -116,14 +135,18 @@ export function validatePeerReviewSubmission(params: {
       return { ok: false, message: "Bạn không thể đánh giá chính mình." };
     }
 
-    if (!params.targets.some(target => target.id === review.revieweeId)) {
+    const target = params.targets.find(candidate => candidate.id === review.revieweeId && (
+      !candidate.periodTaskId || candidate.periodTaskId === review.periodTaskId
+    ));
+    if (!target) {
       return { ok: false, message: "Vui lòng đánh giá đầy đủ tất cả thành viên." };
     }
 
-    if (seen.has(review.revieweeId)) {
+    const reviewKey = review.periodTaskId || review.revieweeId;
+    if (seen.has(reviewKey)) {
       return { ok: false, message: "Vui lòng đánh giá đầy đủ tất cả thành viên." };
     }
-    seen.add(review.revieweeId);
+    seen.add(reviewKey);
 
     const parsed = peerReviewFormSchema.safeParse(review);
     if (!parsed.success) {
@@ -207,6 +230,24 @@ export async function getPeerReviewStatus(periodId: string, reviewerId: string):
   };
 }
 
+export async function listPeerReviewPeriodTargets(periodId: string, currentUserId?: string | null): Promise<PeerReviewTarget[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("peer_review_period_tasks")
+    .select("id, reviewee_id, task_title, task_snapshot, users:reviewee_id(full_name)")
+    .eq("period_id", periodId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return getTaskScopedPeerReviewTargets((data || []).map((row: DbPeerReviewPeriodTask) => ({
+    id: row.reviewee_id,
+    fullName: row.users?.full_name?.trim() || "Thành viên",
+    role: "Member" as const,
+    periodTaskId: row.id,
+    taskTitle: row.task_title,
+    taskSnapshot: row.task_snapshot,
+  })), currentUserId);
+}
+
 export async function getReceivedPeerReviewAverage(periodId: string | null, revieweeId: string): Promise<number | null> {
   if (!periodId || !isSupabaseConfigured) return null;
   const { data, error } = await supabase.rpc("get_peer_review_average", {
@@ -242,21 +283,21 @@ export async function submitPeerReviews(params: {
 
   if (!isSupabaseConfigured) return;
 
-  const rows = params.reviews.map(review => ({
-    group_id: params.groupId,
-    period_id: params.period.id,
-    reviewer_id: params.reviewerId,
-    reviewee_id: review.revieweeId,
-    completion_score: review.completionScore,
-    deadline_score: review.deadlineScore,
-    collaboration_score: review.collaborationScore,
-    responsiveness_score: review.responsivenessScore,
-    overall_score: review.overallScore,
-    comment: review.comment.trim() || null,
-    honesty_confirmed: params.honestyConfirmed,
-    conflict_flag: false,
-  }));
-
-  const { error } = await supabase.from("peer_reviews").insert(rows);
+  if (params.reviews.some(review => !review.periodTaskId)) {
+    throw new Error("Kỳ đánh giá này chưa có phạm vi task hợp lệ.");
+  }
+  const { error } = await supabase.rpc("submit_peer_review_bundle", {
+    p_period_id: params.period.id,
+    p_reviews: params.reviews.map(review => ({
+      period_task_id: review.periodTaskId,
+      completion_score: review.completionScore,
+      deadline_score: review.deadlineScore,
+      collaboration_score: review.collaborationScore,
+      responsiveness_score: review.responsivenessScore,
+      overall_score: review.overallScore,
+      comment: review.comment.trim(),
+      honesty_confirmed: params.honestyConfirmed,
+    })),
+  });
   if (error) throw new Error(error.message);
 }

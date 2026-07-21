@@ -649,6 +649,12 @@ const LecturerGroupsPage = () => {
           </div>
         )}
 
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => navigate(`/lecturer/groups/${selectedGroup.id}/peer-reviews`)}>
+            Đánh giá chéo theo task
+          </Button>
+        </div>
+
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DetailTab)} className="space-y-6">
           <TabsList className="flex h-auto w-full gap-2 overflow-x-auto rounded-[22px] border border-white/60 bg-white/70 p-1 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
             <TabsTrigger value="overview" className="whitespace-nowrap rounded-[18px] px-4 py-3 transition-all duration-300 ease-out data-[state=active]:animate-liquid-pop data-[state=active]:border-white/70 data-[state=active]:bg-gradient-to-br data-[state=active]:from-white data-[state=active]:to-indigo-50 data-[state=active]:text-indigo-900 data-[state=active]:shadow-[0_10px_28px_-18px_rgba(79,70,229,0.45)] hover:-translate-y-0.5">

@@ -44,6 +44,7 @@ import LecturerExportReportsPage from "./pages/LecturerExportReportsPage";
 import LecturerDocumentsPage from "./pages/LecturerDocumentsPage";
 import LecturerActivityPage from "./pages/LecturerActivityPage";
 import LecturerGradingProjectGroups from "./pages/LecturerGradingProjectGroups";
+import LecturerPeerReviews from "./pages/LecturerPeerReviews";
 
 import StudentLayout from "./layouts/StudentLayout";
 import StudentDocuments from "./pages/StudentDocuments";
@@ -136,6 +137,7 @@ const App = () => (
                       <Route path="dashboard" element={<LecturerDashboard />} />
                       <Route path="groups" element={<LecturerGroupsPage />} />
                       <Route path="groups/:groupId" element={<LecturerGroupsPage />} />
+                      <Route path="groups/:groupId/peer-reviews" element={<LecturerPeerReviews />} />
                       <Route path="progress" element={<LecturerProgressPage />} />
                       <Route path="reports" element={<LecturerReportsPage />} />
 

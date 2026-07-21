@@ -19,13 +19,14 @@ import { useTeam } from "@/context/TeamContext";
 import {
   getStudentPeerReviewActive,
   getStudentPeerReviewStatus,
+  getStudentPeerReviewTargets,
   submitStudentPeerReview,
 } from "@/lib/studentApi";
 import {
-  getPeerReviewTargets,
   type PeerReviewInput,
   type PeerReviewPeriod,
   type PeerReviewStatus,
+  type PeerReviewTarget,
 } from "@/lib/studentPeerReview";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,7 @@ const StudentPeerReview = () => {
   const [error, setError] = useState("");
 
   const group = groups[currentGroupIndex] || groups[0];
-  const targets = useMemo(() => getPeerReviewTargets(group, user?.id), [group, user?.id]);
+  const [targets, setTargets] = useState<PeerReviewTarget[]>([]);
   const selectedPeriod = useMemo(
     () => periods.find(period => period.id === selectedPeriodId) || null,
     [periods, selectedPeriodId],
@@ -136,6 +137,20 @@ const StudentPeerReview = () => {
     };
   }, [selectedPeriodId, user?.id]);
 
+  useEffect(() => {
+    if (!selectedPeriodId || !user?.id) {
+      setTargets([]);
+      return;
+    }
+    let cancelled = false;
+    void getStudentPeerReviewTargets(selectedPeriodId, user.id)
+      .then(data => { if (!cancelled) setTargets(data); })
+      .catch(fetchError => {
+        if (!cancelled) setError(fetchError instanceof Error ? fetchError.message : "Không thể tải phạm vi task đánh giá.");
+      });
+    return () => { cancelled = true; };
+  }, [selectedPeriodId, user?.id]);
+
   const handleScoreChange = (
     memberId: string,
     key: keyof ReviewDraft,
@@ -160,7 +175,8 @@ const StudentPeerReview = () => {
     try {
       const reviews: PeerReviewInput[] = targets.map(target => ({
         revieweeId: target.id,
-        ...(drafts[target.id] || emptyDraft()),
+        periodTaskId: target.periodTaskId,
+        ...(drafts[target.periodTaskId || target.id] || emptyDraft()),
       }));
 
       await submitStudentPeerReview({
@@ -301,7 +317,8 @@ const StudentPeerReview = () => {
 
               <div className="space-y-4">
                 {targets.map(target => {
-                  const draft = drafts[target.id] || emptyDraft();
+                  const draftKey = target.periodTaskId || target.id;
+                  const draft = drafts[draftKey] || emptyDraft();
                   const hasLowScore = [
                     draft.completionScore,
                     draft.deadlineScore,
@@ -311,13 +328,14 @@ const StudentPeerReview = () => {
                   ].some(score => score > 0 && score <= 2);
 
                   return (
-                    <Card key={target.id} className="rounded-3xl border-0 shadow-card">
+                    <Card key={draftKey} className="rounded-3xl border-0 shadow-card">
                       <CardHeader className="pb-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <CardTitle className="text-xl">{target.fullName}</CardTitle>
                           <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
                             {target.role === "Leader" ? "Nhóm trưởng" : "Thành viên"}
                           </Badge>
+                          {target.taskTitle ? <Badge variant="secondary">{target.taskTitle}</Badge> : null}
                         </div>
                         <CardDescription>
                           Đánh giá dựa trên quá trình làm việc thực tế, không dùng làm căn cứ duy nhất cho contribution.
@@ -338,7 +356,7 @@ const StudentPeerReview = () => {
                                       type="button"
                                       variant={selected ? "default" : "outline"}
                                       className={cn("h-auto rounded-2xl px-3 py-2 text-left", selected ? "" : "bg-background")}
-                                      onClick={() => handleScoreChange(target.id, item.key, score)}
+                                      onClick={() => handleScoreChange(draftKey, item.key, score)}
                                     >
                                       <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-xs">
                                         {score}
@@ -353,11 +371,11 @@ const StudentPeerReview = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor={`comment-${target.id}`}>Nhận xét cụ thể</Label>
+                          <Label htmlFor={`comment-${draftKey}`}>Nhận xét cụ thể</Label>
                           <Textarea
-                            id={`comment-${target.id}`}
+                            id={`comment-${draftKey}`}
                             value={draft.comment}
-                            onChange={event => handleScoreChange(target.id, "comment", event.target.value)}
+                            onChange={event => handleScoreChange(draftKey, "comment", event.target.value)}
                             placeholder="Mô tả ngắn gọn điểm mạnh, điểm cần cải thiện hoặc tình huống phối hợp trong nhóm..."
                             className="min-h-[120px] rounded-2xl"
                           />
