@@ -143,6 +143,19 @@ export interface Group {
   tasks: Task[];
   activityLog: ActivityLogEntry[];
   lecturer_id?: string;
+  owner_id?: string;
+}
+
+export function nextGroupIndexAfterDeletion(currentIndex: number, deletedIndex: number, groupCount: number): number {
+  const remainingCount = Math.max(groupCount - 1, 0);
+  if (remainingCount === 0) return 0;
+  if (deletedIndex >= 0 && deletedIndex < currentIndex) return currentIndex - 1;
+  return Math.min(currentIndex, remainingCount - 1);
+}
+
+export function clearLastProjectAfterDeletion(userId: string, projectId: string): void {
+  const key = `teamfair_last_project_${userId}`;
+  if (localStorage.getItem(key) === projectId) localStorage.removeItem(key);
 }
 
 export interface ProjectInvite {
@@ -208,7 +221,7 @@ interface TeamContextType {
   createProject: (projectName: string) => Promise<string>;
   createProjects: (projectNames: string[]) => Promise<Array<{ id: string; name: string }>>;
   joinProject: (inviteCode: string) => Promise<{ groupIndex?: number; groupName: string; status: "success" | "pending_approval" }>;
-  deleteProject: (id: string) => Promise<void>;
+  deleteProject: (id: string, confirmationName: string) => Promise<void>;
   currentUserName: string;
   connectionError: boolean;
   dataLoading: boolean;
@@ -1201,19 +1214,26 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [canPersist, currentUserName, scopeSnapshotForCurrentUser, user?.id]);
 
-  const deleteProject = useCallback(async (projectId: string) => {
+  const deleteProject = useCallback(async (projectId: string, confirmationName: string) => {
     if (canPersist && user?.id) {
-      await deletePersistedGroup(projectId);
-      const lastProjId = localStorage.getItem(`teamfair_last_project_${user.id}`);
-      if (lastProjId === projectId) {
-        localStorage.removeItem(`teamfair_last_project_${user.id}`);
-      }
-      await loadPersistedState();
+      await deletePersistedGroup(projectId, confirmationName);
+      clearLastProjectAfterDeletion(user.id, projectId);
+      const deletedIndex = groups.findIndex(group => group.id === projectId);
+      setGroups(previousGroups => previousGroups.filter(group => group.id !== projectId));
+      setMaterialsByGroupId(previous => {
+        const { [projectId]: _deleted, ...remaining } = previous;
+        return remaining;
+      });
+      setCalendarEventsByGroupId(previous => {
+        const { [projectId]: _deleted, ...remaining } = previous;
+        return remaining;
+      });
+      setCurrentGroupIndex(currentIndex => nextGroupIndexAfterDeletion(currentIndex, deletedIndex, groups.length));
     } else {
       setGroups(prev => prev.filter(g => g.id !== projectId));
       setCurrentGroupIndex(0);
     }
-  }, [canPersist, user?.id, loadPersistedState]);
+  }, [canPersist, groups, user?.id]);
 
   const applyAgentSnapshot = useCallback((snapshot: WorkspaceSnapshotJson) => {
     const state = deserializeSnapshotToTeamState(snapshot);

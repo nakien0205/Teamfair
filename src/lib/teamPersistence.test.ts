@@ -1,13 +1,38 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+
+vi.mock("./supabaseClient", () => ({
+  supabase: { rpc },
+}));
+
 import {
   buildTaskInsert,
   buildTaskUpdate,
   mapTeamRowsToSnapshot,
   taskStatusFromDb,
   taskStatusToDb,
+  deletePersistedGroup,
 } from "./teamPersistence";
 
 describe("teamPersistence", () => {
+  it("sends delete_project RPC with group ID and exact confirmation name", async () => {
+    rpc.mockResolvedValueOnce({ error: null });
+
+    await deletePersistedGroup("group-1", "Capstone");
+
+    expect(rpc).toHaveBeenCalledWith("delete_project", {
+      p_group_id: "group-1",
+      p_project_name: "Capstone",
+    });
+  });
+
+  it("preserves delete RPC errors for the caller", async () => {
+    rpc.mockResolvedValueOnce({ error: { message: "project_delete_denied" } });
+
+    await expect(deletePersistedGroup("group-1", "Capstone")).rejects.toThrow("project_delete_denied");
+  });
+
   it("maps task status values between UI and Supabase", () => {
     expect(taskStatusToDb("Todo")).toBe("todo");
     expect(taskStatusToDb("In Progress")).toBe("in_progress");

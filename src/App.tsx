@@ -9,6 +9,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import StudentWorkspace from "./pages/StudentDashboard";
 import StudentOverview from "./pages/StudentOverview";
 import StudentMyGroup from "./pages/StudentMyGroup";
@@ -93,6 +95,8 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     <Route path="/dashboard-student" element={<Navigate to="/student/dashboard" replace />} />
 

@@ -29,6 +29,7 @@ type DbGroup = {
   id: string;
   project_name: string;
   lecturer_id?: string;
+  owner_id?: string;
 };
 
 type DbMember = {
@@ -371,6 +372,7 @@ export function mapTeamRowsToSnapshot(rows: TeamRows): PersistedTeamSnapshot {
       tasks,
       activityLog,
       lecturer_id: groupRow.lecturer_id,
+      owner_id: groupRow.owner_id,
     };
   });
 
@@ -521,7 +523,7 @@ export async function loadPersistedTeamSnapshot(): Promise<PersistedTeamSnapshot
     calendarEvents,
   ] = await Promise.all([
     selectOrThrow<DbGroup[]>(
-      supabase.from("groups").select("id,project_name,lecturer_id").order("created_at", { ascending: true }),
+      supabase.from("groups").select("id,project_name,lecturer_id,owner_id").order("created_at", { ascending: true }),
     ),
     selectOrThrow<DbMember[]>(
       supabase.from("group_members").select("group_id,student_id,role,users:student_id(id,full_name,role)"),
@@ -983,11 +985,11 @@ export async function joinPersistedGroup(groupId: string, userId: string, role?:
   if (error) throw new Error(error.message);
 }
 
-export async function deletePersistedGroup(groupId: string): Promise<void> {
-  const { error } = await supabase
-    .from("groups")
-    .delete()
-    .eq("id", groupId);
+export async function deletePersistedGroup(groupId: string, confirmationName: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_project", {
+    p_group_id: groupId,
+    p_project_name: confirmationName,
+  });
   if (error) throw new Error(error.message);
 }
 
