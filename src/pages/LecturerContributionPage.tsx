@@ -2,6 +2,7 @@ import { useTeam } from '@/context/TeamContext';
 import ContributionAnalytics from '@/components/ContributionAnalytics';
 import { tr } from '@/lib/i18n';
 import { useLanguage } from '@/context/LanguageContext';
+import { PremiumGate } from '@/components/PremiumGate';
 
 const LecturerContributionPage = () => {
   const { groups, currentGroupIndex } = useTeam();
@@ -12,7 +13,7 @@ const LecturerContributionPage = () => {
 
   return (
     <div className="space-y-6">
-      <section className="bg-card rounded-xl p-6 shadow-card border border-border">
+      <PremiumGate><section className="bg-card rounded-xl p-6 shadow-card border border-border">
         <h2 className="font-display text-lg font-semibold mb-4">
           {tr(language, 'Phân tích đóng góp', 'Contribution analytics')} — {group.name}
         </h2>
@@ -20,7 +21,7 @@ const LecturerContributionPage = () => {
           members={group.members}
           showFreeriderWarning
         />
-      </section>
+      </section></PremiumGate>
     </div>
   );
 };

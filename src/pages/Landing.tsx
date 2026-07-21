@@ -420,8 +420,8 @@ const Landing = () => {
     </div>
     <h3 className="text-2xl font-bold text-slate-900 mb-1">{language === "vi" ? "PRO GROUP" : "PRO GROUP"}</h3>
     <div className="flex flex-col mb-6 text-xs text-indigo-600 font-semibold">
-      <span className="text-lg font-bold text-indigo-600">{language === "vi" ? "69.000đ/nhóm/tháng" : "$3.5/team/month"}</span>
-      <span>{language === "vi" ? "~11.500đ/người (nhóm 6)" : "~$0.6/person (team of 6)"}</span>
+       <span className="text-lg font-bold text-indigo-600">{language === "vi" ? "69.000đ/người/tháng" : "$3.5/user/month"}</span>
+       <span>{language === "vi" ? "Chỉ tài khoản đã thanh toán được dùng tính năng Pro" : "Only the paid account receives Pro access"}</span>
     </div>
     <ul className="space-y-4">
       {[
@@ -498,8 +498,8 @@ const Landing = () => {
       {[
         /* --- BAO GỒM TOÀN BỘ PRO GROUP --- */
         { type: "section", text: language === "vi" ? "BAO GỒM TOÀN BỘ PRO GROUP" : "INCLUDES EVERYTHING IN PRO GROUP" },
-        { type: "check", text: language === "vi" ? "Tất cả tính năng Pro Group cho mọi nhóm" : "All Pro Group features for every team" },
-        { type: "check", text: language === "vi" ? "Thành viên trong nhóm không cần trả thêm" : "Team members pay no extra fees" },
+        { type: "check", text: language === "vi" ? "Tất cả tính năng Pro Group cho tài khoản của bạn" : "All Pro Group features for your account" },
+        { type: "check", text: language === "vi" ? "Thành viên khác không tự nhận quyền Pro" : "Other team members do not inherit Pro access" },
 
         /* --- QUẢN LÝ ĐA PROJECT --- */
         { type: "section", text: language === "vi" ? "QUẢN LÝ ĐA PROJECT" : "MULTI-PROJECT MANAGEMENT" },

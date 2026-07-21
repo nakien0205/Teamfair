@@ -10,6 +10,7 @@ import {
 } from "@/lib/studentFeedback";
 import {
   getPeerReviewStatus,
+  listPeerReviewPeriodTargets,
   getReceivedPeerReviewAverage,
   listActivePeerReviewPeriods,
   submitPeerReviews,
@@ -50,6 +51,10 @@ export async function getStudentPeerReviewActive(groupId: string): Promise<PeerR
 
 export async function getStudentPeerReviewStatus(periodId: string, reviewerId: string): Promise<PeerReviewStatus> {
   return getPeerReviewStatus(periodId, reviewerId);
+}
+
+export async function getStudentPeerReviewTargets(periodId: string, reviewerId?: string | null): Promise<PeerReviewTarget[]> {
+  return listPeerReviewPeriodTargets(periodId, reviewerId);
 }
 
 export async function submitStudentPeerReview(params: {

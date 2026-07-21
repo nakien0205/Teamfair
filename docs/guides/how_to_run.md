@@ -98,8 +98,8 @@ See [deployment_workflow.md](deployment_workflow.md) for the full Vercel/GitHub 
 1. Run every SQL migration above in Supabase, in order, if the database does not already have them.
 2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel project environment variables.
 3. Add `VITE_POSTHOG_KEY` and, if needed, `VITE_POSTHOG_HOST` to Vercel project environment variables to enable production analytics.
-4. Add the Edge Function secrets listed above in Supabase before deploying `team-api` and `delete-user-auth`.
-5. Deploy Supabase Edge Functions: `supabase functions deploy team-api --project-ref <project-ref>` and `supabase functions deploy delete-user-auth --project-ref <project-ref>`.
+4. Add Edge Function secrets before deploying billing: `PAYMENT_BANK_ID`, `PAYMENT_ACCOUNT_NO`, `PAYMENT_ACCOUNT_NAME`, and `SEPAY_WEBHOOK_SECRET`. Configure SePay webhook HMAC-SHA256; never use unauthenticated test bypass in production.
+5. Deploy Supabase Edge Functions: `supabase functions deploy team-api --project-ref <project-ref>`, `supabase functions deploy delete-user-auth --project-ref <project-ref>`, `supabase functions deploy billing-api --project-ref <project-ref>`, and `supabase functions deploy sepay-webhook --project-ref <project-ref>`.
 6. Push the code to GitHub.
 7. Let Vercel redeploy from GitHub.
 

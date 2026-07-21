@@ -44,6 +44,7 @@ import LecturerExportReportsPage from "./pages/LecturerExportReportsPage";
 import LecturerDocumentsPage from "./pages/LecturerDocumentsPage";
 import LecturerActivityPage from "./pages/LecturerActivityPage";
 import LecturerGradingProjectGroups from "./pages/LecturerGradingProjectGroups";
+import LecturerPeerReviews from "./pages/LecturerPeerReviews";
 
 import StudentLayout from "./layouts/StudentLayout";
 import StudentDocuments from "./pages/StudentDocuments";
@@ -54,6 +55,7 @@ import LeaderProgress from "./pages/LeaderProgress";
 import ProjectCalendar from "@/components/ProjectCalendar";
 import GroupInvitePage from "./pages/GroupInvitePage";
 import Checkout from "./pages/Checkout";
+import { EntitlementProvider } from "./context/EntitlementContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -82,8 +84,9 @@ const App = () => (
       <TooltipProvider>
         <LanguageProvider>
           <AuthProvider>
-            <TeamProvider>
-              <NotificationProvider>
+            <EntitlementProvider>
+              <TeamProvider>
+                <NotificationProvider>
                 <Toaster />
                 <Sonner />
                 <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
@@ -134,6 +137,7 @@ const App = () => (
                       <Route path="dashboard" element={<LecturerDashboard />} />
                       <Route path="groups" element={<LecturerGroupsPage />} />
                       <Route path="groups/:groupId" element={<LecturerGroupsPage />} />
+                      <Route path="groups/:groupId/peer-reviews" element={<LecturerPeerReviews />} />
                       <Route path="progress" element={<LecturerProgressPage />} />
                       <Route path="reports" element={<LecturerReportsPage />} />
 
@@ -168,8 +172,9 @@ const App = () => (
                     <Route path="/checkout" element={<Checkout />} />
                   </Routes>
                 </BrowserRouter>
-              </NotificationProvider>
-            </TeamProvider>
+                </NotificationProvider>
+              </TeamProvider>
+            </EntitlementProvider>
           </AuthProvider>
         </LanguageProvider>
       </TooltipProvider>
