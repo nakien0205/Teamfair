@@ -88,6 +88,7 @@ Order matters; examples in this repo:
 19. `20260604140000_api_layer_invite_security.sql` - tightens invite row visibility and adds service-only RPC helpers for atomic invite consumption and approval-required invite usage.
 20. `20260609135826_repair_pr7_security_policies.sql` - PR 7 security repair for student appeal storage policies, task submission assignment checks, peer review duplicate checks, student feedback sender/recipient scoping, staff appeal updates, and rubric grade RLS policies.
 21. `20260609221232_repair_invite_role_onboarding_rls.sql` - repairs invite/share visibility, resets invite and join-request RLS policies, keeps invite redemption service-only, fixes lecturer project scoping, and guards signup role/name completion.
+22. `20260720120000_account_billing_entitlements.sql` - creates payment orders and account subscriptions, adds entitlement RPCs, and applies billing-aware quotas.
 
 
 Enable **Email** and **Google** under **Authentication → Providers** in Supabase to match the login UI.
@@ -98,7 +99,7 @@ See [deployment_workflow.md](deployment_workflow.md) for the full Vercel/GitHub 
 1. Run every SQL migration above in Supabase, in order, if the database does not already have them.
 2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel project environment variables.
 3. Add `VITE_POSTHOG_KEY` and, if needed, `VITE_POSTHOG_HOST` to Vercel project environment variables to enable production analytics.
-4. Add Edge Function secrets before deploying billing: `PAYMENT_BANK_ID`, `PAYMENT_ACCOUNT_NO`, `PAYMENT_ACCOUNT_NAME`, and `SEPAY_WEBHOOK_SECRET`. Configure SePay webhook HMAC-SHA256; never use unauthenticated test bypass in production.
+4. Add Edge Function secrets before deploying billing: `PAYMENT_BANK_ID`, `PAYMENT_ACCOUNT_NO`, `PAYMENT_ACCOUNT_NAME`, `SEPAY_WEBHOOK_SECRET`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`. Configure SePay webhook HMAC-SHA256; never use unauthenticated test bypass in production.
 5. Deploy Supabase Edge Functions: `supabase functions deploy team-api --project-ref <project-ref>`, `supabase functions deploy delete-user-auth --project-ref <project-ref>`, `supabase functions deploy billing-api --project-ref <project-ref>`, and `supabase functions deploy sepay-webhook --project-ref <project-ref>`.
 6. Push the code to GitHub.
 7. Let Vercel redeploy from GitHub.
@@ -150,4 +151,3 @@ The student agent sidebar sends the current Supabase access token as an `Authori
 
 ### Windows Terminal Note
 If Vietnamese character parsing displays incorrectly in your terminal console, ensure your active terminal shell's stdout encoding is configured to UTF-8.
-
