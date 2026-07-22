@@ -1,0 +1,33 @@
+{
+  "phase": "phase-04",
+  "files": [
+    {
+      "path": "supabase/migrations/20260722400000_google_calendar_read_overlay.sql",
+      "description": "Private overlay schema storage and service-role RPCs"
+    },
+    {
+      "path": "supabase/functions/google-calendar-overlay/provider.ts",
+      "description": "Dependency-injected Google Calendar v3 events.list adapter and 410 error classification"
+    },
+    {
+      "path": "supabase/functions/google-calendar-overlay/handler.ts",
+      "description": "Pure request handler validating JWT owner, entitlement, connection generation, and CAS updates"
+    },
+    {
+      "path": "supabase/functions/google-calendar-overlay/index.ts",
+      "description": "Edge Function entrypoint connecting CORS, auth, and handler"
+    },
+    {
+      "path": "src/lib/googleCalendarOverlay.ts",
+      "description": "Browser client helper invoking Edge Function"
+    },
+    {
+      "path": "src/components/GoogleCalendarOverlay.tsx",
+      "description": "React UI overlay component rendering read-only events and state machine notices"
+    },
+    {
+      "path": "src/pages/ProjectManagement.tsx",
+      "description": "Global Calendar integration view"
+    }
+  ]
+}

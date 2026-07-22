@@ -1,0 +1,20 @@
+{
+  "phase": "phase-04",
+  "scenarios": [
+    {
+      "name": "forged_request_owner_override",
+      "attempt": "Caller includes targetUserId in POST body",
+      "outcome": "REJECTED (HTTP 400 - Unknown parameter)"
+    },
+    {
+      "name": "stale_generation_replay",
+      "attempt": "Client sends in-flight request after connection disconnect/reconnect",
+      "outcome": "DISCARDED (Pre-commit generation recheck invalidates fetch)"
+    },
+    {
+      "name": "phase_3_task_duplicate_rendering",
+      "attempt": "Google API returns event with teamfair_source === 'task'",
+      "outcome": "FILTERED (Omitted before storage and browser response)"
+    }
+  ]
+}
