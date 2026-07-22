@@ -10,9 +10,10 @@ const safeKey = supabaseAnonKey ?? "public-anon-key";
 
 export const supabase = createClient(safeUrl, safeKey);
 
-type RecoveryEventProof = { userId: string };
+type RecoveryEventProof = { userId: string; timestamp: number };
 
 let recoveryEventProof: RecoveryEventProof | null = null;
+const RECOVERY_PROOF_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
 // Register before React mounts. This preserves the provider-issued recovery
 // event even when Supabase consumes the URL fragment before ResetPassword is
@@ -20,7 +21,7 @@ let recoveryEventProof: RecoveryEventProof | null = null;
 if (isSupabaseConfigured) {
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY" && session?.user?.id) {
-      recoveryEventProof = { userId: session.user.id };
+      recoveryEventProof = { userId: session.user.id, timestamp: Date.now() };
     } else if (recoveryEventProof && session?.user?.id !== recoveryEventProof.userId) {
       recoveryEventProof = null;
     }
@@ -30,5 +31,10 @@ if (isSupabaseConfigured) {
 export function consumeRecoveryEventProof(): RecoveryEventProof | null {
   const proof = recoveryEventProof;
   recoveryEventProof = null;
+  if (!proof) return null;
+  if (Date.now() - proof.timestamp > RECOVERY_PROOF_MAX_AGE_MS) {
+    return null;
+  }
   return proof;
 }
+

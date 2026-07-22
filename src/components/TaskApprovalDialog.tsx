@@ -259,16 +259,18 @@ export default function TaskApprovalDialog({
               </div>
             </div>
 
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                {tr(language, "Độ ưu tiên", "Priority")}
-              </span>
-              <div>
-                <Badge variant="outline" className={`${priorityColor(task.priority)}`}>
-                  {task.priority || "Medium"}
-                </Badge>
+            {task.priority && (
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {tr(language, "Độ ưu tiên", "Priority")}
+                </span>
+                <div>
+                  <Badge variant="outline" className={`${priorityColor(task.priority)}`}>
+                    {task.priority}
+                  </Badge>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Section 2: Evidence Files */}

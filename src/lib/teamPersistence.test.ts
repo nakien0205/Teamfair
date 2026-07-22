@@ -71,6 +71,47 @@ describe("teamPersistence", () => {
     });
   });
 
+  it("persists blank priority as null and restores it as undefined", () => {
+    const insert = buildTaskInsert("group-1", {
+      name: "Research",
+      assignedTo: "Ada Lovelace",
+      assigneeId: "student-1",
+      status: "Todo",
+      contributionPercent: 40,
+      approved: false,
+      deadline: "2026-07-22",
+      priority: undefined,
+    });
+
+    expect(insert.priority).toBeNull();
+
+    const snapshot = mapTeamRowsToSnapshot({
+      groups: [{ id: "group-1", project_name: "Capstone" }],
+      members: [],
+      tasks: [{
+        id: "task-1",
+        group_id: "group-1",
+        title: "Research",
+        description: null,
+        assignee_id: null,
+        status: "todo",
+        weight: 4,
+        contribution_percent: 40,
+        approved: false,
+        deadline: "2026-07-22",
+        priority: null,
+        evidence: [],
+      }],
+      activityLogs: [],
+      reports: [],
+      materials: [],
+      lecturerStudentReviews: [],
+      verifiedBadges: [],
+    });
+
+    expect(snapshot.groups[0].tasks[0].priority).toBeUndefined();
+  });
+
   it("serializes task evidence storage metadata in task updates", () => {
     const uploadedAt = new Date("2026-05-01T00:00:00.000Z");
 

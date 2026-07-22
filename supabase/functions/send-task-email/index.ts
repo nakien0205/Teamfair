@@ -1,6 +1,7 @@
 import { getSupabaseAdmin, requireAuthUser } from "../_shared/auth.ts";
 import { isAllowedOrigin, optionsResponse } from "../_shared/cors.ts";
 import { ApiError, internalError, jsonError, jsonOk } from "../_shared/responses.ts";
+import { renderTaskPriorityRow } from "./priorityTemplate.ts";
 
 interface RequestBody {
   assigneeId?: string;
@@ -113,10 +114,7 @@ Deno.serve(async (req) => {
                 <div class="task-label">Hạn chót:</div>
                 <div class="task-value">${deadline || "<i>Không có hạn chót</i>"}</div>
               </div>
-              <div class="task-row">
-                <div class="task-label">Mức độ ưu tiên:</div>
-                <div class="task-value">${priority || "Medium"}</div>
-              </div>
+              ${renderTaskPriorityRow(priority)}
             </div>
             <p>Vui lòng truy cập Teamfair để kiểm tra chi tiết và bắt đầu thực hiện.</p>
           </div>

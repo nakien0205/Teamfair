@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useTeam } from "@/context/TeamContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useShareModalStore } from "@/hooks/useShareModalStore";
+import { GoogleCalendarConnectionCard } from "@/components/GoogleCalendarConnectionCard";
+import { useEntitlements } from "@/context/EntitlementContext";
 
 interface SettingsModalProps {
   open: boolean;
@@ -23,6 +25,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
   const { language } = useLanguage();
   const { groups, currentGroupIndex, members, loadPersistedState, deleteProject } = useTeam();
   const openShareModal = useShareModalStore((state) => state.openShareModal);
+
+  let userPlan: string = "free";
+  try {
+    const entitlements = useEntitlements();
+    userPlan = entitlements.plan;
+  } catch {
+    userPlan = "free";
+  }
+
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -300,6 +311,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                       </span>
                     </div>
                   )}
+                </div>
+
+                {/* Google Calendar Integration */}
+                <div className="pt-2 border-t border-slate-800">
+                  <GoogleCalendarConnectionCard userPlan={userPlan} />
                 </div>
 
                 {/* Member Management & Resign (Only for active Project Leader) */}

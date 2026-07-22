@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowUpDown,
@@ -239,6 +239,7 @@ const LoadingPage = () => (
 
 const StudentMyTasks = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { language } = useLanguage();
   const { toast } = useToast();
   const { profile, loading: authLoading, signOut, user } = useAuth();
@@ -253,7 +254,9 @@ const StudentMyTasks = () => {
     updateTaskStatus,
   } = useTeam();
 
-  const [statusFilter, setStatusFilter] = useState<"all" | TaskWorkflowStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | TaskWorkflowStatus>(
+    searchParams.get("status") === "overdue" ? "overdue" : "all",
+  );
   const [sortBy, setSortBy] = useState<SortOption>("deadline");
   const [searchTerm, setSearchTerm] = useState("");
   const [startTaskCandidate, setStartTaskCandidate] = useState<Task | null>(null);

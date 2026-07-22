@@ -103,4 +103,26 @@ describe("ResetPassword", () => {
     expect(screen.queryByRole("button", { name: "Cập nhật mật khẩu" })).not.toBeInTheDocument();
     expect(updateUser).not.toHaveBeenCalled();
   });
+
+  it("displays the 5-minute session timer and allows toggling password visibility", async () => {
+    consumeRecoveryEventProof.mockReturnValueOnce({ userId: "recovery-user" });
+    renderResetPage();
+    act(() => authCallback?.("INITIAL_SESSION", { user: { id: "recovery-user" } }));
+
+    await waitFor(() => expect(screen.getByText(/Phiên hết hạn sau:/i)).toBeInTheDocument());
+    expect(screen.getByText("5:00")).toBeInTheDocument();
+
+    const newPasswordInput = screen.getByLabelText("Mật khẩu mới");
+    expect(newPasswordInput).toHaveAttribute("type", "password");
+
+    const revealButtons = screen.getAllByRole("button", { name: /Hiện mật khẩu/i });
+    expect(revealButtons).toHaveLength(2);
+
+    fireEvent.click(revealButtons[0]);
+    expect(newPasswordInput).toHaveAttribute("type", "text");
+
+    const hideButtons = screen.getAllByRole("button", { name: /Ẩn mật khẩu/i });
+    expect(hideButtons.length).toBeGreaterThan(0);
+  });
 });
+

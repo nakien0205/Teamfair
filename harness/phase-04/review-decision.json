@@ -1,0 +1,6 @@
+{
+  "phase": "phase-04",
+  "decision": "APPROVE",
+  "reviewer": "vc-code-reviewer",
+  "rationale": "Private PostgreSQL storage with service-role RPCs, JWT owner derivation, Pro Group entitlement gating, zero token exposure in browser responses, and HTTP 410 single-retry recovery verified."
+}

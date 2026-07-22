@@ -2,7 +2,38 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+
+function PasswordRecoveryListener() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const checkRecoveryHash = () => {
+      const hash = window.location.hash;
+      if (hash.includes("type=recovery") && location.pathname !== "/reset-password") {
+        navigate(`/reset-password${hash}`, { replace: true });
+      }
+    };
+
+    checkRecoveryHash();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" && location.pathname !== "/reset-password") {
+        navigate("/reset-password", { replace: true });
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, [navigate, location.pathname]);
+
+  return null;
+}
+
 import { TeamProvider } from "@/context/TeamContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -11,6 +42,37 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import StudentWorkspace from "./pages/StudentDashboard";
+import StudentOverview from "./pages/StudentOverview";
+import StudentMyGroup from "./pages/StudentMyGroup";
+import StudentMyTasks from "./pages/StudentMyTasks";
+import StudentTaskDetail from "./pages/StudentTaskDetail";
+import StudentTaskSubmit from "./pages/StudentTaskSubmit";
+import StudentWorkLogs from "./pages/StudentWorkLogs";
+import StudentPeerReview from "./pages/StudentPeerReview";
+import StudentMyContribution from "./pages/StudentMyContribution";
+import StudentFeedback from "./pages/StudentFeedback";
+import StudentAppeals from "./pages/StudentAppeals";
+import LecturerDashboard from "./pages/LecturerDashboard";
+import LecturerRubricsList from "./pages/LecturerRubricsList";
+import LecturerRubricUpload from "./pages/LecturerRubricUpload";
+import LecturerRubricPreview from "./pages/LecturerRubricPreview";
+import LecturerRubricGrade from "./pages/LecturerRubricGrade";
+import LecturerRubricDetail from "./pages/LecturerRubricDetail";
+import LecturerRubricEdit from "./pages/LecturerRubricEdit";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ProjectManagement from "./pages/ProjectManagement";
+import * as Sentry from "@sentry/react";
+import SentryErrorBoundaryFallback from "@/components/SentryErrorBoundaryFallback";
+import { ShareProjectModal } from "@/pages/ShareProjectModal";
+
+import LecturerLayout from "./layouts/LecturerLayout";
+import LecturerGroupsPage from "./pages/LecturerGroupsPage";
+import LecturerProgressPage from "./pages/LecturerProgressPage";
+import LecturerReportsPage from "./pages/LecturerReportsPage";
+import LecturerStudentEvaluationsPage from "./pages/LecturerStudentEvaluationsPage";
+import LecturerContributionPage from "./pages/LecturerContributionPage";
 import StudentWorkspace from "./pages/StudentDashboard";
 import StudentOverview from "./pages/StudentOverview";
 import StudentMyGroup from "./pages/StudentMyGroup";
@@ -92,12 +154,12 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+                  <PasswordRecoveryListener />
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-
                     <Route path="/dashboard-student" element={<Navigate to="/student/dashboard" replace />} />
 
                     {/* Student Workspace Routes wrapped in StudentLayout */}
