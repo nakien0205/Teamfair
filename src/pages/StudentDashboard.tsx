@@ -30,6 +30,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import TaskApprovalDialog from '@/components/TaskApprovalDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabaseClient';
+import { buildRevisionTaskEmailPayload } from '@/lib/taskEmailPayload';
 
 
 const CURRENT_USER_MEMBER = 'Trần Thị B';
@@ -91,16 +92,12 @@ const StudentDashboard = () => {
       if (assigneeMember.id) {
         const currentGroup = groups[currentGroupIndex];
         void supabase.functions.invoke('send-task-email', {
-          body: {
+          body: buildRevisionTaskEmailPayload({
             assigneeId: assigneeMember.id,
-            taskName: t.name,
-            taskDescription: t.description || '',
-            deadline: t.deadline || '',
-            priority: t.priority || 'Medium',
+            task: t,
             groupName: currentGroup?.name || '',
-            type: 'revision',
             feedback: feedback,
-          },
+          }),
         });
       }
     }

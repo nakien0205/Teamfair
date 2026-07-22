@@ -77,6 +77,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "overdue-nudge": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-4px)" },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -95,6 +99,7 @@ export default {
         },
       },
       animation: {
+        "overdue-nudge": "overdue-nudge 900ms ease-in-out 2",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },

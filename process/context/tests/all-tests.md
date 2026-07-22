@@ -1,6 +1,6 @@
 # Teamfair - All Tests
 
-Last updated: 2026-06-17
+Last updated: 2026-07-22
 
 Attach this file first when the task involves testing, verification, or test debugging.
 
@@ -38,19 +38,21 @@ Use this file when you need to:
 - All unit and integration tests run through Vitest.
 - `pnpm test` (or `vitest run`) for CI/CD runs.
 - `pnpm test:watch` (or `vitest`) for local development watch mode.
-- Test files are colocated under `src/test/`.
+- Shared test setup lives in `src/test/`. Feature tests live beside source across `src/components/`, `src/lib/`, and `src/pages/`.
 
 ## Default Verification Order
 
 Unless the task clearly needs a different path:
-1. run the narrowest existing automated test
-2. use unit/integration tests before browser tests
-3. use end-to-end tests only when the real UI is the thing being verified
+1. run focused Vitest paths first with `pnpm test <paths...>`
+2. run the full Vitest suite with `pnpm test`
+3. use unit/integration tests before browser tests
+4. use end-to-end tests only when the real UI is the thing being verified
 
 ## Commands
 
 | Package | Runner | Command | Notes |
 |---|---|---|---|
+| frontend | Vitest | `pnpm test <paths...>` | Run focused test files before the full suite |
 | frontend | Vitest | `pnpm test` | Run unit/integration tests once |
 | frontend | Vitest | `pnpm test:watch` | Run tests in interactive watch mode |
 | frontend | ESLint | `pnpm lint` | Run eslint check |
@@ -59,6 +61,7 @@ Unless the task clearly needs a different path:
 ## Debugging Quick Reference
 
 - **jsdom environment:** Test runner runs inside jsdom, meaning standard browser Canvas or Layout APIs are mocked. Look at `src/test/setup.ts` for global mocks.
+- **Rendered component assertions:** Assertions against components rendered in jsdom are automated unit/integration evidence. They are not real-browser or end-to-end evidence.
 - **Supabase configuration:** Supabase Client is checked via `isSupabaseConfigured`. Tests typically mock or bypass live DB connections.
 
 ## Known Gaps

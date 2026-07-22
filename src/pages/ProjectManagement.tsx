@@ -20,6 +20,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { supabase } from "@/lib/supabaseClient";
 import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 import { Task } from "@/context/TeamContext";
+import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
 
 export function isExactProjectNameConfirmation(typedName: string, projectName: string | undefined): boolean {
   return Boolean(projectName) && typedName === projectName;
@@ -479,7 +480,12 @@ const ProjectManagement: React.FC = () => {
       // 'myGroups' là mảng chứa các group đã lọc quyền truy cập ở file của bạn
       myGroups.forEach((g) => {
         if (g.tasks) {
-          g.tasks.forEach((t) => {
+          g.tasks
+            .filter((task) => isTaskVisibleToViewer(task, {
+              id: user?.id,
+              name: profile?.full_name || currentUserName,
+            }))
+            .forEach((t) => {
             const taskDate = t.deadline.includes("T") ? t.deadline.split("T")[0] : t.deadline;
             if (taskDate === dateStr) {
               deadlinedTasks.push({
@@ -488,7 +494,7 @@ const ProjectManagement: React.FC = () => {
                 task: t,
               });
             }
-          });
+            });
         }
       });
 

@@ -9,8 +9,8 @@ import {
 } from "@/lib/billing";
 
 describe("billing entitlement contract", () => {
-  it("keeps Pro Group at 69,000 VND and Pro Max at 129,000 VND", () => {
-    expect(PRO_GROUP_PRICE_VND).toBe(69_000);
+  it("keeps Pro Group at 79,000 VND and Pro Max at 129,000 VND", () => {
+    expect(PRO_GROUP_PRICE_VND).toBe(79_000);
     expect(PRO_MAX_PRICE_VND).toBe(129_000);
   });
 

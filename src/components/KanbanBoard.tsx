@@ -55,7 +55,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
   const { plan } = useEntitlements();
   const canUsePriority = hasProGroupFeatures(plan);
   const [createOpen, setCreateOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium' as 'Low' | 'Medium' | 'High', contributionPercent: 10 });
+  const [newTask, setNewTask] = useState({ name: '', description: '', assignedTo: '', assigneeId: '', deadline: '', priority: '' as '' | 'Low' | 'Medium' | 'High', contributionPercent: 10 });
   const [notifyTeam, setNotifyTeam] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
@@ -86,7 +86,9 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
       toast({ title: tr(language, 'Lỗi', 'Error'), description: tr(language, 'Vui lòng điền đầy đủ', 'Please fill in all required fields'), variant: 'destructive' });
       return;
     }
-    addTask({ ...newTask, priority: canUsePriority ? newTask.priority : 'Medium' });
+    const submittedPriority = newTask.priority || undefined;
+    const submittedAssigneeId = newTask.assigneeId || undefined;
+    addTask({ ...newTask, assigneeId: submittedAssigneeId, priority: submittedPriority });
     if (notifyTeam) {
       members
         .filter(m => m.id ? m.id !== user?.id : m.name !== currentUserName)
@@ -105,7 +107,8 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
         });
     }
     if (sendEmail && newTask.assignedTo) {
-      const assignedMember = members.find(m => m.name === newTask.assignedTo);
+      const assignedMember = members.find(m => m.id === submittedAssigneeId)
+        ?? members.find(m => m.name === newTask.assignedTo);
       if (assignedMember?.id) {
         void supabase.functions.invoke('send-task-email', {
           body: {
@@ -113,13 +116,13 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
             taskName: newTask.name,
             taskDescription: newTask.description,
             deadline: newTask.deadline,
-            priority: newTask.priority,
+            priority: submittedPriority,
             groupName: currentGroup?.name || '',
           },
         });
       }
     }
-    setNewTask({ name: '', description: '', assignedTo: '', deadline: '', priority: 'Medium', contributionPercent: 10 });
+    setNewTask({ name: '', description: '', assignedTo: '', assigneeId: '', deadline: '', priority: '', contributionPercent: 10 });
     setNotifyTeam(false);
     setSendEmail(false);
     setCreateOpen(false);
@@ -230,12 +233,18 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                 </div>
                 <div className="space-y-1.5">
                   <Label className="font-medium">{tr(language, 'Giao cho', 'Assign To')} <span className="text-red-500">*</span></Label>
-                  <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
+                  <Select
+                    value={newTask.assigneeId || newTask.assignedTo}
+                    onValueChange={v => {
+                      const member = members.find(m => (m.id || m.name) === v);
+                      setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: member?.id || '' }));
+                    }}
+                  >
                     <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
                       <SelectValue placeholder={tr(language, 'Chọn thành viên', 'Select member')} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      {members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                      {members.map(m => <SelectItem key={m.id || m.name} value={m.id || m.name}>{m.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -253,7 +262,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                     <Label className="font-medium">{tr(language, 'Ưu tiên', 'Priority')}</Label>
                     <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))} disabled={!canUsePriority}>
                       <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
-                        <SelectValue />
+                        <SelectValue placeholder={tr(language, 'Chọn mức độ ưu tiên', 'Choose Priority')} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
                         <SelectItem value="Low">{tr(language, 'Thấp', 'Low')}</SelectItem>

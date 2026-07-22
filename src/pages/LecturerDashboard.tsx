@@ -34,8 +34,9 @@ const LecturerDashboard = () => {
     name: '',
     description: '',
     assignedTo: '',
+    assigneeId: '',
     deadline: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    priority: '' as '' | 'Low' | 'Medium' | 'High',
     contributionPercent: 10
   });
 
@@ -55,13 +56,16 @@ const LecturerDashboard = () => {
       });
       return;
     }
-    addTask(newTask);
+    const submittedPriority = newTask.priority || undefined;
+    const submittedAssigneeId = newTask.assigneeId || undefined;
+    addTask({ ...newTask, assigneeId: submittedAssigneeId, priority: submittedPriority });
     setNewTask({
       name: '',
       description: '',
       assignedTo: '',
+      assigneeId: '',
       deadline: '',
-      priority: 'Medium',
+      priority: '',
       contributionPercent: 10
     });
     setModalOpen(false);
@@ -313,7 +317,7 @@ const LecturerDashboard = () => {
                 const suggested = (baseScore * m.contributionPercent / 100).toFixed(1);
                 const isUnsaved = unsaved.has(m.name);
                 return (
-                  <tr key={m.name} className={`border-b border-border last:border-0 transition-colors ${isUnsaved ? 'bg-warning/10' : ''}`}>
+                  <tr key={m.id || m.name} className={`border-b border-border last:border-0 transition-colors ${isUnsaved ? 'bg-warning/10' : ''}`}>
                     <td className="px-4 py-3 font-medium">{m.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{m.role}</td>
                     <td className="px-4 py-3 text-center">{m.completedTasks}</td>
@@ -374,10 +378,16 @@ const LecturerDashboard = () => {
                 </div>
                 <div className="space-y-1">
                   <Label>{tr(language, 'Giao cho', 'Assign to')}</Label>
-                  <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
+                  <Select
+                    value={newTask.assigneeId || newTask.assignedTo}
+                    onValueChange={v => {
+                      const member = group.members.find(m => (m.id || m.name) === v);
+                      setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: member?.id || '' }));
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Pick a member')} /></SelectTrigger>
                     <SelectContent>
-                      {group.members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                      {group.members.map(m => <SelectItem key={m.id || m.name} value={m.id || m.name}>{m.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -389,7 +399,7 @@ const LecturerDashboard = () => {
                   <div className="space-y-1">
                     <Label>{tr(language, 'Ưu tiên', 'Priority')}</Label>
                     <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn mức độ ưu tiên', 'Choose Priority')} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Low">{tr(language, 'Thấp', 'Low')}</SelectItem>
                         <SelectItem value="Medium">{tr(language, 'Trung bình', 'Medium')}</SelectItem>

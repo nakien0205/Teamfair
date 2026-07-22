@@ -41,6 +41,7 @@ import { PendingInvitesList } from "@/pages/PendingInvitesList";
 type RiskLevel = "normal" | "attention" | "high";
 
 type SummaryCard = {
+  key: string;
   label: string;
   value: string;
   hint: string;
@@ -181,6 +182,8 @@ const StudentOverview = () => {
   const [workLogOpen, setWorkLogOpen] = useState(false);
   const [workLogText, setWorkLogText] = useState("");
   const [workLogError, setWorkLogError] = useState("");
+  const overdueCoachmarkKey = `teamfair_overdue_tasks_hint_seen_${user?.id ?? (currentUserName.trim().toLowerCase() || "anonymous")}`;
+  const [showOverdueCoachmark, setShowOverdueCoachmark] = useState(false);
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -266,18 +269,21 @@ const StudentOverview = () => {
 
     const cards: SummaryCard[] = [
       {
+        key: "total",
         label: tr(language, "Tổng task được giao", "Total Assigned Tasks"),
         value: String(total),
         hint: total === 0 ? tr(language, "Chưa có task", "No tasks") : tr(language, "Task thuộc phạm vi của bạn", "Tasks within your scope"),
         icon: FolderOpen,
       },
       {
+        key: "in-progress",
         label: tr(language, "Task đang làm", "Tasks In Progress"),
         value: String(inProgress),
         hint: tr(language, "Đang cập nhật tiến độ", "Updating progress"),
         icon: Clock3,
       },
       {
+        key: "waiting-review",
         label: tr(language, "Task chờ duyệt", "Tasks Waiting for Review"),
         value: String(waitingReview),
         hint: tr(language, "Đã nộp, chờ trưởng nhóm duyệt", "Submitted, waiting for team leader approval"),
@@ -285,6 +291,7 @@ const StudentOverview = () => {
         tone: "warning",
       },
       {
+        key: "approved",
         label: tr(language, "Task đã được duyệt", "Approved Tasks"),
         value: String(approved),
         hint: tr(language, "Đã được ghi nhận đóng góp", "Contribution recognized"),
@@ -292,6 +299,7 @@ const StudentOverview = () => {
         tone: "success",
       },
       {
+        key: "overdue",
         label: tr(language, "Task trễ hạn", "Overdue Tasks"),
         value: String(overdue),
         hint: overdue > 0 ? tr(language, "Cần xử lý ưu tiên", "Need priority handling") : tr(language, "Không có task trễ hạn", "No overdue tasks"),
@@ -299,6 +307,7 @@ const StudentOverview = () => {
         tone: overdue > 0 ? "destructive" : "default",
       },
       {
+        key: "contribution",
         label: tr(language, "Contribution Score tham khảo", "Reference Contribution Score"),
         value: `${contributionScore}/100`,
         hint: tr(language, "Chỉ dùng để tham khảo nội bộ", "For internal reference only"),
@@ -320,6 +329,31 @@ const StudentOverview = () => {
       completionPercent: total === 0 ? 0 : Math.round((approved / total) * 100),
     };
   }, [feedbackEntries, myTasks, language]);
+
+  useEffect(() => {
+    if (!user?.id && !currentUserName.trim()) return;
+    if (summary.overdue === 0) return;
+
+    try {
+      setShowOverdueCoachmark(localStorage.getItem(overdueCoachmarkKey) !== "true");
+    } catch {
+      setShowOverdueCoachmark(true);
+    }
+  }, [currentUserName, overdueCoachmarkKey, summary.overdue, user?.id]);
+
+  const dismissOverdueCoachmark = () => {
+    setShowOverdueCoachmark(false);
+    try {
+      localStorage.setItem(overdueCoachmarkKey, "true");
+    } catch {
+      // Keep dismissed for current render if storage is unavailable.
+    }
+  };
+
+  const openOverdueTasks = () => {
+    dismissOverdueCoachmark();
+    navigate("/student/my-tasks?status=overdue");
+  };
 
   const canWriteWorkLog = Boolean(group);
 
@@ -453,22 +487,69 @@ const StudentOverview = () => {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {summary.cards.map(card => {
                   const Icon = card.icon;
-                  return (
-                    <Card key={card.label} className="rounded-3xl border-0 shadow-card">
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">{card.label}</p>
-                            <p className="text-3xl font-semibold tracking-tight">{card.value}</p>
-                            <p className="text-sm text-muted-foreground">{card.hint}</p>
-                          </div>
-                          <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", summaryToneClass(card.tone))}>
-                            <Icon className="h-5 w-5" />
-                          </div>
+                  const isOverdueCard = card.key === "overdue";
+                  const cardContent = (
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">{card.label}</p>
+                          <p className="text-3xl font-semibold tracking-tight">{card.value}</p>
+                          <p className="text-sm text-muted-foreground">{card.hint}</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                    
+                        <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", summaryToneClass(card.tone))}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      </div>
+                      {isOverdueCard ? (
+                        <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-rose-700">
+                          <span>{tr(language, "Xem task trễ hạn", "View overdue tasks")}</span>
+                          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  );
+
+                  return (
+                    <div key={card.key} className="relative">
+                      {isOverdueCard ? (
+                        <Card
+                          role="button"
+                          tabIndex={0}
+                          onClick={openOverdueTasks}
+                          onKeyDown={event => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openOverdueTasks();
+                            }
+                          }}
+                          aria-describedby={showOverdueCoachmark ? "overdue-task-coachmark" : undefined}
+                          className={cn(
+                            "group w-full rounded-3xl border border-rose-200/80 bg-white text-left shadow-card outline-none transition-all duration-200",
+                            "hover:-translate-y-0.5 hover:shadow-card focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                            "hover:border-rose-300 focus-visible:border-rose-400",
+                            summary.overdue > 0 && showOverdueCoachmark && "motion-safe:animate-overdue-nudge",
+                          )}
+                        >
+                          {cardContent}
+                        </Card>
+                      ) : (
+                        <Card className="rounded-3xl border-0 shadow-card">
+                          {cardContent}
+                        </Card>
+                      )}
+
+                      {isOverdueCard && showOverdueCoachmark && summary.overdue > 0 ? (
+                        <div
+                          id="overdue-task-coachmark"
+                          role="status"
+                          className="absolute -top-3 right-4 z-10 max-w-[230px] rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-900 shadow-lg"
+                        >
+                          <span className="font-semibold">{tr(language, "Mẹo:", "Tip:")}</span>{" "}
+                          {tr(language, "Bấm vào đây để xem và xử lý task trễ hạn.", "Click here to view and handle overdue tasks.")}
+                          <span className="absolute -bottom-1.5 right-8 h-3 w-3 rotate-45 border-b border-r border-rose-200 bg-rose-50" aria-hidden="true" />
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
