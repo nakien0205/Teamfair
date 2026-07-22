@@ -21,7 +21,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 import { Task } from "@/context/TeamContext";
 import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
-
+import { fetchGoogleCalendarOverlay, type GoogleOverlayEvent, type GoogleOverlayStatus } from "@/lib/googleCalendarOverlay";
+import { GoogleCalendarOverlay } from "@/components/GoogleCalendarOverlay";
 
 export function isExactProjectNameConfirmation(typedName: string, projectName: string | undefined): boolean {
   return Boolean(projectName) && typedName === projectName;
@@ -68,7 +69,41 @@ const ProjectManagement: React.FC = () => {
   const [selectedTaskInfo, setSelectedTaskInfo] = useState<{ groupName: string; groupColor: string; task: Task } | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
 
+  // Google Calendar Overlay state
+  const [overlayStatus, setOverlayStatus] = useState<GoogleOverlayStatus>("ready");
+  const [overlayEvents, setOverlayEvents] = useState<GoogleOverlayEvent[]>([]);
+  const [overlayRefreshedAt, setOverlayRefreshedAt] = useState<string | null>(null);
+  const [overlayLoading, setOverlayLoading] = useState<boolean>(false);
 
+  const loadOverlayData = async (reason: "open" | "navigate" | "manual" = "open") => {
+    const firstDay = new Date(Date.UTC(currentYear, currentMonth, 1));
+    const firstDayOfWeek = firstDay.getUTCDay();
+    const rangeStartDate = new Date(Date.UTC(currentYear, currentMonth, 1 - firstDayOfWeek));
+    const rangeEndDate = new Date(rangeStartDate.getTime() + 42 * 24 * 60 * 60 * 1000);
+
+    const rangeStart = rangeStartDate.toISOString().split("T")[0];
+    const rangeEndExclusive = rangeEndDate.toISOString().split("T")[0];
+
+    setOverlayLoading(true);
+    try {
+      const res = await fetchGoogleCalendarOverlay(supabase, { rangeStart, rangeEndExclusive, reason });
+      setOverlayStatus(res.status);
+      setOverlayEvents(res.events);
+      setOverlayRefreshedAt(res.metadata.refreshedAt);
+    } catch (err) {
+      console.error("Error fetching Google Calendar overlay:", err);
+      setOverlayStatus("retryable_error");
+    } finally {
+      setOverlayLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "Global Calendar") {
+      void loadOverlayData("open");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentYear, currentMonth]);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -1705,7 +1740,13 @@ const ProjectManagement: React.FC = () => {
                   </div>
                 </div>
 
-
+                <GoogleCalendarOverlay
+                  status={overlayStatus}
+                  events={overlayEvents}
+                  refreshedAt={overlayRefreshedAt}
+                  isLoading={overlayLoading}
+                  onRefresh={() => void loadOverlayData("manual")}
+                />
               </div>
             ) : activeTab === "Notification" ? (
               <div className="space-y-6 animate-in fade-in duration-300">
