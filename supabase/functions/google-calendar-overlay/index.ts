@@ -49,8 +49,8 @@ serve(async (req) => {
           p_user_id: userId,
         });
         if (error || typeof data !== "boolean") {
-          // Default check fallback if RPC is unconfigured in local mock
-          return true;
+          // Deny by default if RPC fails — leader must have active subscription
+          return false;
         }
         return data;
       },

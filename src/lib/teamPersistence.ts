@@ -590,16 +590,44 @@ export async function insertActivityLog(groupId: string, description: string): P
   if (error) throw new Error(error.message);
 }
 
-export async function insertTask(group: Group, task: Omit<Task, "id" | "status" | "approved">): Promise<void> {
+export async function insertTask(group: Group, task: Omit<Task, "id" | "status" | "approved">): Promise<Task> {
   const fullTask = {
     ...task,
     assigneeId: group.members.find(m => m.name === task.assignedTo)?.id,
     status: "Todo" as const,
     approved: false,
   };
-  const { error } = await supabase.from("tasks").insert(buildTaskInsert(group.id, fullTask));
-  if (error) throw new Error(error.message);
-  await insertActivityLog(group.id, `Task "${task.name}" được tạo và giao cho ${task.assignedTo}`);
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert(buildTaskInsert(group.id, fullTask))
+    .select()
+    .single();
+
+  if (error || !data) {
+    throw new Error(error ? error.message : "Failed to insert task");
+  }
+
+  const createdTask: Task = {
+    id: data.id,
+    name: data.title,
+    assignedTo: task.assignedTo,
+    assigneeId: data.assignee_id ?? undefined,
+    status: taskStatusFromDb(data.status),
+    contributionPercent: data.contribution_percent ?? data.weight * 10,
+    approved: Boolean(data.approved),
+    deadline: data.deadline ?? "",
+    description: data.description ?? undefined,
+    priority: (data.priority as Task["priority"]) ?? undefined,
+    evidence: normalizeEvidence(data.evidence),
+  };
+
+  try {
+    await insertActivityLog(group.id, `Task "${task.name}" được tạo và giao cho ${task.assignedTo}`);
+  } catch (logErr) {
+    console.warn("Activity log insertion failed after task insert:", logErr);
+  }
+
+  return createdTask;
 }
 
 export async function deletePersistedTask(groupId: string, task: Task | undefined): Promise<void> {

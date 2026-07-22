@@ -10,8 +10,9 @@ interface RequestBody {
   deadline?: string;
   priority?: string;
   groupName?: string;
-  type?: "assigned" | "revision";
+  type?: "assigned" | "revision" | "calendar_permission_request";
   feedback?: string;
+  senderName?: string;
 }
 
 Deno.serve(async (req) => {
@@ -29,11 +30,21 @@ Deno.serve(async (req) => {
     const user = await requireAuthUser(req);
     
     const body = (await req.json().catch(() => null)) as RequestBody | null;
-    if (!body || !body.assigneeId || !body.taskName) {
-      throw new ApiError("bad_request", "Thiếu thông tin người nhận hoặc tên nhiệm vụ.");
+    if (!body || !body.assigneeId) {
+      throw new ApiError("bad_request", "Thiếu thông tin người nhận.");
     }
 
-    const { assigneeId, taskName, taskDescription, deadline, priority, groupName, type = "assigned", feedback } = body;
+    const {
+      assigneeId,
+      taskName = "",
+      taskDescription = "",
+      deadline,
+      priority,
+      groupName,
+      type = "assigned",
+      feedback,
+      senderName,
+    } = body;
 
     const admin = getSupabaseAdmin();
     
@@ -51,6 +62,7 @@ Deno.serve(async (req) => {
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("SEND_EMAIL_FROM") || "onboarding@resend.dev";
+    const appSettingsUrl = Deno.env.get("APP_SETTINGS_URL") || "http://localhost:5173/settings";
 
     let emailSubject = `[Teamfair] Nhiệm vụ mới được giao / New Task Assigned: ${taskName}`;
     let emailTitle = `Nhiệm vụ mới / New Task`;
@@ -60,6 +72,11 @@ Deno.serve(async (req) => {
       emailSubject = `[Teamfair] Yêu cầu chỉnh sửa nhiệm vụ / Task Revision Required: ${taskName}`;
       emailTitle = `Yêu cầu chỉnh sửa / Revision Requested`;
       emailHeading = `Nhiệm vụ của bạn trong nhóm <strong>${groupName || "Chưa xác định"}</strong> cần được chỉnh sửa theo yêu cầu của Leader.`;
+    } else if (type === "calendar_permission_request") {
+      const requester = senderName || "Leader của bạn";
+      emailSubject = `[Teamfair] Yêu cầu kết nối Google Calendar / Google Calendar Permission Request`;
+      emailTitle = `Yêu cầu kết nối Google Calendar`;
+      emailHeading = `<strong>${requester}</strong> trong nhóm <strong>${groupName || "dự án"}</strong> muốn tự động đồng bộ hạn chót công việc vào Google Calendar của bạn.`;
     }
 
     let feedbackSection = "";
@@ -69,6 +86,35 @@ Deno.serve(async (req) => {
           <strong style="color: #991b1b;">Yêu cầu chỉnh sửa / Feedback:</strong>
           <p style="margin: 8px 0 0 0; color: #7f1d1d;">${feedback}</p>
         </div>
+      `;
+    }
+
+    let bodyContent = "";
+    if (type === "calendar_permission_request") {
+      bodyContent = `
+        <div style="background-color: #e0e7ff; border: 1px solid #c7d2fe; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center;">
+          <p style="margin: 0 0 16px 0; color: #3730a3; font-weight: 600;">Cho phép Teamfair ghi lịch hạn chót công việc vào Google Calendar của bạn</p>
+          <a href="${appSettingsUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Kết nối Google Calendar ngay</a>
+        </div>
+      `;
+    } else {
+      bodyContent = `
+        <div class="task-details">
+          <div class="task-row">
+            <div class="task-label">Tên nhiệm vụ:</div>
+            <div class="task-value"><strong>${taskName}</strong></div>
+          </div>
+          <div class="task-row">
+            <div class="task-label">Mô tả:</div>
+            <div class="task-value">${taskDescription || "<i>Không có mô tả</i>"}</div>
+          </div>
+          <div class="task-row">
+            <div class="task-label">Hạn chót:</div>
+            <div class="task-value">${deadline || "<i>Không có hạn chót</i>"}</div>
+          </div>
+          ${renderTaskPriorityRow(priority)}
+        </div>
+        <p>Vui lòng truy cập Teamfair để kiểm tra chi tiết và bắt đầu thực hiện.</p>
       `;
     }
 
@@ -101,22 +147,7 @@ Deno.serve(async (req) => {
             <p>Xin chào <strong>${assignee.full_name}</strong>,</p>
             <p>${emailHeading}</p>
             ${feedbackSection}
-            <div class="task-details">
-              <div class="task-row">
-                <div class="task-label">Tên nhiệm vụ:</div>
-                <div class="task-value"><strong>${taskName}</strong></div>
-              </div>
-              <div class="task-row">
-                <div class="task-label">Mô tả:</div>
-                <div class="task-value">${taskDescription || "<i>Không có mô tả</i>"}</div>
-              </div>
-              <div class="task-row">
-                <div class="task-label">Hạn chót:</div>
-                <div class="task-value">${deadline || "<i>Không có hạn chót</i>"}</div>
-              </div>
-              ${renderTaskPriorityRow(priority)}
-            </div>
-            <p>Vui lòng truy cập Teamfair để kiểm tra chi tiết và bắt đầu thực hiện.</p>
+            ${bodyContent}
           </div>
           <div class="footer">
             <p>Đây là email tự động từ hệ thống Teamfair.</p>

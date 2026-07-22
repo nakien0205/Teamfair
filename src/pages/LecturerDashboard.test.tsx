@@ -1,9 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
 
-const mocks = vi.hoisted(() => ({ addTask: vi.fn() }));
+const mocks = vi.hoisted(() => ({ addTask: vi.fn().mockResolvedValue({ id: "task-1" }) }));
 
 vi.mock("@/context/TeamContext", () => ({
   useTeam: () => ({
@@ -20,6 +20,7 @@ vi.mock("@/context/TeamContext", () => ({
             completedTasks: 0,
             contributionPercent: 0,
             lecturerScore: null,
+            globalRole: "student",
           },
           {
             id: "student-2",
@@ -28,6 +29,7 @@ vi.mock("@/context/TeamContext", () => ({
             completedTasks: 0,
             contributionPercent: 0,
             lecturerScore: null,
+            globalRole: "student",
           },
         ],
         tasks: [],
@@ -99,15 +101,20 @@ function fillRequiredFields(assigneeId = "student-1") {
   fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: assigneeId } });
 }
 
-function submitTask() {
-  fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+async function submitTask() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+  });
 }
 
-beforeEach(() => mocks.addTask.mockReset());
+beforeEach(() => {
+  mocks.addTask.mockReset();
+  mocks.addTask.mockResolvedValue({ id: "task-1" });
+});
 afterEach(cleanup);
 
 describe("LecturerDashboard task priority", () => {
-  it("opens and resets with Choose Priority", () => {
+  it("opens and resets with Choose Priority", async () => {
     renderDashboard();
     openDialog();
 
@@ -115,26 +122,26 @@ describe("LecturerDashboard task priority", () => {
     expect(screen.getByRole("option", { name: "Choose Priority" })).toBeInTheDocument();
 
     fillRequiredFields();
-    submitTask();
+    await submitTask();
     openDialog();
 
     expect(screen.getAllByRole("combobox")[1]).toHaveValue("");
   });
 
-  it("submits blank priority as absent", () => {
+  it("submits blank priority as absent", async () => {
     renderDashboard();
     openDialog();
     fillRequiredFields();
-    submitTask();
+    await submitTask();
 
     expect(mocks.addTask).toHaveBeenCalledWith(expect.objectContaining({ priority: undefined }));
   });
 
-  it("keeps a newly created task hidden from a duplicate-name viewer before reload", () => {
+  it("keeps a newly created task hidden from a duplicate-name viewer before reload", async () => {
     renderDashboard();
     openDialog();
     fillRequiredFields("student-2");
-    submitTask();
+    await submitTask();
 
     const optimisticTask = mocks.addTask.mock.calls[0][0];
     expect(optimisticTask).toEqual(expect.objectContaining({
@@ -147,12 +154,12 @@ describe("LecturerDashboard task priority", () => {
     })).toBe(false);
   });
 
-  it.each(["Low", "Medium", "High"] as const)("preserves %s", (priorityValue) => {
+  it.each(["Low", "Medium", "High"] as const)("preserves %s", async (priorityValue) => {
     renderDashboard();
     openDialog();
     fillRequiredFields();
     fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: priorityValue } });
-    submitTask();
+    await submitTask();
 
     expect(mocks.addTask).toHaveBeenCalledWith(expect.objectContaining({ priority: priorityValue }));
   });

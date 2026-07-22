@@ -17,6 +17,7 @@ import { useNotifications } from '@/context/NotificationContext';
 import { useEntitlements } from '@/context/EntitlementContext';
 import { hasProGroupFeatures } from '@/lib/billing';
 import { supabase } from '@/lib/supabaseClient';
+import { checkUserGoogleCalendarPermission, requestGoogleCalendarPermission } from '@/lib/googleCalendarConnection';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 const COLUMN_COLORS: Record<string, string> = {
@@ -59,6 +60,9 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
   const [notifyTeam, setNotifyTeam] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [assigneeHasCalendar, setAssigneeHasCalendar] = useState<boolean | null>(null);
+  const [checkingCalendar, setCheckingCalendar] = useState(false);
+  const [sendingCalendarReq, setSendingCalendarReq] = useState(false);
   const currentGroup = groups[currentGroupIndex];
 
   const getStatusLabel = (status: Task["status"]): string => {
@@ -81,52 +85,57 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
     return priority;
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newTask.name || !newTask.assignedTo) {
       toast({ title: tr(language, 'Lỗi', 'Error'), description: tr(language, 'Vui lòng điền đầy đủ', 'Please fill in all required fields'), variant: 'destructive' });
       return;
     }
-    const submittedPriority = newTask.priority || undefined;
-    const submittedAssigneeId = newTask.assigneeId || undefined;
-    addTask({ ...newTask, assigneeId: submittedAssigneeId, priority: submittedPriority });
-    if (notifyTeam) {
-      members
-        .filter(m => m.id ? m.id !== user?.id : m.name !== currentUserName)
-        .forEach(member => {
-          const recipientId = member.id || member.name;
-          void sendNotification(
-            recipientId,
-            currentUserName,
-            tr(
-              language,
-              `Đã giao task mới: "${newTask.name}"`,
-              `Assigned a new task: "${newTask.name}"`
-            ),
-            groups[currentGroupIndex]?.id
-          );
-        });
-    }
-    if (sendEmail && newTask.assignedTo) {
-      const assignedMember = members.find(m => m.id === submittedAssigneeId)
-        ?? members.find(m => m.name === newTask.assignedTo);
-      if (assignedMember?.id) {
-        void supabase.functions.invoke('send-task-email', {
-          body: {
-            assigneeId: assignedMember.id,
-            taskName: newTask.name,
-            taskDescription: newTask.description,
-            deadline: newTask.deadline,
-            priority: submittedPriority,
-            groupName: currentGroup?.name || '',
-          },
-        });
+    try {
+      const submittedPriority = newTask.priority || undefined;
+      const submittedAssigneeId = newTask.assigneeId || undefined;
+      await addTask({ ...newTask, assigneeId: submittedAssigneeId, priority: submittedPriority });
+      if (notifyTeam) {
+        members
+          .filter(m => m.id ? m.id !== user?.id : m.name !== currentUserName)
+          .forEach(member => {
+            const recipientId = member.id || member.name;
+            void sendNotification(
+              recipientId,
+              currentUserName,
+              tr(
+                language,
+                `Đã giao task mới: "${newTask.name}"`,
+                `Assigned a new task: "${newTask.name}"`
+              ),
+              groups[currentGroupIndex]?.id
+            );
+          });
       }
+      if (sendEmail && newTask.assignedTo) {
+        const assignedMember = members.find(m => m.id === submittedAssigneeId)
+          ?? members.find(m => m.name === newTask.assignedTo);
+        if (assignedMember?.id) {
+          void supabase.functions.invoke('send-task-email', {
+            body: {
+              assigneeId: assignedMember.id,
+              taskName: newTask.name,
+              taskDescription: newTask.description,
+              deadline: newTask.deadline,
+              priority: submittedPriority,
+              groupName: currentGroup?.name || '',
+            },
+          });
+        }
+      }
+      setNewTask({ name: '', description: '', assignedTo: '', assigneeId: '', deadline: '', priority: '', contributionPercent: 10 });
+      setNotifyTeam(false);
+      setSendEmail(false);
+      setCreateOpen(false);
+      toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: `"${newTask.name}" ${tr(language, 'đã được thêm', 'has been added')}` });
+    } catch (err) {
+      console.error("Task creation failed:", err);
+      toast({ title: tr(language, 'Lỗi', 'Error'), description: tr(language, 'Tạo task thất bại', 'Failed to create task'), variant: 'destructive' });
     }
-    setNewTask({ name: '', description: '', assignedTo: '', assigneeId: '', deadline: '', priority: '', contributionPercent: 10 });
-    setNotifyTeam(false);
-    setSendEmail(false);
-    setCreateOpen(false);
-    toast({ title: tr(language, 'Task đã tạo', 'Task created'), description: `"${newTask.name}" ${tr(language, 'đã được thêm', 'has been added')}` });
   };
 
   const handleDrop = (status: Task['status']) => {
@@ -235,9 +244,18 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                   <Label className="font-medium">{tr(language, 'Giao cho', 'Assign To')} <span className="text-red-500">*</span></Label>
                   <Select
                     value={newTask.assigneeId || newTask.assignedTo}
-                    onValueChange={v => {
+                    onValueChange={async v => {
                       const member = members.find(m => (m.id || m.name) === v);
-                      setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: member?.id || '' }));
+                      const memberId = member?.id || '';
+                      setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: memberId }));
+                      if (memberId) {
+                        setCheckingCalendar(true);
+                        const hasPerm = await checkUserGoogleCalendarPermission(memberId);
+                        setAssigneeHasCalendar(hasPerm);
+                        setCheckingCalendar(false);
+                      } else {
+                        setAssigneeHasCalendar(null);
+                      }
                     }}
                   >
                     <SelectTrigger className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400">
@@ -248,6 +266,50 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                     </SelectContent>
                   </Select>
                 </div>
+                {newTask.assigneeId && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                    {checkingCalendar ? (
+                      <p className="text-slate-500 italic">{tr(language, "Đang kiểm tra quyền Google Calendar...", "Checking Google Calendar permission...")}</p>
+                    ) : assigneeHasCalendar === true ? (
+                      <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>{tr(language, "Thành viên đã cấp quyền ghi Google Calendar. Hạn chót sẽ tự động đồng bộ.", "Member has granted Google Calendar write permission. Deadline will sync automatically.")}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-slate-600">
+                          {tr(language, "Thành viên chưa kết nối Google Calendar. Gửi yêu cầu để họ kết nối và nhận đồng bộ hạn chót.", "Member has not connected Google Calendar. Send a request asking them to authorize.")}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={sendingCalendarReq}
+                          className="w-full text-xs font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          onClick={async () => {
+                            setSendingCalendarReq(true);
+                            const res = await requestGoogleCalendarPermission(newTask.assigneeId, currentGroup?.name || '', currentUserName);
+                            setSendingCalendarReq(false);
+                            if (res.success) {
+                              toast({
+                                title: tr(language, "Đã gửi yêu cầu", "Request Sent"),
+                                description: tr(language, "Email yêu cầu quyền Google Calendar đã được gửi đến thành viên.", "Google Calendar write permission request email sent to member.")
+                              });
+                            } else {
+                              toast({
+                                title: tr(language, "Lỗi", "Error"),
+                                description: res.message,
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          {sendingCalendarReq ? tr(language, "Đang gửi...", "Sending...") : tr(language, "Gửi yêu cầu quyền Google Calendar", "Request Google Calendar Write Permission")}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="font-medium">{tr(language, 'Deadline', 'Deadline')}</Label>
