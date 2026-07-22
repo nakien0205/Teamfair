@@ -13,7 +13,7 @@ export interface GoogleCalendarConnectionView {
 /**
  * Cleanly parses and sanitizes server response to ensure browser state never contains extra or raw credential fields
  */
-export function sanitizeConnectionView(data: any): GoogleCalendarConnectionView {
+export function sanitizeConnectionView(data: unknown): GoogleCalendarConnectionView {
   if (!data || typeof data !== 'object') {
     return {
       status: 'disconnected',
@@ -26,17 +26,19 @@ export function sanitizeConnectionView(data: any): GoogleCalendarConnectionView 
     };
   }
 
+  const d = data as Record<string, unknown>;
   const validStatuses = ['not_connected', 'consent_pending', 'connected', 'attention_needed', 'disconnecting', 'disconnected'];
-  const status = validStatuses.includes(data.status) ? data.status : 'disconnected';
+  const rawStatus = typeof d.status === 'string' ? d.status : '';
+  const status = validStatuses.includes(rawStatus) ? rawStatus : 'disconnected';
 
   return {
     status: status as GoogleCalendarConnectionView['status'],
-    optedIn: Boolean(data.optedIn),
-    grantedScopes: Array.isArray(data.grantedScopes) ? data.grantedScopes.map(String) : [],
-    connectionGeneration: Math.max(0, Number(data.connectionGeneration) || 0),
-    attentionCode: data.attentionCode ? String(data.attentionCode) : null,
-    connectedAt: data.connectedAt ? String(data.connectedAt) : null,
-    updatedAt: data.updatedAt ? String(data.updatedAt) : null
+    optedIn: Boolean(d.optedIn),
+    grantedScopes: Array.isArray(d.grantedScopes) ? d.grantedScopes.map(String) : [],
+    connectionGeneration: Math.max(0, Number(d.connectionGeneration) || 0),
+    attentionCode: d.attentionCode ? String(d.attentionCode) : null,
+    connectedAt: d.connectedAt ? String(d.connectedAt) : null,
+    updatedAt: d.updatedAt ? String(d.updatedAt) : null
   };
 }
 

@@ -33,10 +33,10 @@ describe('googleCalendarConnection sanitizer & browser client', () => {
     expect(sanitized.optedIn).toBe(true);
     expect(sanitized.grantedScopes).toEqual(['openid', 'email']);
     expect(sanitized.connectionGeneration).toBe(2);
-    expect((sanitized as any).refreshToken).toBeUndefined();
-    expect((sanitized as any).accessToken).toBeUndefined();
-    expect((sanitized as any).googleSubjectHash).toBeUndefined();
-    expect((sanitized as any).clientSecret).toBeUndefined();
+    expect((sanitized as Record<string, unknown>).refreshToken).toBeUndefined();
+    expect((sanitized as Record<string, unknown>).accessToken).toBeUndefined();
+    expect((sanitized as Record<string, unknown>).googleSubjectHash).toBeUndefined();
+    expect((sanitized as Record<string, unknown>).clientSecret).toBeUndefined();
   });
 
   it('handles invalid status strings by defaulting to disconnected', () => {

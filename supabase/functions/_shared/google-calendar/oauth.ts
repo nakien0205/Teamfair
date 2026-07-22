@@ -40,7 +40,7 @@ export interface TokenExchangeResult {
  * Converts Uint8Array to base64url string without padding
  */
 function base64UrlEncode(array: Uint8Array): string {
-  let str = btoa(String.fromCharCode(...array));
+  const str = btoa(String.fromCharCode(...array));
   return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 

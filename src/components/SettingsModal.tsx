@@ -26,7 +26,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
   const { groups, currentGroupIndex, members, loadPersistedState, deleteProject } = useTeam();
   const openShareModal = useShareModalStore((state) => state.openShareModal);
 
-  let userPlan: any = "free";
+  let userPlan: string = "free";
   try {
     const entitlements = useEntitlements();
     userPlan = entitlements.plan;

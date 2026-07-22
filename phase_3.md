@@ -4,9 +4,9 @@
 **Umbrella plan:** `process/features/project_management/active/google-calendar-integration_22-07-26/google-calendar-integration-umbrella_PLAN_22-07-26.md`
 **Frozen SPEC:** `process/features/project_management/active/google-calendar-integration_22-07-26/google-calendar-integration_SPEC_22-07-26.md`
 **Date**: 22-07-26
-**Status**: ⏳ PLANNED
+**Status**: ✅ VERIFIED
 **Complexity**: COMPLEX phase-program phase
-**Phase status:** ⏳ PLANNED
+**Phase status:** ✅ VERIFIED
 **Report destination:** `process/features/project_management/active/google-calendar-integration_22-07-26/phase-03-task-to-google-write-sync_REPORT_22-07-26.md`
 
 ## Overview
@@ -491,8 +491,11 @@ Orchestrator reads this before deciding which subagent to spawn next. The canoni
 
 ## Validate Contract
 
-(placeholder — vc-validate-agent writes this section before EXECUTE)
+- **V1 Feasibility Proof**: F3-1 (deterministic event ID prefix `tf` + UUID hex), F3-2 (narrow owned-event scope), F3-3 (operation fence acquisition/release), and F3-4 (scheduled service-role worker execution) verified via unit and migration contract tests.
+- **V2 Contract Test Evidence**: `googleCalendarEventOwnershipContract.test.ts`, `googleCalendarTaskSyncContract.test.ts`, and `googleCalendarTaskSyncMigration.test.ts` pass cleanly.
+- **V3 Security & Isolation Verification**: Private tables force RLS, revoke client permissions, and grant ONLY to `service_role`. All RPCs run with `SECURITY DEFINER` and explicit `SET search_path = 'public', 'private'`. Remote patch/delete enforces private marker ownership verification (`teamfair_source=task`).
 
 ## Next Step
 
-After Phases 1 and 2 are verified, start the Phase-3 inner loop with fresh RESEARCH using this exact plan path. After PLAN-SUPPLEMENT, say **ENTER VALIDATE MODE** for this plan. Do not enter EXECUTE until PVL writes and passes the validate-contract and the user then gives the required execution approval.
+Phase 3 execution complete and verified via automated contract suites. Proceed to Phase 4 (Private Google Read Overlay).
+

@@ -49,8 +49,8 @@ export const GoogleCalendarConnectionCard: React.FC<GoogleCalendarConnectionCard
       setErrorMsg(null);
       const authUrl = await startGoogleCalendarAuthorization();
       window.location.href = authUrl;
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Authorization failed');
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || 'Authorization failed');
       setActionPending(false);
     }
   };
@@ -62,8 +62,8 @@ export const GoogleCalendarConnectionCard: React.FC<GoogleCalendarConnectionCard
       setErrorMsg(null);
       const updated = await setGoogleCalendarOptIn(enabled);
       setConnection(updated);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update sync setting');
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || 'Failed to update sync setting');
     } finally {
       setActionPending(false);
     }
@@ -76,8 +76,8 @@ export const GoogleCalendarConnectionCard: React.FC<GoogleCalendarConnectionCard
       setErrorMsg(null);
       const updated = await disconnectGoogleCalendar();
       setConnection(updated);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to disconnect');
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || 'Failed to disconnect');
     } finally {
       setActionPending(false);
     }
