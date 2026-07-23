@@ -125,6 +125,26 @@ describe("Google Calendar Overlay Provider Adapter", () => {
     expect(result.events[0].provider_event_id).toBe("event-new");
   });
 
+  it("invokes the provider lease wrapper once per pagination page", async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true, status: 200, json: async () => ({ items: [], nextPageToken: "page-2" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true, status: 200, json: async () => ({ items: [], nextSyncToken: "done" }),
+      });
+    const providerRequest = vi.fn(async (request) => request("leased-token"));
+
+    await fetchGoogleCalendarOverlayEvents({
+      rangeStart: "2026-07-01",
+      rangeEndExclusive: "2026-08-01",
+      providerRequest,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    expect(providerRequest).toHaveBeenCalledTimes(2);
+  });
+
   it("throws GoogleProviderError HTTP_410 on 410 response", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

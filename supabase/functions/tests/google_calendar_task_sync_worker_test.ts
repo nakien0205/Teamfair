@@ -56,17 +56,12 @@ Deno.test("Worker processes single job successfully", async () => {
       checkOwnerEntitlementAndConnection: async () => ({
         status: "connected",
         optedIn: true,
-        grantedScopes: ["https://www.googleapis.com/auth/calendar.events"],
+        grantedScopes: ["https://www.googleapis.com/auth/calendar.events.owned"],
         connectionGeneration: 1,
         isEntitled: true,
       }),
-      acquireOperationLease: async () => ({
-        leaseAcquired: true,
-        denialCode: null,
-        authorizedGeneration: 1,
-      }),
-      releaseOperationLease: async () => true,
-      getAccessTokenForOwner: async () => "mock-token",
+      withGoogleCalendarProviderRequest: async (_ownerId, _generation, _purpose, request) =>
+        request("mock-token"),
     },
     provider: {
       insertEvent: async () => ({ outcome: "success", etag: '"etag-1"' }),

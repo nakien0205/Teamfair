@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { getDecryptedRefreshToken } from "../_shared/google-calendar/credentials.ts";
+import { parseKeyRing } from "../_shared/google-calendar/crypto.ts";
+import { withGoogleCalendarProviderRequest } from "../_shared/google-calendar/credentials.ts";
 import { GoogleCalendarProviderAdapter } from "./provider.ts";
 import { ClaimedTaskSyncJob, runTaskSyncWorkerBatch, SyncWorkerDependencies } from "./sync.ts";
 
@@ -35,6 +36,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseClient = createClient(supabaseUrl, serviceKey);
+    const keyRing = parseKeyRing(
+      Deno.env.get("GOOGLE_CALENDAR_TOKEN_KEYS_JSON"),
+      Deno.env.get("GOOGLE_CALENDAR_TEST_MODE") === "true"
+    );
+    const googleOAuthClient = {
+      clientId: Deno.env.get("GOOGLE_OAUTH_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET") || "",
+    };
 
     let batchSize = 10;
     try {
@@ -133,60 +142,19 @@ serve(async (req) => {
           };
         },
 
-        async acquireOperationLease(ownerId, expectedGen, opId, purpose, ttlSecs) {
-          const { data, error } = await supabaseClient.rpc("acquire_google_calendar_operation_lease", {
-            p_owner_id: ownerId,
-            p_expected_generation: expectedGen,
-            p_operation_id: opId,
-            p_purpose: purpose,
-            p_requested_ttl_seconds: ttlSecs,
-          });
-          if (error || !data || data.length === 0) {
-            return { leaseAcquired: false, denialCode: error?.message || "lease_denied", authorizedGeneration: 0 };
+        async withGoogleCalendarProviderRequest<T>(ownerId, expectedGen, purpose, request): Promise<T> {
+          if (!googleOAuthClient.clientId || !googleOAuthClient.clientSecret) {
+            throw new Error("credential_refresh_failed");
           }
-          const row = data[0];
-          return {
-            leaseAcquired: Boolean(row.lease_acquired),
-            denialCode: row.denial_code || null,
-            authorizedGeneration: Number(row.authorized_generation || 0),
-          };
-        },
-
-        async releaseOperationLease(ownerId, opId) {
-          const { data, error } = await supabaseClient.rpc("release_google_calendar_operation_lease", {
-            p_owner_id: ownerId,
-            p_operation_id: opId,
-          });
-          if (error) return false;
-          return Boolean(data);
-        },
-
-        async getAccessTokenForOwner(ownerId: string): Promise<string | null> {
-          try {
-            const refreshToken = await getDecryptedRefreshToken(supabaseClient, ownerId);
-            if (!refreshToken) return null;
-            
-            const clientId = Deno.env.get("GOOGLE_CLIENT_ID") || "";
-            const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
-            if (!clientId || !clientSecret) return null;
-
-            const res = await fetch("https://oauth2.googleapis.com/token", {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                client_id: clientId,
-                client_secret: clientSecret,
-                refresh_token: refreshToken,
-                grant_type: "refresh_token",
-              }),
-            });
-
-            if (!res.ok) return null;
-            const data = await res.json();
-            return data.access_token || null;
-          } catch {
-            return null;
-          }
+          return withGoogleCalendarProviderRequest(
+            supabaseClient,
+            ownerId,
+            expectedGen,
+            purpose,
+            keyRing,
+            googleOAuthClient,
+            request
+          );
         },
       },
       provider,

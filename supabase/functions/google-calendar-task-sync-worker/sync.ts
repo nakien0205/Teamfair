@@ -53,19 +53,18 @@ export interface SyncWorkerDependencies {
       connectionGeneration: number;
       isEntitled: boolean;
     }>;
-    acquireOperationLease(
+    withGoogleCalendarProviderRequest<T>(
       ownerId: string,
       expectedGeneration: number,
-      operationId: string,
-      purpose: string,
-      requestedTtlSeconds: number
-    ): Promise<{
-      leaseAcquired: boolean;
-      denialCode: string | null;
-      authorizedGeneration: number;
-    }>;
-    releaseOperationLease(ownerId: string, operationId: string): Promise<boolean>;
-    getAccessTokenForOwner(ownerId: string): Promise<string | null>;
+      purpose: 'task_event_write' | 'personal_event_read',
+      request: (accessToken: string) => Promise<T>
+    ): Promise<T>;
+    /** Compatibility seam for existing pure tests; production wiring uses the method above. */
+    acquireOperationLease?: (
+      ownerId: string, expectedGeneration: number, operationId: string, purpose: string, requestedTtlSeconds: number
+    ) => Promise<{ leaseAcquired: boolean; denialCode: string | null; authorizedGeneration: number }>;
+    releaseOperationLease?: (ownerId: string, operationId: string) => Promise<boolean>;
+    getAccessTokenForOwner?: (ownerId: string) => Promise<string | null>;
   };
   provider: GoogleCalendarProviderAdapter;
   nowProvider?: () => Date;
@@ -141,9 +140,9 @@ export async function processSingleTaskSyncJob(
     return { success: false, outcomeCode: "entitlement_required" };
   }
 
-  const REQUIRED_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+  const REQUIRED_SCOPE = "https://www.googleapis.com/auth/calendar.events.owned";
   const hasScope = connState.grantedScopes.some(
-    s => s === REQUIRED_SCOPE || s === "https://www.googleapis.com/auth/calendar"
+    s => s === REQUIRED_SCOPE || s === "https://www.googleapis.com/auth/calendar.events" || s === "https://www.googleapis.com/auth/calendar"
   );
   if (!hasScope) {
     await deps.db.rescheduleJob(
@@ -158,48 +157,35 @@ export async function processSingleTaskSyncJob(
     return { success: false, outcomeCode: "scope_missing" };
   }
 
-  // 2. Acquire Operation Lease
-  const operationId = crypto.randomUUID();
-  const leaseResult = await deps.db.acquireOperationLease(
-    job.owner_id,
-    connState.connectionGeneration,
-    operationId,
-    "task_event_write",
-    30
-  );
-
-  if (!leaseResult.leaseAcquired) {
-    await deps.db.rescheduleJob(
-      job.task_id,
-      job.owner_id,
-      job.lease_token,
-      job.desired_version,
-      leaseResult.denialCode || "lease_denied",
-      null,
-      false
-    );
-    return { success: false, outcomeCode: leaseResult.denialCode || "lease_denied" };
-  }
-
   try {
-    // 3. Get Credential
-    const accessToken = await deps.db.getAccessTokenForOwner(job.owner_id);
-    if (!accessToken) {
-      await deps.db.rescheduleJob(
-        job.task_id,
-        job.owner_id,
-        job.lease_token,
-        job.desired_version,
-        "credential_unreadable",
-        null,
-        false
-      );
-      return { success: false, outcomeCode: "credential_unreadable" };
-    }
-
     const deterministicEventId = deriveGoogleEventId(job.task_id);
+    const withProviderLease = <T>(request: (accessToken: string) => Promise<T>) => {
+      if (typeof deps.db.withGoogleCalendarProviderRequest === 'function') {
+        return deps.db.withGoogleCalendarProviderRequest(
+          job.owner_id, connState.connectionGeneration, 'task_event_write', request
+        );
+      }
 
-    // 4. Execute Remote Operation
+      // Existing pure-test compatibility only. Edge production always uses the first branch.
+      if (!deps.db.acquireOperationLease || !deps.db.releaseOperationLease || !deps.db.getAccessTokenForOwner) {
+        throw new Error('credential_request_wrapper_missing');
+      }
+      const operationId = crypto.randomUUID();
+      return deps.db.acquireOperationLease(
+        job.owner_id, connState.connectionGeneration, operationId, 'task_event_write', 30
+      ).then(async (lease) => {
+        if (!lease.leaseAcquired) throw new Error(lease.denialCode || 'lease_denied');
+        try {
+          const accessToken = await deps.db.getAccessTokenForOwner!(job.owner_id);
+          if (!accessToken) throw new Error('credential_unreadable');
+          return await request(accessToken);
+        } finally {
+          await deps.db.releaseOperationLease!(job.owner_id, operationId);
+        }
+      });
+    };
+
+    // Every refresh and Google Calendar request obtains its own lease through this wrapper.
     if (job.desired_operation === "upsert") {
       if (!job.task_title || !job.task_deadline) {
         await deps.db.rescheduleJob(
@@ -221,18 +207,19 @@ export async function processSingleTaskSyncJob(
         job.task_id
       );
 
-      let result: ProviderResult = await deps.provider.insertEvent(accessToken, payload);
+      let result: ProviderResult = await withProviderLease((accessToken) =>
+        deps.provider.insertEvent(accessToken, payload)
+      );
 
       if (result.outcome === "conflict_409") {
         // Fetch existing event & verify marker ownership
-        const getRes = await deps.provider.getEvent(accessToken, deterministicEventId);
+        const getRes = await withProviderLease((accessToken) =>
+          deps.provider.getEvent(accessToken, deterministicEventId)
+        );
         if (getRes.outcome === "success" && isTeamfairOwnedTaskEvent(getRes.event, job.task_id)) {
           // Update owned event
-          result = await deps.provider.patchEvent(
-            accessToken,
-            deterministicEventId,
-            payload,
-            getRes.etag
+          result = await withProviderLease((accessToken) =>
+            deps.provider.patchEvent(accessToken, deterministicEventId, payload, getRes.etag)
           );
         } else {
           // Ownership mismatch! Dead-letter row
@@ -266,7 +253,9 @@ export async function processSingleTaskSyncJob(
       return await handleProviderFailure(job, result, deps, now);
     } else {
       // desired_operation === 'delete'
-      const getRes = await deps.provider.getEvent(accessToken, deterministicEventId);
+      const getRes = await withProviderLease((accessToken) =>
+        deps.provider.getEvent(accessToken, deterministicEventId)
+      );
 
       if (getRes.outcome === "not_found_404" || getRes.outcome === "gone_410") {
         // Event already gone; complete delete tombstone
@@ -297,7 +286,9 @@ export async function processSingleTaskSyncJob(
           return { success: false, outcomeCode: "ownership_conflict" };
         }
 
-        const delRes = await deps.provider.deleteEvent(accessToken, deterministicEventId);
+        const delRes = await withProviderLease((accessToken) =>
+          deps.provider.deleteEvent(accessToken, deterministicEventId)
+        );
         if (delRes.outcome === "success" || delRes.outcome === "not_found_404" || delRes.outcome === "gone_410") {
           const completed = await deps.db.completeJob(
             job.task_id,
@@ -316,8 +307,12 @@ export async function processSingleTaskSyncJob(
 
       return await handleProviderFailure(job, getRes, deps, now);
     }
-  } finally {
-    await deps.db.releaseOperationLease(job.owner_id, operationId);
+  } catch (error: unknown) {
+    const outcomeCode = error instanceof Error ? error.message : 'provider_request_failed';
+    await deps.db.rescheduleJob(
+      job.task_id, job.owner_id, job.lease_token, job.desired_version, outcomeCode, null, false
+    );
+    return { success: false, outcomeCode };
   }
 }
 

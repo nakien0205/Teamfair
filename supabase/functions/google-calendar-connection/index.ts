@@ -31,9 +31,9 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  const keyRingJson = Deno.env.get('GOOGLE_CALENDAR_TOKEN_KEYS_JSON') || '{"1":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}';
+  const keyRingJson = Deno.env.get('GOOGLE_CALENDAR_TOKEN_KEYS_JSON');
   const activeKeyVersion = Number(Deno.env.get('GOOGLE_CALENDAR_TOKEN_ACTIVE_KEY_VERSION') || '1');
-  const keyRing = parseKeyRing(keyRingJson);
+  const keyRing = parseKeyRing(keyRingJson, Deno.env.get('GOOGLE_CALENDAR_TEST_MODE') === 'true');
 
   const oauthConfig: OAuthConfig = {
     clientId: Deno.env.get('GOOGLE_OAUTH_CLIENT_ID') || 'mock-client-id',
