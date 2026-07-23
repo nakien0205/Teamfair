@@ -114,3 +114,48 @@ export async function disconnectGoogleCalendar(): Promise<GoogleCalendarConnecti
 
   return sanitizeConnectionView(data);
 }
+
+/**
+ * Checks if a specific user (by ID) has connected Google Calendar and opted in
+ */
+export async function checkUserGoogleCalendarPermission(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const { data, error } = await supabase
+      .from('google_calendar_connections')
+      .select('status, opted_in')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (error || !data) return false;
+    return data.status === 'connected' && Boolean(data.opted_in);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sends a Google Calendar write permission request email to an assignee
+ */
+export async function requestGoogleCalendarPermission(
+  assigneeId: string,
+  groupName: string,
+  senderName: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const { error } = await supabase.functions.invoke('send-task-email', {
+      body: {
+        assigneeId,
+        groupName,
+        senderName,
+        type: 'calendar_permission_request',
+      },
+    });
+
+    if (error) throw error;
+    return { success: true, message: 'Permission request sent successfully.' };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+

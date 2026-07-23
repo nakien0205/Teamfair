@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleGoogleCalendarOverlayRequest, HandlerDependencies } from "./handler.ts";
+import { parseKeyRing } from "../_shared/google-calendar/crypto.ts";
+import { withGoogleCalendarProviderRequest } from "../_shared/google-calendar/credentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +28,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const keyRing = parseKeyRing(
+      Deno.env.get("GOOGLE_CALENDAR_TOKEN_KEYS_JSON"),
+      Deno.env.get("GOOGLE_CALENDAR_TEST_MODE") === "true"
+    );
+    const googleOAuthClient = {
+      clientId: Deno.env.get("GOOGLE_OAUTH_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET") || "",
+    };
 
     const {
       data: { user },
@@ -49,8 +59,8 @@ serve(async (req) => {
           p_user_id: userId,
         });
         if (error || typeof data !== "boolean") {
-          // Default check fallback if RPC is unconfigured in local mock
-          return true;
+          // Deny by default if RPC fails — leader must have active subscription
+          return false;
         }
         return data;
       },
@@ -70,13 +80,19 @@ serve(async (req) => {
         };
       },
 
-      getCredential: async (userId: string) => {
-        const { data, error } = await supabase.rpc(
-          "get_decrypted_google_calendar_credential",
-          { p_owner_id: userId }
+      withGoogleCalendarProviderRequest: async <T>(userId, generation, request): Promise<T> => {
+        if (!googleOAuthClient.clientId || !googleOAuthClient.clientSecret) {
+          throw new Error("credential_refresh_failed");
+        }
+        return withGoogleCalendarProviderRequest(
+          supabase,
+          userId,
+          generation,
+          "personal_event_read",
+          keyRing,
+          googleOAuthClient,
+          request
         );
-        if (error || !data || data.length === 0) return null;
-        return { access_token: data[0].access_token };
       },
 
       readWindowRpc: async (userId, gen, start, end) => {

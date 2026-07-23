@@ -25,10 +25,12 @@ export interface GoogleCalendarApiEvent {
 }
 
 export interface FetchOverlayEventsParams {
-  accessToken: string;
+  /** Test-only compatibility seam. Runtime callers must provide providerRequest. */
+  accessToken?: string;
   rangeStart: string; // YYYY-MM-DD
   rangeEndExclusive: string; // YYYY-MM-DD
   syncToken?: string | null;
+  providerRequest?: <T>(request: (accessToken: string) => Promise<T>) => Promise<T>;
   fetchFn?: typeof fetch;
 }
 
@@ -68,7 +70,11 @@ const FETCH_TIMEOUT_MS = 10000;
 export async function fetchGoogleCalendarOverlayEvents(
   params: FetchOverlayEventsParams
 ): Promise<FetchOverlayEventsResult> {
-  const { accessToken, rangeStart, rangeEndExclusive, syncToken, fetchFn = fetch } = params;
+  const { accessToken, rangeStart, rangeEndExclusive, syncToken, providerRequest, fetchFn = fetch } = params;
+  const requestWithLease = providerRequest || (async <T>(request: (token: string) => Promise<T>) => {
+    if (!accessToken) throw new Error("provider lease is required");
+    return request(accessToken);
+  });
 
   let pageToken: string | null = null;
   let pageCount = 0;
@@ -111,13 +117,13 @@ export async function fetchGoogleCalendarOverlayEvents(
 
     let response: Response;
     try {
-      response = await fetchFn(url.toString(), {
+      response = await requestWithLease((leasedAccessToken) => fetchFn(url.toString(), {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${leasedAccessToken}`,
           Accept: "application/json",
         },
         signal: controller.signal,
-      });
+      }));
     } catch (err: unknown) {
       clearTimeout(timeoutId);
       if (err instanceof Error && err.name === "AbortError") {

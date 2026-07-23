@@ -53,7 +53,11 @@ export interface HandlerDependencies {
   getUserId: () => Promise<string>;
   hasProGroupFeatures: (userId: string) => Promise<boolean>;
   getConnection: (userId: string) => Promise<ConnectionState | null>;
-  getCredential: (userId: string) => Promise<{ access_token: string } | null>;
+  withGoogleCalendarProviderRequest: <T>(
+    userId: string,
+    generation: number,
+    request: (accessToken: string) => Promise<T>
+  ) => Promise<T>;
   readWindowRpc: (
     userId: string,
     generation: number,
@@ -183,27 +187,19 @@ export async function handleGoogleCalendarOverlayRequest(
   // 4. Read current cached window cursor
   const cachedWindow = await deps.readWindowRpc(userId, generation, rangeStart, rangeEndExclusive);
 
-  // 5. Get encrypted credential
-  const credential = await deps.getCredential(userId);
-  if (!credential || !credential.access_token) {
-    return {
-      status: "reconnect_required",
-      events: [],
-      metadata: { refreshedAt: null, stale: false },
-    };
-  }
-
   const fetchEvents = deps.fetchOverlayEvents || fetchGoogleCalendarOverlayEvents;
+  const providerRequest = <T>(request: (accessToken: string) => Promise<T>) =>
+    deps.withGoogleCalendarProviderRequest(userId, generation, request);
 
   let fetchResult;
   let isFullSync = !cachedWindow.found || !cachedWindow.sync_token;
 
   try {
     fetchResult = await fetchEvents({
-      accessToken: credential.access_token,
       rangeStart,
       rangeEndExclusive,
       syncToken: isFullSync ? null : cachedWindow.sync_token,
+      providerRequest,
     });
   } catch (err: unknown) {
     if (err instanceof GoogleProviderError && err.code === "HTTP_410") {
@@ -213,10 +209,10 @@ export async function handleGoogleCalendarOverlayRequest(
 
       try {
         fetchResult = await fetchEvents({
-          accessToken: credential.access_token,
           rangeStart,
           rangeEndExclusive,
           syncToken: null,
+          providerRequest,
         });
       } catch (retryErr: unknown) {
         // Retry failed; fall back to stale or retryable error

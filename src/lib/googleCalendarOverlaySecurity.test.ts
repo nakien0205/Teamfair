@@ -20,9 +20,9 @@ describe("Google Calendar Overlay Security & Authorization Matrix", () => {
         opted_in: true,
         connection_generation: 1,
       }),
-      getCredential: vi.fn().mockResolvedValue({
-        access_token: "valid-access-token",
-      }),
+      withGoogleCalendarProviderRequest: vi.fn(async (_userId, _generation, request) =>
+        request("valid-access-token")
+      ),
       readWindowRpc: vi.fn().mockResolvedValue({
         found: false,
         sync_token: null,
@@ -152,6 +152,33 @@ describe("Google Calendar Overlay Security & Authorization Matrix", () => {
     expect(mockClear).toHaveBeenCalledWith("owner-user-uuid", 1, "2026-07-01", "2026-08-01");
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(res.status).toBe("ready");
+  });
+
+  it("takes a fresh credential-and-provider lease for each provider fetch and retry", async () => {
+    const withLease = vi.fn(async (_userId, _generation, request) => request("leased-access-token"));
+    const fetchWithOneRetry = vi
+      .fn()
+      .mockImplementationOnce(async (params) =>
+        params.providerRequest(() => Promise.reject(new GoogleProviderError("expired", "HTTP_410", 410, true)))
+      )
+      .mockImplementationOnce(async (params) => {
+        await params.providerRequest(() => Promise.resolve(new Response("{}", { status: 200 })));
+        return { events: [], deletedEventIds: [], nextSyncToken: "fresh" };
+      });
+    const deps = createMockDeps({
+      withGoogleCalendarProviderRequest: withLease,
+      readWindowRpc: vi.fn().mockResolvedValue({
+        found: true, sync_token: "expired", last_synced_at: null, events: [],
+      }),
+      fetchOverlayEvents: fetchWithOneRetry as unknown as typeof fetchGoogleCalendarOverlayEvents,
+    });
+
+    const response = await handleGoogleCalendarOverlayRequest({
+      rangeStart: "2026-07-01", rangeEndExclusive: "2026-08-01",
+    }, deps);
+
+    expect(withLease).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe("ready");
   });
 
   it("proves response contract contains zero access/refresh/sync tokens", async () => {

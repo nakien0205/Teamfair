@@ -51,17 +51,13 @@ describe("Google Calendar Task Sync Contract Tests", () => {
         checkOwnerEntitlementAndConnection: vi.fn().mockResolvedValue({
           status: "connected",
           optedIn: true,
-          grantedScopes: ["https://www.googleapis.com/auth/calendar.events"],
+          grantedScopes: ["https://www.googleapis.com/auth/calendar.events.owned"],
           connectionGeneration: 1,
           isEntitled: true,
         }),
-        acquireOperationLease: vi.fn().mockResolvedValue({
-          leaseAcquired: true,
-          denialCode: null,
-          authorizedGeneration: 1,
-        }),
-        releaseOperationLease: vi.fn().mockResolvedValue(true),
-        getAccessTokenForOwner: vi.fn().mockResolvedValue("mock-access-token"),
+        withGoogleCalendarProviderRequest: vi.fn(async (_ownerId, _generation, _purpose, request) =>
+          request("mock-access-token")
+        ),
         ...overrides,
       },
       provider: mockProvider,
@@ -74,7 +70,7 @@ describe("Google Calendar Task Sync Contract Tests", () => {
 
     expect(result.success).toBe(true);
     expect(result.outcomeCode).toBe("success");
-    expect(deps.db.acquireOperationLease).toHaveBeenCalled();
+    expect(deps.db.withGoogleCalendarProviderRequest).toHaveBeenCalledTimes(1);
     expect(deps.db.completeJob).toHaveBeenCalledWith(
       sampleJob.task_id,
       sampleJob.owner_id,
@@ -84,7 +80,6 @@ describe("Google Calendar Task Sync Contract Tests", () => {
       '"etag-123"',
       1
     );
-    expect(deps.db.releaseOperationLease).toHaveBeenCalled();
   });
 
   it("pauses job if user is not opted in", async () => {
@@ -92,7 +87,7 @@ describe("Google Calendar Task Sync Contract Tests", () => {
       checkOwnerEntitlementAndConnection: vi.fn().mockResolvedValue({
         status: "connected",
         optedIn: false,
-        grantedScopes: ["https://www.googleapis.com/auth/calendar.events"],
+        grantedScopes: ["https://www.googleapis.com/auth/calendar.events.owned"],
         connectionGeneration: 1,
         isEntitled: true,
       }),
@@ -141,6 +136,7 @@ describe("Google Calendar Task Sync Contract Tests", () => {
     expect(result.success).toBe(true);
     expect(deps.provider.getEvent).toHaveBeenCalled();
     expect(deps.provider.patchEvent).toHaveBeenCalled();
+    expect(deps.db.withGoogleCalendarProviderRequest).toHaveBeenCalledTimes(3);
   });
 
   it("dead-letters job if 409 conflict event is NOT owned by Teamfair", async () => {

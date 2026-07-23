@@ -1,9 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
 
 const mocks = vi.hoisted(() => ({
-  addTask: vi.fn(),
+  addTask: vi.fn().mockResolvedValue({ id: "task-1" }),
   invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
   canUsePriority: false,
 }));
@@ -68,13 +68,16 @@ function fillRequiredFields(assigneeId = "member-1") {
   fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: assigneeId } });
 }
 
-function submitTask() {
-  const buttons = screen.getAllByRole("button", { name: "Create Task" });
-  fireEvent.click(buttons[buttons.length - 1]);
+async function submitTask() {
+  await act(async () => {
+    const buttons = screen.getAllByRole("button", { name: "Create Task" });
+    fireEvent.click(buttons[buttons.length - 1]);
+  });
 }
 
 beforeEach(() => {
   mocks.addTask.mockReset();
+  mocks.addTask.mockResolvedValue({ id: "task-1" });
   mocks.invoke.mockClear();
   mocks.canUsePriority = false;
 });
@@ -82,7 +85,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("KanbanBoard task priority", () => {
-  it("opens and resets with Choose Priority", () => {
+  it("opens and resets with Choose Priority", async () => {
     render(<KanbanBoard isLeader currentUser="Leader One" />);
     openDialog();
 
@@ -91,18 +94,18 @@ describe("KanbanBoard task priority", () => {
     expect(screen.getByRole("option", { name: "Choose Priority" })).toBeInTheDocument();
 
     fillRequiredFields();
-    submitTask();
+    await submitTask();
     openDialog();
 
     expect(screen.getAllByRole("combobox")[1]).toHaveValue("");
   });
 
-  it("persists blank priority through task and email submission", () => {
+  it("persists blank priority through task and email submission", async () => {
     render(<KanbanBoard isLeader currentUser="Leader One" />);
     openDialog();
     fillRequiredFields();
     fireEvent.click(screen.getByLabelText("Send email"));
-    submitTask();
+    await submitTask();
 
     expect(mocks.addTask).toHaveBeenCalledWith(expect.objectContaining({ priority: undefined }));
     expect(mocks.invoke).toHaveBeenCalledWith(
@@ -111,12 +114,12 @@ describe("KanbanBoard task priority", () => {
     );
   });
 
-  it("keeps a newly created task hidden from a duplicate-name viewer before reload", () => {
+  it("keeps a newly created task hidden from a duplicate-name viewer before reload", async () => {
     render(<KanbanBoard isLeader currentUser="Leader One" />);
     openDialog();
     fillRequiredFields("member-2");
     fireEvent.click(screen.getByLabelText("Send email"));
-    submitTask();
+    await submitTask();
 
     const optimisticTask = mocks.addTask.mock.calls[0][0];
     expect(optimisticTask).toEqual(expect.objectContaining({
@@ -135,13 +138,13 @@ describe("KanbanBoard task priority", () => {
     );
   });
 
-  it.each(["Low", "Medium", "High"] as const)("preserves paid %s", (priorityValue) => {
+  it.each(["Low", "Medium", "High"] as const)("preserves paid %s", async (priorityValue) => {
     mocks.canUsePriority = true;
     render(<KanbanBoard isLeader currentUser="Leader One" />);
     openDialog();
     fillRequiredFields();
     fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: priorityValue } });
-    submitTask();
+    await submitTask();
 
     expect(mocks.addTask).toHaveBeenCalledWith(expect.objectContaining({ priority: priorityValue }));
   });

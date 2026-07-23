@@ -20,6 +20,22 @@ export interface AcquireLeaseResult {
   denialCode: string | null;
   authorizedGeneration: number;
   expiresAt: string | null;
+  credentialEnvelope: EncryptedCredentialEnvelope | null;
+}
+
+export interface EncryptedCredentialEnvelope {
+  ciphertext: string;
+  nonce: string;
+  keyVersion: number;
+  credentialGeneration: number;
+}
+
+export interface GoogleOAuthClientCredentials {
+  clientId: string;
+  clientSecret: string;
+  tokenEndpoint?: string;
+  /** Test-only override; production default stays below the 30-second lease. */
+  refreshTimeoutMs?: number;
 }
 
 /**
@@ -84,7 +100,8 @@ export async function acquireOperationLease(
       leaseAcquired: false,
       denialCode: error ? error.message : 'acquire_rpc_failed',
       authorizedGeneration: 0,
-      expiresAt: null
+      expiresAt: null,
+      credentialEnvelope: null
     };
   }
 
@@ -93,7 +110,15 @@ export async function acquireOperationLease(
     leaseAcquired: row.lease_acquired,
     denialCode: row.denial_code,
     authorizedGeneration: Number(row.authorized_generation),
-    expiresAt: row.expires_at
+    expiresAt: row.expires_at,
+    credentialEnvelope: row.lease_acquired && row.encrypted_refresh_token
+      ? {
+          ciphertext: row.encrypted_refresh_token,
+          nonce: row.credential_nonce,
+          keyVersion: Number(row.credential_key_version),
+          credentialGeneration: Number(row.credential_generation),
+        }
+      : null,
   };
 }
 
@@ -111,6 +136,110 @@ export async function releaseOperationLease(
   });
 
   return !error && Boolean(data);
+}
+
+async function refreshAccessTokenInMemory(
+  refreshToken: string,
+  oauthClient: GoogleOAuthClientCredentials,
+  fetchImpl: typeof fetch
+): Promise<string> {
+  const timeoutMs = Math.min(Math.max(oauthClient.refreshTimeoutMs ?? 15000, 1), 29000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetchImpl(oauthClient.tokenEndpoint || 'https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: oauthClient.clientId,
+        client_secret: oauthClient.clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error('credential_refresh_failed');
+    }
+
+    const payload = await response.json() as { access_token?: unknown };
+    if (typeof payload.access_token !== 'string' || !payload.access_token) {
+      throw new Error('credential_refresh_failed');
+    }
+
+    return payload.access_token;
+  } catch {
+    throw new Error('credential_refresh_failed');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Decrypts a lease-protected refresh-token envelope, refreshes in memory, then uses a new
+ * lease for exactly one Google provider request. No token is returned to callers or responses.
+ */
+export async function withGoogleCalendarProviderRequest<T>(
+  supabase: SupabaseClient,
+  ownerId: string,
+  expectedGeneration: number,
+  purpose: 'task_event_write' | 'personal_event_read',
+  keyRing: EncryptionKeyRing,
+  oauthClient: GoogleOAuthClientCredentials,
+  request: (accessToken: string) => Promise<T>,
+  fetchImpl: typeof fetch = fetch
+): Promise<T> {
+  const refreshOperationId = crypto.randomUUID();
+  const refreshLease = await acquireOperationLease(
+    supabase,
+    ownerId,
+    expectedGeneration,
+    refreshOperationId,
+    'credential_validation',
+    30
+  );
+
+  if (!refreshLease.leaseAcquired || !refreshLease.credentialEnvelope) {
+    throw new Error(refreshLease.denialCode || 'credential_unreadable');
+  }
+
+  let accessToken: string;
+  try {
+    const envelope = refreshLease.credentialEnvelope;
+    if (envelope.credentialGeneration !== expectedGeneration) {
+      throw new Error('generation_mismatch');
+    }
+    const refreshToken = await decryptToken(
+      { ciphertext: envelope.ciphertext, nonce: envelope.nonce, keyVersion: envelope.keyVersion },
+      keyRing,
+      `google-calendar:refresh-token:${ownerId}:${envelope.credentialGeneration}`
+    );
+    accessToken = await refreshAccessTokenInMemory(refreshToken, oauthClient, fetchImpl);
+  } finally {
+    await releaseOperationLease(supabase, ownerId, refreshOperationId);
+  }
+
+  const providerOperationId = crypto.randomUUID();
+  const providerLease = await acquireOperationLease(
+    supabase,
+    ownerId,
+    expectedGeneration,
+    providerOperationId,
+    purpose,
+    30
+  );
+
+  if (!providerLease.leaseAcquired) {
+    throw new Error(providerLease.denialCode || 'lease_denied');
+  }
+
+  try {
+    return await request(accessToken);
+  } finally {
+    await releaseOperationLease(supabase, ownerId, providerOperationId);
+  }
 }
 
 /**

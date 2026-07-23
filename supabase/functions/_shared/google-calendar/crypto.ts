@@ -26,10 +26,12 @@ export async function sha256Hex(data: string): Promise<string> {
 /**
  * Parses and validates key ring JSON from environment
  */
-export function parseKeyRing(jsonString?: string): EncryptionKeyRing {
+export function parseKeyRing(jsonString?: string, allowTestFallback = false): EncryptionKeyRing {
   if (!jsonString) {
-    // Default fallback keyring for test/mock environments if env variable not provided
-    return { 1: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    if (allowTestFallback) {
+      return { 1: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    }
+    throw new Error('Google Calendar token key ring is required');
   }
   try {
     const ring = JSON.parse(jsonString);
