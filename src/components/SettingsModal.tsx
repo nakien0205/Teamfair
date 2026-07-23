@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useShareModalStore } from "@/hooks/useShareModalStore";
 import { GoogleCalendarConnectionCard } from "@/components/GoogleCalendarConnectionCard";
 import { useEntitlements } from "@/context/EntitlementContext";
+import { GOOGLE_CALENDAR_UI_ENABLED } from "@/lib/featureFlags";
 
 interface SettingsModalProps {
   open: boolean;
@@ -20,19 +21,21 @@ interface SettingsModalProps {
   defaultToMember?: boolean;
 }
 
+const GoogleCalendarSettingsSection = () => {
+  const { plan } = useEntitlements();
+
+  return (
+    <div className="pt-2 border-t border-slate-800">
+      <GoogleCalendarConnectionCard userPlan={plan} />
+    </div>
+  );
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange, defaultToMember = false }) => {
   const { profile, updateProfileName } = useAuth();
   const { language } = useLanguage();
   const { groups, currentGroupIndex, members, loadPersistedState, deleteProject } = useTeam();
   const openShareModal = useShareModalStore((state) => state.openShareModal);
-
-  let userPlan: string = "free";
-  try {
-    const entitlements = useEntitlements();
-    userPlan = entitlements.plan;
-  } catch {
-    userPlan = "free";
-  }
 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -313,10 +316,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                   )}
                 </div>
 
-                {/* Google Calendar Integration */}
-                <div className="pt-2 border-t border-slate-800">
-                  <GoogleCalendarConnectionCard userPlan={userPlan} />
-                </div>
+                {GOOGLE_CALENDAR_UI_ENABLED && (
+                  <GoogleCalendarSettingsSection />
+                )}
 
                 {/* Member Management & Resign (Only for active Project Leader) */}
                 {isCallerLeader && (

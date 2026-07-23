@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getAccessibleProjectEntries } from '@/lib/projectAccess';
 import { LecturerDashboardSkeleton } from '@/components/skeletons';
 import { checkUserGoogleCalendarPermission, requestGoogleCalendarPermission } from '@/lib/googleCalendarConnection';
+import { GOOGLE_CALENDAR_UI_ENABLED } from '@/lib/featureFlags';
 
 const LecturerDashboard = () => {
   const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, addTask, deleteTask, approveTask, dataLoading } = useTeam();
@@ -397,13 +398,14 @@ const LecturerDashboard = () => {
                       const member = group.members.find(m => (m.id || m.name) === v);
                       const memberId = member?.id || '';
                       setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: memberId }));
-                      if (memberId) {
+                      if (GOOGLE_CALENDAR_UI_ENABLED && memberId) {
                         setCheckingCalendar(true);
                         const hasPerm = await checkUserGoogleCalendarPermission(memberId);
                         setAssigneeHasCalendar(hasPerm);
                         setCheckingCalendar(false);
                       } else {
                         setAssigneeHasCalendar(null);
+                        setCheckingCalendar(false);
                       }
                     }}
                   >
@@ -413,7 +415,7 @@ const LecturerDashboard = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {newTask.assigneeId && (
+                {GOOGLE_CALENDAR_UI_ENABLED && newTask.assigneeId && (
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
                     {checkingCalendar ? (
                       <p className="text-slate-500 italic">{tr(language, "Đang kiểm tra quyền Google Calendar...", "Checking Google Calendar permission...")}</p>

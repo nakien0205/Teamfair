@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsModal } from './SettingsModal';
 
@@ -42,14 +42,12 @@ vi.mock('@/lib/supabaseClient', () => ({
   }
 }));
 
-describe('SettingsModal with Google Calendar integration', () => {
-  it('renders SettingsModal and includes GoogleCalendarConnectionCard', async () => {
+describe('SettingsModal', () => {
+  it('keeps unfinished Google Calendar integration hidden', () => {
     render(<SettingsModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText(/Cấu hình Tài khoản|Account Settings/i)).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('google-calendar-connection-card')).toBeInTheDocument();
-    });
+    expect(screen.queryByTestId('google-calendar-connection-card')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Google Calendar Integration/i)).not.toBeInTheDocument();
   });
 });

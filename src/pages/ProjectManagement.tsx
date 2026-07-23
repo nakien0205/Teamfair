@@ -23,6 +23,7 @@ import { Task } from "@/context/TeamContext";
 import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
 import { fetchGoogleCalendarOverlay, type GoogleOverlayEvent, type GoogleOverlayStatus } from "@/lib/googleCalendarOverlay";
 import { GoogleCalendarOverlay } from "@/components/GoogleCalendarOverlay";
+import { GOOGLE_CALENDAR_UI_ENABLED } from "@/lib/featureFlags";
 
 export function isExactProjectNameConfirmation(typedName: string, projectName: string | undefined): boolean {
   return Boolean(projectName) && typedName === projectName;
@@ -99,7 +100,7 @@ const ProjectManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab === "Global Calendar") {
+    if (GOOGLE_CALENDAR_UI_ENABLED && activeTab === "Global Calendar") {
       void loadOverlayData("open");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1740,13 +1741,15 @@ const ProjectManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <GoogleCalendarOverlay
-                  status={overlayStatus}
-                  events={overlayEvents}
-                  refreshedAt={overlayRefreshedAt}
-                  isLoading={overlayLoading}
-                  onRefresh={() => void loadOverlayData("manual")}
-                />
+                {GOOGLE_CALENDAR_UI_ENABLED && (
+                  <GoogleCalendarOverlay
+                    status={overlayStatus}
+                    events={overlayEvents}
+                    refreshedAt={overlayRefreshedAt}
+                    isLoading={overlayLoading}
+                    onRefresh={() => void loadOverlayData("manual")}
+                  />
+                )}
               </div>
             ) : activeTab === "Notification" ? (
               <div className="space-y-6 animate-in fade-in duration-300">

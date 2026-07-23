@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { t, tr } from "@/lib/i18n";
 import { dashboardPathForRole } from '@/lib/dashboardPath';
+import { GOOGLE_CALENDAR_UI_ENABLED } from '@/lib/featureFlags';
 import {
   Users, ArrowRight, BarChart3, CheckCircle,
   LayoutDashboard, FileText, CheckSquare,
@@ -447,7 +448,9 @@ const Landing = () => {
 
         /* --- TIỆN ÍCH BỔ SUNG --- */
         { type: "section", text: language === "vi" ? "TIỆN ÍCH BỔ SUNG" : "ADD-ONS" },
-        { type: "check", text: language === "vi" ? "Sync Google Calendar" : "Sync Google Calendar" },
+        ...(GOOGLE_CALENDAR_UI_ENABLED
+          ? [{ type: "check", text: "Sync Google Calendar" }]
+          : []),
         { type: "check", text: language === "vi" ? "Storage 5 GB/nhóm" : "5 GB storage/team" },
         // 4 DÒNG BỊ KHÓA ĐƯỢC BỔ SUNG Ở ĐÂY:
         { type: "lock", text: language === "vi" ? "Nhiều nhóm/project song song" : "Multiple groups/projects in parallel" },

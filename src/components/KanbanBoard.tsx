@@ -18,6 +18,7 @@ import { useEntitlements } from '@/context/EntitlementContext';
 import { hasProGroupFeatures } from '@/lib/billing';
 import { supabase } from '@/lib/supabaseClient';
 import { checkUserGoogleCalendarPermission, requestGoogleCalendarPermission } from '@/lib/googleCalendarConnection';
+import { GOOGLE_CALENDAR_UI_ENABLED } from '@/lib/featureFlags';
 
 const COLUMNS: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 const COLUMN_COLORS: Record<string, string> = {
@@ -248,13 +249,14 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                       const member = members.find(m => (m.id || m.name) === v);
                       const memberId = member?.id || '';
                       setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: memberId }));
-                      if (memberId) {
+                      if (GOOGLE_CALENDAR_UI_ENABLED && memberId) {
                         setCheckingCalendar(true);
                         const hasPerm = await checkUserGoogleCalendarPermission(memberId);
                         setAssigneeHasCalendar(hasPerm);
                         setCheckingCalendar(false);
                       } else {
                         setAssigneeHasCalendar(null);
+                        setCheckingCalendar(false);
                       }
                     }}
                   >
@@ -266,7 +268,7 @@ const KanbanBoard = ({ isLeader, currentUser, locked, onApproveClick }: Props) =
                     </SelectContent>
                   </Select>
                 </div>
-                {newTask.assigneeId && (
+                {GOOGLE_CALENDAR_UI_ENABLED && newTask.assigneeId && (
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
                     {checkingCalendar ? (
                       <p className="text-slate-500 italic">{tr(language, "Đang kiểm tra quyền Google Calendar...", "Checking Google Calendar permission...")}</p>
