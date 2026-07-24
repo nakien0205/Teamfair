@@ -2,6 +2,7 @@ import { getSupabaseAdmin, requireAuthUser } from "../_shared/auth.ts";
 import { isAllowedOrigin, optionsResponse } from "../_shared/cors.ts";
 import { enforceRateLimit } from "../_shared/ratelimit.ts";
 import { ApiError, internalError, jsonError, jsonOk } from "../_shared/responses.ts";
+import { buildVietQrQuickLink } from "../_shared/vietqr.ts";
 
 const PLANS = {
   pro_group: { amount: 79_000 },
@@ -43,7 +44,15 @@ Deno.serve(async (req) => {
     const bankId = requiredPaymentEnv("PAYMENT_BANK_ID");
     const accountNumber = requiredPaymentEnv("PAYMENT_ACCOUNT_NO");
     const accountName = requiredPaymentEnv("PAYMENT_ACCOUNT_NAME");
+    const amount = PLANS[plan].amount;
     const orderReference = newOrderReference();
+    const qrUrl = buildVietQrQuickLink({
+      bankId,
+      accountNumber,
+      amount,
+      transferReference: orderReference,
+      accountName,
+    });
     const admin = getSupabaseAdmin();
     const { data: order, error } = await admin
       .from("orders")
@@ -51,13 +60,11 @@ Deno.serve(async (req) => {
         order_reference: orderReference,
         user_id: user.id,
         plan_id: plan,
-        amount_vnd: PLANS[plan].amount,
+        amount_vnd: amount,
       })
       .select("id,order_reference,amount_vnd,plan_id")
       .single();
     if (error || !order) throw error ?? new Error("Could not create payment order.");
-
-    const qrUrl = `https://api.vietqr.io/${encodeURIComponent(bankId)}/${encodeURIComponent(accountNumber)}/${order.amount_vnd}/${encodeURIComponent(order.order_reference)}/qr_only.png?accountName=${encodeURIComponent(accountName)}`;
 
     return jsonOk(req, {
       orderId: order.id,

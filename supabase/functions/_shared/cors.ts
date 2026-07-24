@@ -6,9 +6,21 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:8080",
 ]);
 
+const TEAMFAIR_VERCEL_PREVIEW_ORIGIN = /^https:\/\/teamfair(?:-[a-z0-9-]+)+\.vercel\.app$/;
+
+function isAllowedOriginValue(origin: string | null): boolean {
+  if (!origin || ALLOWED_ORIGINS.has(origin)) return true;
+
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" && TEAMFAIR_VERCEL_PREVIEW_ORIGIN.test(origin);
+  } catch {
+    return false;
+  }
+}
+
 export function isAllowedOrigin(req: Request): boolean {
-  const origin = req.headers.get("Origin");
-  return !origin || ALLOWED_ORIGINS.has(origin);
+  return isAllowedOriginValue(req.headers.get("Origin"));
 }
 
 export function corsHeaders(req: Request): Record<string, string> {
@@ -19,7 +31,7 @@ export function corsHeaders(req: Request): Record<string, string> {
     "Vary": "Origin",
   };
 
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
+  if (origin && isAllowedOriginValue(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
 

@@ -421,7 +421,7 @@ const Landing = () => {
     </div>
     <h3 className="text-2xl font-bold text-slate-900 mb-1">{language === "vi" ? "PRO GROUP" : "PRO GROUP"}</h3>
     <div className="flex flex-col mb-6 text-xs text-indigo-600 font-semibold">
-       <span className="text-lg font-bold text-indigo-600">{language === "vi" ? "79.000đ/người/tháng" : "$3.5/user/month"}</span>
+       <span className="text-lg font-bold text-indigo-600">{language === "vi" ? "79.000đ/người/tháng" : "$4/user/month"}</span>
        <span>{language === "vi" ? "Chỉ tài khoản đã thanh toán được dùng tính năng Pro" : "Only the paid account receives Pro access"}</span>
     </div>
     <ul className="space-y-4">
