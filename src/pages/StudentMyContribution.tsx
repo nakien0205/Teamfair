@@ -182,21 +182,21 @@ const StudentMyContribution = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
+      <div className="min-h-screen bg-slate-50/50 bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.05),_transparent_50%)]">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
           {loading ? <LoadingState /> : null}
 
           {!loading && error ? (
-            <Alert className="rounded-3xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Không thể tải điểm đóng góp</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+            <Alert className="rounded-2xl border-amber-300 bg-amber-50 text-amber-950 [&>svg]:text-amber-700 shadow-sm">
+              <AlertCircle className="h-5 w-5" />
+              <AlertTitle className="font-bold text-amber-900">Không thể tải điểm đóng góp</AlertTitle>
+              <AlertDescription className="mt-2 font-medium">{error}</AlertDescription>
             </Alert>
           ) : null}
 
           {!loading && !group ? (
-            <Card className="rounded-3xl border-0 shadow-card">
-              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            <Card className="rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm">
+              <CardContent className="p-10 text-center text-sm font-semibold text-slate-600">
                 Bạn chưa được phân vào nhóm nào.
               </CardContent>
             </Card>
@@ -205,25 +205,25 @@ const StudentMyContribution = () => {
           {!loading && group ? (
             <>
               {/* ── 1. Header Card ── */}
-              <Card className="rounded-3xl border-0 shadow-card">
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
                 <CardContent className="space-y-4 p-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
+                    <Badge className="border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-50 px-3 py-0.5 rounded-full font-bold">
                       {tr(language, "Điểm đóng góp tham khảo", "Reference Contribution Score")}
                     </Badge>
-                    <Badge variant="outline" className="border-border/70 bg-background/80 text-muted-foreground">
+                    <Badge variant="outline" className="border border-slate-200 bg-slate-50 text-slate-800 px-3 py-0.5 rounded-full font-bold shadow-sm">
                       {group.name}
                     </Badge>
                     {aiAnalysis ? (
-                      <Badge className={cn("border", confidenceMeta[aiAnalysis.confidence_tag].className)}>
+                      <Badge className={cn("border px-3 py-0.5 rounded-full font-bold shadow-sm text-slate-900", confidenceMeta[aiAnalysis.confidence_tag].className)}>
                         <Sparkles className="mr-1 h-3 w-3" />
                         AI: {confidenceMeta[aiAnalysis.confidence_tag].label}
                       </Badge>
                     ) : null}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{profile?.full_name || currentUserName}</h1>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-900 md:text-4xl">{profile?.full_name || currentUserName}</h1>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 font-medium">
                       {tr(language, "Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.", "Contribution scores are for reference only. The final decision rests with the instructor.")}
                     </p>
                   </div>
@@ -231,8 +231,8 @@ const StudentMyContribution = () => {
               </Card>
 
               {!result?.hasEnoughData ? (
-                <Card className="rounded-3xl border-0 shadow-card">
-                  <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                <Card className="rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm">
+                  <CardContent className="p-8 text-center text-sm font-semibold text-slate-600">
                       {tr(language, "Chưa có đủ dữ liệu để tính điểm đóng góp.", "Not enough data available to calculate contribution score.")}
                   </CardContent>
                 </Card>
@@ -243,25 +243,27 @@ const StudentMyContribution = () => {
                   {/* ── 2. Score + AI Summary row ── */}
                   <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
                     {/* Left: Reference score card */}
-                    <Card className="rounded-3xl border-0 shadow-card">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-xl">Điểm tham khảo hiện tại</CardTitle>
-                        <CardDescription>Không phải điểm cuối cùng của học phần hoặc đồ án.</CardDescription>
+                    <Card className="rounded-3xl border border-slate-200 bg-white shadow-md flex flex-col justify-between overflow-hidden">
+                      <CardHeader className="pb-3 border-b border-slate-100">
+                        <CardTitle className="text-xl font-bold text-slate-900">Điểm tham khảo hiện tại</CardTitle>
+                        <CardDescription className="text-slate-600 font-medium">Không phải điểm cuối cùng của học phần hoặc đồ án.</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Reference Contribution Score</p>
-                            <p className="mt-1 text-5xl font-semibold tracking-tight">{result.referenceScore}</p>
+                      <CardContent className="space-y-4 pt-4 flex-1 flex flex-col justify-between">
+                        <div className="rounded-2xl border border-indigo-250 border-l-4 border-l-indigo-600 bg-indigo-50/40 p-5 pl-6 shadow-sm">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Reference Contribution Score</p>
+                              <p className="mt-1 text-5xl font-black tracking-tight text-indigo-950">{result.referenceScore}</p>
+                            </div>
+                            <Badge className={cn("border px-2.5 py-0.5 font-bold rounded-lg shadow-sm text-slate-900", riskMeta[result.riskLevel].className)}>
+                              {riskMeta[result.riskLevel].label}
+                            </Badge>
                           </div>
-                          <Badge className={cn("border", riskMeta[result.riskLevel].className)}>
-                            {riskMeta[result.riskLevel].label}
-                          </Badge>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700 shadow-sm">
                           Cập nhật gần nhất: {result.lastUpdatedAt ? dateFormatter.format(new Date(result.lastUpdatedAt)) : "Chưa rõ"}
                         </div>
-                        <div className="rounded-2xl bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-100 p-4 text-xs leading-6 font-medium text-slate-600">
                           <p>Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.</p>
                           <p className="mt-2">
                             Cờ rủi ro chỉ là cảnh báo để xem xét thêm, không phải hình thức xử lý tự động.
@@ -271,15 +273,15 @@ const StudentMyContribution = () => {
                     </Card>
 
                     {/* Right: AI Effort Summary card */}
-                    <Card className="rounded-3xl border-0 shadow-card">
-                      <CardHeader className="pb-3">
+                    <Card className="rounded-3xl border border-slate-200 bg-white shadow-md overflow-hidden">
+                      <CardHeader className="pb-3 border-b border-slate-100">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-primary/70" />
-                          <CardTitle className="text-xl">Phân tích AI</CardTitle>
+                          <Sparkles className="h-5 w-5 text-purple-600" />
+                          <CardTitle className="text-xl font-bold text-slate-900">Phân tích AI</CardTitle>
                         </div>
-                        <CardDescription>Nhận xét tổng hợp từ AI dựa trên dữ liệu đóng góp hiện có.</CardDescription>
+                        <CardDescription className="text-slate-600 font-medium">Nhận xét tổng hợp từ AI dựa trên dữ liệu đóng góp hiện có.</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-4 pt-4">
                         {aiLoading ? (
                           <div className="space-y-3">
                             <Skeleton className="h-4 w-full" />
@@ -288,27 +290,27 @@ const StudentMyContribution = () => {
                           </div>
                         ) : aiAnalysis ? (
                           <>
-                            <div className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm leading-7">
+                            <div className="rounded-2xl border border-purple-205 border-l-4 border-l-purple-600 bg-purple-50/40 p-5 pl-6 text-sm font-semibold text-slate-800 leading-7 shadow-sm">
                               {aiAnalysis.effort_summary}
                             </div>
                             {aiAnalysis.reasoning ? (
-                              <div className="rounded-2xl bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">
-                                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">Lý do phân tích</p>
+                              <div className="rounded-2xl border border-slate-200 border-l-4 border-l-slate-500 bg-slate-50 p-5 pl-6 text-sm leading-6 text-slate-600 font-medium mt-3">
+                                <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">Lý do phân tích</p>
                                 {aiAnalysis.reasoning}
                               </div>
                             ) : null}
                           </>
                         ) : (
-                          <div className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-600">
                             {aiError ? "Không thể kết nối tới máy chủ phân tích AI." : "Nhấn nút để chạy phân tích AI khi bạn cần."}
                           </div>
                         )}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 pt-2">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="rounded-2xl text-xs"
+                            className="rounded-xl text-xs font-bold border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors shadow-sm"
                             disabled={aiLoading}
                             onClick={() => fetchAi(Boolean(aiAnalysis))}
                           >
@@ -316,7 +318,7 @@ const StudentMyContribution = () => {
                             {aiAnalysis ? "Phân tích lại" : "Chạy phân tích AI"}
                           </Button>
                           {aiAnalysis ? (
-                            <Badge className={cn("border text-xs", confidenceMeta[aiAnalysis.confidence_tag].className)}>
+                            <Badge className={cn("border text-xs px-2.5 py-0.5 font-bold rounded-lg shadow-sm text-slate-900", confidenceMeta[aiAnalysis.confidence_tag].className)}>
                               {confidenceMeta[aiAnalysis.confidence_tag].label}
                             </Badge>
                           ) : null}
@@ -327,26 +329,26 @@ const StudentMyContribution = () => {
 
                   {/* ── 3. AI Insights Card ── */}
                   {hasAiInsights ? (
-                    <Card className="rounded-3xl border-0 shadow-card">
-                      <CardHeader className="pb-3">
+                    <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
+                      <CardHeader className="pb-3 border-b border-slate-100">
                         <div className="flex items-center gap-2">
                           <Lightbulb className="h-5 w-5 text-amber-500" />
-                          <CardTitle className="text-xl">Gợi ý từ AI</CardTitle>
+                          <CardTitle className="text-xl font-bold text-slate-900">Gợi ý từ AI</CardTitle>
                         </div>
-                        <CardDescription>Phát hiện bất thường và đề xuất cải thiện dựa trên phân tích dữ liệu.</CardDescription>
+                        <CardDescription className="text-slate-600 font-medium">Phát hiện bất thường và đề xuất cải thiện dựa trên phân tích dữ liệu.</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-4 pt-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           {/* Anomalies */}
                           {aiAnalysis!.anomalies.length > 0 ? (
                             <div className="space-y-3">
-                              <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800">
+                              <p className="flex items-center gap-1.5 text-sm font-bold text-amber-800 uppercase tracking-wider">
                                 <ShieldAlert className="h-4 w-4" />
                                 Bất thường phát hiện
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {aiAnalysis!.anomalies.map((anomaly, i) => (
-                                  <Badge key={i} className="border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50">
+                                  <Badge key={i} className="border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 rounded-lg font-bold px-2.5 py-0.5 shadow-sm">
                                     {anomaly}
                                   </Badge>
                                 ))}
@@ -357,14 +359,14 @@ const StudentMyContribution = () => {
                           {/* Recommendations */}
                           {aiAnalysis!.recommendations.length > 0 ? (
                             <div className="space-y-3">
-                              <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-800">
+                              <p className="flex items-center gap-1.5 text-sm font-bold text-emerald-800 uppercase tracking-wider">
                                 <TrendingUp className="h-4 w-4" />
                                 Đề xuất cải thiện
                               </p>
-                              <ul className="space-y-1.5 text-sm text-muted-foreground">
+                              <ul className="space-y-2 text-sm text-slate-700 font-semibold">
                                 {aiAnalysis!.recommendations.map((rec, i) => (
                                   <li key={i} className="flex gap-2">
-                                    <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                                    <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-sm border border-emerald-300" />
                                     {rec}
                                   </li>
                                 ))}
@@ -374,9 +376,9 @@ const StudentMyContribution = () => {
                         </div>
 
                         {/* Timeline assessment badge */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Nhịp độ làm việc:</span>
-                          <Badge variant="outline" className="border-border/70 bg-background text-muted-foreground text-xs">
+                        <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nhịp độ làm việc:</span>
+                          <Badge variant="outline" className="border-slate-300 bg-slate-50 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-lg shadow-sm">
                             {timelineMeta[aiAnalysis!.timeline_assessment]}
                           </Badge>
                         </div>
@@ -385,117 +387,136 @@ const StudentMyContribution = () => {
                   ) : null}
 
                   {/* ── 4. Score Breakdown ── */}
-                  <Card className="rounded-3xl border-0 shadow-card">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Score breakdown</CardTitle>
-                      <CardDescription>Hiển thị từng thành phần và trọng số dùng cho điểm tham khảo.</CardDescription>
+                  <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
+                    <CardHeader className="pb-3 border-b border-slate-100">
+                      <CardTitle className="text-xl font-bold text-slate-900">Score breakdown</CardTitle>
+                      <CardDescription className="text-slate-600 font-medium">Hiển thị từng thành phần và trọng số dùng cho điểm tham khảo.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {result.breakdown.map(item => (
-                        <div key={item.key} className={cn("rounded-2xl border border-border/70 bg-background/80 p-4", !item.hasData && "opacity-60")}>
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-medium">{item.label}</p>
-                            <div className="flex items-center gap-1.5">
-                              {!item.hasData ? (
-                                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-500 text-[10px]">
-                                  N/A
-                                </Badge>
-                              ) : null}
-                              <Badge variant="outline" className="border-border/70 bg-background text-muted-foreground">
-                                {item.weight}%
-                              </Badge>
+                    <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 pt-4">
+                      {result.breakdown.map((item, index) => {
+                        // Mảng màu sắc xoay vòng linh hoạt cho từng ô thành phần breakdown điểm
+                        const breakdownColors = [
+                          "border-indigo-200 border-l-4 border-l-indigo-600 bg-indigo-50/40 hover:bg-indigo-50",
+                          "border-emerald-200 border-l-4 border-l-emerald-600 bg-emerald-50/40 hover:bg-emerald-50",
+                          "border-amber-200 border-l-4 border-l-amber-600 bg-amber-50/40 hover:bg-amber-50",
+                          "border-sky-200 border-l-4 border-l-sky-600 bg-sky-50/40 hover:bg-sky-50",
+                          "border-violet-200 border-l-4 border-l-violet-600 bg-violet-50/40 hover:bg-violet-50",
+                          "border-rose-200 border-l-4 border-l-rose-600 bg-rose-50/40 hover:bg-rose-50"
+                        ];
+                        const colorClass = breakdownColors[index % breakdownColors.length];
+
+                        return (
+                          <div key={item.key} className={cn("rounded-2xl border p-5 pl-6 transition-all shadow-sm flex flex-col justify-between", colorClass, !item.hasData && "opacity-65")}>
+                            <div>
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                                <div className="flex items-center gap-1.5">
+                                  {!item.hasData ? (
+                                    <Badge variant="outline" className="border-slate-300 bg-slate-100 text-slate-600 font-bold px-2 rounded-md text-[10px]">
+                                      N/A
+                                    </Badge>
+                                  ) : null}
+                                  <Badge variant="outline" className="border-slate-300 bg-white text-slate-800 font-black px-2 rounded-md shadow-sm">
+                                    {item.weight}%
+                                  </Badge>
+                                </div>
+                              </div>
+                              <p className="mt-3 text-3xl font-black text-slate-900">{item.hasData ? item.score : "—"}</p>
+                              <Progress value={item.hasData ? item.score : 0} className="mt-3 h-2.5 bg-slate-200/80 rounded-full overflow-hidden [&>div]:bg-slate-850" />
                             </div>
+                            <p className="mt-3 text-xs leading-5 text-slate-600 font-medium">{item.explanation}</p>
                           </div>
-                          <p className="mt-3 text-2xl font-semibold">{item.hasData ? item.score : "—"}</p>
-                          <Progress value={item.hasData ? item.score : 0} className="mt-3 h-2.5 bg-muted" />
-                          <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.explanation}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </CardContent>
                   </Card>
 
                   {/* ── 5. Evidence Summary + Leader Feedback ── */}
-                  <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-                    <Card className="rounded-3xl border-0 shadow-card">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-xl">Evidence summary</CardTitle>
-                        <CardDescription>Dữ liệu hệ thống đang dùng để ước lượng contribution.</CardDescription>
+                  <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                    <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
+                      <CardHeader className="pb-3 border-b border-slate-100">
+                        <CardTitle className="text-xl font-bold text-slate-900">Evidence summary</CardTitle>
+                        <CardDescription className="text-slate-600 font-medium">Dữ liệu hệ thống đang dùng để ước lượng contribution.</CardDescription>
                       </CardHeader>
-                      <CardContent className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Assigned tasks</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.assignedTasks}</p>
+                      <CardContent className="grid gap-3 sm:grid-cols-2 pt-4">
+                        <div className="rounded-2xl border border-slate-200 border-l-4 border-l-slate-600 bg-slate-50/50 p-5 pl-6 shadow-sm hover:bg-slate-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Assigned tasks</p>
+                          <p className="mt-1 text-2xl font-black text-slate-950">{result.evidenceSummary.assignedTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Approved tasks</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.approvedTasks}</p>
+                        <div className="rounded-2xl border border-emerald-200 border-l-4 border-l-emerald-600 bg-emerald-50/50 p-5 pl-6 shadow-sm hover:bg-emerald-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">Approved tasks</p>
+                          <p className="mt-1 text-2xl font-black text-emerald-950">{result.evidenceSummary.approvedTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Pending tasks</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.pendingTasks}</p>
+                        <div className="rounded-2xl border border-amber-200 border-l-4 border-l-amber-600 bg-amber-50/50 p-5 pl-6 shadow-sm hover:bg-amber-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-amber-700">Pending tasks</p>
+                          <p className="mt-1 text-2xl font-black text-amber-955">{result.evidenceSummary.pendingTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Rejected tasks</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.rejectedTasks}</p>
+                        <div className="rounded-2xl border border-rose-200 border-l-4 border-l-rose-600 bg-rose-50/50 p-5 pl-6 shadow-sm hover:bg-rose-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-700">Rejected tasks</p>
+                          <p className="mt-1 text-2xl font-black text-rose-950">{result.evidenceSummary.rejectedTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Late tasks</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.lateTasks}</p>
+                        <div className="rounded-2xl border border-red-200 border-l-4 border-l-red-600 bg-red-50/50 p-5 pl-6 shadow-sm hover:bg-red-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-700">Late tasks</p>
+                          <p className="mt-1 text-2xl font-black text-red-950">{result.evidenceSummary.lateTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Average quality rating</p>
-                          <p className="mt-2 text-2xl font-semibold">
+                        <div className="rounded-2xl border border-sky-200 border-l-4 border-l-sky-600 bg-sky-50/50 p-5 pl-6 shadow-sm hover:bg-sky-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-sky-700">Average quality rating</p>
+                          <p className="mt-1 text-2xl font-black text-sky-950">
                             {result.evidenceSummary.averageQualityRating ?? "—"}
                           </p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Peer review average</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.peerReviewAverage ?? "—"}</p>
+                        <div className="rounded-2xl border border-violet-200 border-l-4 border-l-violet-600 bg-violet-50/50 p-5 pl-6 shadow-sm hover:bg-violet-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-700">Peer review average</p>
+                          <p className="mt-1 text-2xl font-black text-violet-950">{result.evidenceSummary.peerReviewAverage ?? "—"}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Work logs</p>
-                          <p className="mt-2 text-2xl font-semibold">{result.evidenceSummary.workLogCount}</p>
+                        <div className="rounded-2xl border border-indigo-200 border-l-4 border-l-indigo-600 bg-indigo-50/50 p-5 pl-6 shadow-sm hover:bg-indigo-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-700">Work logs</p>
+                          <p className="mt-1 text-2xl font-black text-indigo-950">{result.evidenceSummary.workLogCount}</p>
                         </div>
                       </CardContent>
                     </Card>
 
-                    <Card className="rounded-3xl border-0 shadow-card">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-xl">Leader feedback summary</CardTitle>
-                        <CardDescription>Không hiển thị comment peer review riêng tư của thành viên khác.</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm leading-7">
-                          {result.evidenceSummary.leaderFeedbackSummary}
-                        </div>
-
-                        {result.riskReasons.length > 0 ? (
-                          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-amber-900">
-                              <ShieldAlert className="h-4 w-4" />
-                              Lý do cần chú ý
-                            </div>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {result.riskReasons.map(reason => (
-                                <Badge key={reason} className="border border-amber-200 bg-white text-amber-800 hover:bg-white">
-                                  {reason}
-                                </Badge>
-                              ))}
-                            </div>
+                    <Card className="rounded-3xl border border-slate-200 bg-white shadow-md flex flex-col justify-between overflow-hidden">
+                      <div>
+                        <CardHeader className="pb-3 border-b border-slate-100">
+                          <CardTitle className="text-xl font-bold text-slate-900">Leader feedback summary</CardTitle>
+                          <CardDescription className="text-slate-600 font-medium">Không hiển thị comment peer review riêng tư của thành viên khác.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-4">
+                          <div className="rounded-2xl border border-fuchsia-200 border-l-4 border-l-fuchsia-600 bg-fuchsia-50/30 p-5 pl-6 text-sm font-semibold text-slate-800 leading-7 shadow-sm">
+                            {result.evidenceSummary.leaderFeedbackSummary}
                           </div>
-                        ) : null}
 
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                          <Button type="button" className="rounded-2xl" onClick={() => navigate("/student/my-tasks")}>
+                          {result.riskReasons.length > 0 ? (
+                            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+                              <div className="flex items-center gap-2 text-sm font-bold text-amber-955 uppercase tracking-wide">
+                                <ShieldAlert className="h-4 w-4 text-amber-700" />
+                                Lý do cần chú ý
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {result.riskReasons.map(reason => (
+                                  <Badge key={reason} className="border border-amber-300 bg-white text-amber-900 hover:bg-white px-2.5 py-0.5 rounded-lg font-bold shadow-sm">
+                                    {reason}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </CardContent>
+                      </div>
+
+                      <CardContent className="pt-0">
+                        <div className="flex flex-col gap-3 sm:flex-row border-t border-slate-150 pt-4">
+                          <Button type="button" className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm px-4" onClick={() => navigate("/student/my-tasks")}>
                             Xem task liên quan
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </Button>
-                          <Button type="button" variant="outline" className="rounded-2xl" onClick={() => navigate("/student/feedback")}>
+                          <Button type="button" variant="outline" className="rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold px-4" onClick={() => navigate("/student/feedback")}>
                             <MessageSquareQuote className="mr-2 h-4 w-4" />
                             Xem feedback
                           </Button>
                           {result.canAppeal ? (
-                            <Button type="button" variant="outline" className="rounded-2xl" onClick={() => navigate("/student/appeals")}>
+                            <Button type="button" variant="outline" className="rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold px-4" onClick={() => navigate("/student/appeals")}>
                               <ClipboardPenLine className="mr-2 h-4 w-4" />
                               Gửi giải trình
                             </Button>

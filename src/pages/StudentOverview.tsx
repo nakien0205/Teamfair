@@ -353,410 +353,471 @@ const StudentOverview = () => {
   };
 
   return (
-    <>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-          {dataLoading ? <DashboardSkeleton /> : null}
+    <div className="min-h-screen bg-[#F4F7FA]">
+  <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
+    {dataLoading ? <DashboardSkeleton /> : null}
 
-          {!dataLoading && connectionError ? (
-            <Card className="rounded-3xl border-0 shadow-card">
-              <CardContent className="p-6">
-                <Alert className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{tr(language, "Không thể tải dữ liệu dashboard", "Unable to load dashboard data")}</AlertTitle>
-                  <AlertDescription className="mt-2 flex flex-col gap-4 text-amber-900/80">
-                    <p>{tr(language, "Đã có lỗi khi đồng bộ dữ liệu cá nhân của bạn. Vui lòng thử tải lại.", "There was an error while syncing your personal data. Please try reloading.")}</p>
-                    <div>
-                      <Button variant="outline" className="border-amber-300 bg-white" onClick={() => void loadPersistedState()}>
-                        <RefreshCcw className="mr-2 h-4 w-4" />
-                        {tr(language, "Tải lại dữ liệu", "Reload Data")}
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-          ) : null}
-          {!dataLoading && <PendingInvitesList />}
+    {!dataLoading && connectionError ? (
+      <Card className="rounded-3xl border-0 bg-white shadow-xl shadow-slate-100/50">
+        <CardContent className="p-6">
+          <Alert className="rounded-2xl border-rose-200 bg-rose-50/80 text-rose-900 [&>svg]:text-rose-700 shadow-sm">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle className="font-bold">
+              {tr(language, "Không thể tải dữ liệu dashboard", "Unable to load dashboard data")}
+            </AlertTitle>
+            <AlertDescription className="mt-2 flex flex-col gap-4 text-rose-900/80">
+              <p>
+                {tr(
+                  language,
+                  "Đã có lỗi khi đồng bộ dữ liệu cá nhân của bạn. Vui lòng thử tải lại.",
+                  "There was an error while syncing your personal data. Please try reloading."
+                )}
+              </p>
+              <div>
+                <Button className="border-rose-300 bg-white hover:bg-rose-100 text-rose-800 transition-all rounded-xl" onClick={() => void loadPersistedState()} variant="outline">
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  {tr(language, "Tải lại dữ liệu", "Reload Data")}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    ) : null}
 
-          {!dataLoading && !connectionError && !group ? (
-            <Card className="rounded-3xl border-0 shadow-card">
-              <CardContent className="p-6">
-                <EmptyBlock
-                  title={tr(language, "Bạn chưa được phân vào nhóm nào.", "You are not assigned to any group.")}
-                  description={tr(language, "Hãy vào mục dự án để tham gia nhóm hoặc chờ trưởng nhóm thêm bạn vào workspace.", "Please go to the projects section to join a group or wait for your group leader to add you to the workspace.")}
-                  icon={FolderOpen}
-                />
-                <div className="mt-4 flex justify-center">
-                  <Button onClick={() => navigate("/projects")}>
-                    {tr(language, "Đi tới quản lý dự án", "Go to Project Management")}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+    {!dataLoading && <PendingInvitesList />}
+
+    {!dataLoading && !connectionError && !group ? (
+      <Card className="rounded-3xl border-0 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+        <CardContent className="p-8 text-center flex flex-col items-center">
+          <EmptyBlock 
+            title={tr(language, "Bạn chưa tham gia nhóm nào.", "You are not assigned to any group.")}
+            description={tr(language, "Hãy chờ trưởng nhóm thêm bạn vào workspace hoặc phân chia dự án.", "Please wait for the team leader to add you to the workspace or assign projects.")}
+            icon={FolderOpen}
+          />
+          <div className="mt-6">
+            <Button onClick={() => navigate("/projects")} className="rounded-2xl bg-gradient-to-r from-[#2166F3] to-[#1A54CC] px-6 py-5 text-white shadow-md shadow-blue-100 hover:opacity-90 transition-all">
+              {tr(language, "Đi tới quản lý dự án", "Go to Project Management")}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    ) : null}
+
+    {!dataLoading && !connectionError && group ? (
+      <>
+        {/* Banner Chào Mừng */}
+        <Card className="overflow-hidden rounded-[24px] border-0 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.02)] transition-all duration-300">
+          <CardContent className="p-0">
+            <div className="px-6 py-6 bg-gradient-to-r from-blue-50/40 via-indigo-50/10 to-white">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="border-0 bg-blue-100 text-blue-700 font-bold hover:bg-blue-200 px-3 py-1 rounded-lg text-xs tracking-wide transition-colors">
+                      {tr(language, "Thành viên", "User")}
+                    </Badge>
+                    <Badge className="border-slate-200 bg-slate-50 text-slate-600 font-semibold px-2.5 py-0.5 rounded-lg text-[11px]" variant="outline">
+                      {group.name}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-amber-500 uppercase tracking-widest">
+                      {tr(language, "Chào mừng quay lại", "Welcome back")}
+                    </p>
+                    <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-800 md:text-4xl flex items-center gap-2.5">
+                      {currentUserName}
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-block rounded-full h-3 w-3 bg-emerald-500" title="Active" />
+                      </span>
+                    </h1>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+          
+        {/* Khu Vực Hàng Ô Tóm Tắt (Đã sửa bộ lọc màu thông minh, nịnh mắt) */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {summary.cards.map(card => {
+            const Icon = card.icon;
+            const labelLower = card.label ? card.label.toLowerCase() : "";
+            
+            // Cấu hình mặc định
+            let cardBg = "bg-white";
+            let badgeBg = "bg-slate-500 text-white shadow-xs";
+            let borderColor = "border-slate-100 hover:border-slate-200";
+            let iconColor = "text-white";
 
-          {!dataLoading && !connectionError && group ? (
-            <>
-              <Card className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                <CardContent className="p-0">
-                  <div className="bg-slate-50/80 px-6 py-6 border-b border-slate-200">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-4">
-                        {/* Khu vực Badge */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="border-0 bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs tracking-wide">
-                            {tr(language, "Thành viên", "User")}
-                          </Badge>
-                          <Badge variant="outline" className="border-slate-200 bg-slate-50/70 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg text-[11px]">
-                            {group.name}
-                          </Badge>
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-amber-600 uppercase tracking-widest">
-                            {tr(language, "Chào mừng quay lại", "Welcome back")}
-                          </p>
-                          <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-slate-800 md:text-5xl flex items-center gap-2.5">
-                            {currentUserName}
-                            <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active" />
-                          </h1>
-                        </div>
-                        {/* <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                          "{tr(language, "Theo dõi task được giao, deadline sắp tới, điểm đóng góp tham khảo và phản hồi gần đây trong một màn hình đơn giản, dễ theo dõi.", "Track assigned tasks, upcoming deadlines, reference contribution points, and recent feedback in a simple, easy-to-follow screen.")}"
-                        </p> */}
-                      </div>
-
-                      {/* <div className="grid min-w-[280px] gap-3 rounded-[24px] border border-border/70 bg-background/80 p-4 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Nhóm / dự án", "Group / Project")}</p>
-                          <p className="mt-1 text-sm font-medium">{group.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Task đang theo dõi", "Tasks Being Tracked")}</p>
-                          <p className="mt-1 text-sm font-medium">{tr(language,`${summary.total} task cá nhân`, `${summary.total} personal tasks`)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Mức rủi ro hiện tại", "Current Risk Level")}</p>
-                          <p className="mt-1 text-sm font-medium">{tr(language, `${riskMeta[summary.riskLevel].label}`, `${riskMeta[summary.riskLevel].label}`)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Lưu ý", "Note")}</p>
-                          <p className="mt-1 text-sm font-medium">{tr(language, "Chỉ hiển thị dữ liệu của bạn", "Only displaying your data")}</p>
-                        </div>
-                      </div> */}
+            // 1. Kiểm tra Ô TRỄ HẠN -> Màu Đỏ Hồng Nhẹ (Rose Pastel)
+            if (card.tone === "danger" || card.tone === "error" || labelLower.includes("trễ hạn")) {
+              cardBg = "bg-gradient-to-br from-rose-50/90 via-rose-50/30 to-white";
+              badgeBg = "bg-rose-500 text-white shadow-xs shadow-rose-100";
+              borderColor = "border-rose-200/80 hover:border-rose-300";
+              iconColor = "text-white";
+            }
+            // 2. Kiểm tra Ô ĐÃ DUYỆT -> Màu Xanh Lá Nhẹ (Emerald Pastel)
+            else if (card.tone === "success" || labelLower.includes("đã được duyệt") || labelLower.includes("hoàn thành")) {
+              cardBg = "bg-gradient-to-br from-emerald-50/90 via-emerald-50/30 to-white";
+              badgeBg = "bg-emerald-500 text-white shadow-xs shadow-emerald-100";
+              borderColor = "border-emerald-200/80 hover:border-emerald-300";
+              iconColor = "text-white";
+            }
+            // 3. Kiểm tra Ô CHỜ DUYỆT -> Màu Vàng Cam Nhẹ (Amber/Orange Pastel)
+            else if (card.tone === "warning" || labelLower.includes("chờ duyệt")) {
+              cardBg = "bg-gradient-to-br from-amber-50/90 via-amber-50/30 to-white";
+              badgeBg = "bg-amber-500 text-white shadow-xs shadow-amber-100";
+              borderColor = "border-amber-200/80 hover:border-amber-300";
+              iconColor = "text-white";
+            }
+            // 4. Kiểm tra Ô ĐANG LÀM -> Màu Xanh Biển Nhẹ (Sky Pastel)
+            else if (card.tone === "info" || labelLower.includes("đang làm")) {
+              cardBg = "bg-gradient-to-br from-sky-50/90 via-sky-50/30 to-white";
+              badgeBg = "bg-sky-500 text-white shadow-xs shadow-sky-100";
+              borderColor = "border-sky-200/80 hover:border-sky-300";
+              iconColor = "text-white";
+            }
+            // 5. Kiểm tra Ô TỔNG TASK ĐƯỢC GIAO -> Màu Xanh Indigo Hiên Đại
+            else if (card.tone === "primary" || labelLower.includes("được giao") || labelLower.includes("tổng task")) {
+              cardBg = "bg-gradient-to-br from-blue-50/90 via-blue-50/30 to-white";
+              badgeBg = "bg-blue-500 text-white shadow-xs shadow-blue-100";
+              borderColor = "border-blue-200/80 hover:border-blue-300";
+              iconColor = "text-white";
+            }
+            // 6. Kiểm tra Ô ĐIỂM ĐÓNG GÓP -> Màu Tím Mơ Mộng (Purple Pastel)
+            else if (labelLower.includes("contribution") || labelLower.includes("đóng góp") || labelLower.includes("score")) {
+              cardBg = "bg-gradient-to-br from-purple-50/90 via-purple-50/30 to-white";
+              badgeBg = "bg-purple-500 text-white shadow-xs shadow-purple-100";
+              borderColor = "border-purple-200/80 hover:border-purple-300";
+              iconColor = "text-white";
+            }
+            
+            return (
+              <Card 
+                className={cn(
+                  "rounded-3xl border transition-all duration-300 hover:scale-[1.01] hover:shadow-md", 
+                  cardBg,
+                  borderColor
+                )} 
+                key={card.label}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{card.label}</p>
+                      <p className="text-3xl font-black tracking-tight text-slate-800">{card.value}</p>
+                      <p className="text-xs text-slate-500 font-medium">{card.hint}</p>
+                    </div>
+                    <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300", badgeBg)}>
+                      <Icon className={cn("h-5 w-5", iconColor)}/>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-                
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {summary.cards.map(card => {
-                  const Icon = card.icon;
-                  return (
-                    <Card key={card.label} className="rounded-3xl border-0 shadow-card">
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">{card.label}</p>
-                            <p className="text-3xl font-semibold tracking-tight">{card.value}</p>
-                            <p className="text-sm text-muted-foreground">{card.hint}</p>
+            );
+          })}
+        </div>
+
+        {/* Khối Thông Tin Chi Tiết: Deadline & Tiến Độ */}
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          {/* Card Deadline Sắp Tới */}
+          <Card className="rounded-3xl border-0 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800">{tr(language, "Deadline sắp tới", "Upcoming Deadlines")}</CardTitle>
+              <CardDescription>{tr(language, "Hiển thị 5 task gần hạn nhất trong phạm vi bạn được phép xem.", "Display the 5 nearest upcoming tasks.")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {upcomingDeadlines.length === 0 ? (
+                <EmptyBlock 
+                  title={tr(language, "Chưa có deadline gần hạn nào.", "No upcoming deadlines.")}
+                  description={tr(language, "Khi có công việc được giao cho bạn, deadline gần nhất sẽ xuất hiện tại đây.", "When tasks are assigned, they will appear here.")}
+                  icon={CalendarClock}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {upcomingDeadlines.map(task => {
+                    const status = getStatusBadge(task);
+                    const priority = getPriorityBadge(task.priority);
+                    const overdue = isOverdueTask(task);
+                    return (
+                      <div
+                        key={task.id}
+                        className={cn(
+                          "rounded-2xl border p-4 transition-all duration-200 hover:shadow-sm",
+                          overdue 
+                            ? "border-rose-200 bg-rose-50/80 text-rose-950 shadow-sm shadow-rose-50/40" 
+                            : "border-sky-100 bg-sky-50/40 hover:bg-white hover:border-sky-200 text-slate-800"
+                        )}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className={cn("text-sm font-bold md:text-base", overdue ? "text-rose-950" : "text-slate-800")}>{task.name}</p>
+                              {overdue ? (
+                                <Badge className="border-0 bg-rose-600 text-white font-bold rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wider animate-pulse">
+                                  {tr(language, "Trễ hạn", "Overdue")}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+                              <span className={cn(overdue ? "text-rose-700 font-bold" : "font-medium text-slate-600")}>
+                                {tr(language, "Hạn nộp:", "Deadline:")} {formatDate(task.deadline)}
+                              </span>
+                              <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" />
+                              <span className="italic text-slate-400 line-clamp-1">{task.description?.trim() ? task.description : tr(language, "Chưa có mô tả chi tiết.", "No description.")}</span>
+                            </div>
                           </div>
-                          <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", summaryToneClass(card.tone))}>
-                            <Icon className="h-5 w-5" />
+                          <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-center">
+                            <Badge className={cn("border-0 font-semibold text-[11px] px-2 py-0.5 rounded-md shadow-xs", status.className)}>{status.label}</Badge>
+                            <Badge className={cn("border-0 font-semibold text-[11px] px-2 py-0.5 rounded-md shadow-xs", priority.className)}>{priority.label}</Badge>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                    
-                  );
-                })}
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                <Card className="rounded-3xl border-0 shadow-card">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">{tr(language, "Deadline sắp tới", "Upcoming Deadlines")}</CardTitle>
-                    <CardDescription>{tr(language, "Hiển thị 5 task gần hạn nhất trong phạm vi bạn được phép xem.", "Display the 5 nearest upcoming tasks within your viewing permissions.")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {upcomingDeadlines.length === 0 ? (
-                      <EmptyBlock
-                        title={tr(language, "Chưa có deadline nào cần theo dõi.", "No upcoming deadlines to track.")}
-                        description={tr(language, "Khi có task được giao cho bạn, thời hạn gần nhất sẽ xuất hiện tại đây.", "When tasks are assigned to you, the nearest deadlines will appear here.")}
-                        icon={CalendarClock}
-                      />
-                    ) : (
-                      <div className="space-y-3">
-                        {upcomingDeadlines.map(task => {
-                          const status = getStatusBadge(task);
-                          const priority = getPriorityBadge(task.priority);
-                          const overdue = isOverdueTask(task);
-                          return (
-                            <div
-                              key={task.id}
-                              className={cn(
-                                "rounded-2xl border p-4 transition-colors",
-                                overdue ? "border-rose-200 bg-rose-50/70" : "border-border bg-background/80",
-                              )}
-                            >
-                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-sm font-semibold md:text-base">{task.name}</p>
-                                    {overdue ? (
-                                      <Badge className="border border-rose-200 bg-rose-100 text-rose-700 hover:bg-rose-100">
-                                        {tr(language, "Quá hạn", "Overdue")}
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                    <span>{tr(language, "Hạn nộp:", "Deadline:")} {formatDate(task.deadline)}</span>
-                                    <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:inline-block" />
-                                    <span>{task.description?.trim() ? task.description : tr(language, "Chưa có mô tả chi tiết.", "No detailed description.")}</span>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge className={cn("border", status.className)}>{status.label}</Badge>
-                                  <Badge className={cn("border", priority.className)}>{priority.label}</Badge>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div className="space-y-6">
-                  <Card className="rounded-3xl border-0 shadow-card">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">{tr(language, "Tiến độ task của tôi", "My Task Progress")}</CardTitle>
-                      <CardDescription>{tr(language, "Tiến độ tính theo số task đã được duyệt trên tổng task được giao.", "Progress is calculated based on the number of approved tasks out of the total assigned tasks.")}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {summary.total === 0 ? (
-                        <EmptyBlock
-                          title={tr(language, "Chưa có task để tính tiến độ.", "No tasks available to calculate progress.")}
-                          description={tr(language, "Tiến độ sẽ hiển thị khi bạn được phân công task trong nhóm.", "Progress will be displayed when you are assigned tasks in the group.")}
-                          icon={Clock3}
-                        />
-                      ) : (
-                        <>
-                          <div className="flex items-end justify-between gap-4">
-                            <div>
-                              <p className="text-sm text-muted-foreground">{tr(language, "Task đã duyệt / tổng task", "Approved Tasks / Total Tasks")}</p>
-                              <p className="mt-1 text-3xl font-semibold">
-                                {summary.approved}/{summary.total}
-                              </p>
-                            </div>
-                            <Badge className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
-                              {summary.completionPercent}%
-                            </Badge>
-                          </div>
-                          <Progress value={summary.completionPercent} className="h-3 bg-muted" />
-                          <p className="text-sm leading-6 text-muted-foreground">
-                            {tr(language, "Task đã duyệt phản ánh phần công việc đã được trưởng nhóm ghi nhận. Bạn không thể tự duyệt task của mình.", "Approved tasks reflect the work recognized by the team leader. You cannot approve your own tasks.")}
-                          </p>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
+          {/* Cột Tiến Độ & Điểm Đóng Góp */}
+          <div className="space-y-6">
+            <Card className="rounded-3xl border-0 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl font-bold text-slate-800">{tr(language, "Tiến độ task của tôi", "My Task Progress")}</CardTitle>
+                <CardDescription>{tr(language, "Tiến độ tính theo số task đã được duyệt trên tổng task được giao.", "Progress is calculated based on approved tasks.")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {summary.total === 0 ? (
+                  <EmptyBlock 
+                    title={tr(language, "Chưa có tiến độ hiển thị.", "No progress available.")}
+                    description={tr(language, "Tiến độ sẽ được tính khi bạn có công việc trong nhóm.", "Progress will be calculated when you are assigned tasks.")}
+                    icon={Clock3}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{tr(language, "Task đã duyệt / tổng task", "Approved / Total Tasks")}</p>
+                        <p className="mt-1 text-3xl font-black text-slate-800">
+                          {summary.approved}<span className="text-slate-300 mx-1">/</span>{summary.total}
+                        </p>
+                      </div>
+                      <Badge className="border-0 bg-blue-600 text-white font-black px-2.5 py-1 rounded-xl shadow-md shadow-blue-100 text-sm">
+                        {summary.completionPercent}%
+                      </Badge>
+                    </div>
+                    <Progress className="h-3 bg-slate-100 text-[#2166F3] rounded-full overflow-hidden" value={summary.completionPercent}/>
+                    <p className="text-xs leading-relaxed text-slate-400 italic">
+                      {tr(language, "Task đã duyệt phản ánh phần công việc đã được trưởng nhóm ghi nhận.", "Approved tasks reflect the work recognized by the team leader.")}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-                  <Card ref={contributionRef} className="rounded-3xl border-0 shadow-card">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">{tr(language, "Điểm đóng góp tham khảo", "Reference Contribution Score")}</CardTitle>
-                      <CardDescription>{tr(language, "Chỉ hiển thị dữ liệu cá nhân của bạn, không hiển thị chi tiết riêng tư của thành viên khác.", "Only displays your personal data, not the private details of other members.")}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">{tr(language, "Điểm đóng góp", "Contribution Score")}</p>
-                          <p className="mt-1 text-4xl font-semibold tracking-tight">{summary.contributionScore}</p>
+            <Card className="rounded-3xl border-0 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.015)]" ref={contributionRef}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl font-bold text-slate-800">{tr(language, "Điểm đóng góp tham khảo", "Reference Contribution Score")}</CardTitle>
+                <CardDescription>{tr(language, "Chỉ hiển thị dữ liệu cá nhân của bạn, không hiển thị thành viên khác.", "Only displays your personal data.")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{tr(language, "Điểm đóng góp", "Contribution Score")}</p>
+                    <p className="mt-1 text-4xl font-black tracking-tight text-slate-800">{summary.contributionScore}</p>
+                  </div>
+                  <Badge className={cn("border-0 font-bold px-3 py-1 rounded-xl shadow-xs text-xs", riskMeta[summary.riskLevel].className)}>
+                    {riskMeta[summary.riskLevel].label}
+                  </Badge>
+                </div>
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-600 shrink-0"/>
+                    <div className="space-y-0.5 text-xs sm:text-sm">
+                      <p className="font-bold text-slate-800">{tr(language, "Nhận định hiện tại", "Current Assessment")}</p>
+                      <p className="leading-relaxed text-slate-600">{summary.riskReason || tr(language, "Dữ liệu đóng góp của bạn đang ở mức ổn định.", "Your contribution data is currently stable.")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-400 space-y-1">
+                  <p>• {tr(language, "Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.", "The score is for reference only.")}</p>
+                  <p>• {tr(language, "Cờ rủi ro chỉ là cảnh báo để giảng viên xem xét, không phải kỷ luật tự động.", "The risk flag is only a warning.")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Khối Giao Tiếp: Phản hồi & Phím chức năng nhanh */}
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <Card className="rounded-3xl border-0 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800">{tr(language, "Phản hồi gần đây", "Recent Feedback")}</CardTitle>
+              <CardDescription>{tr(language, "Phản hồi mới nhất từ giảng viên dành riêng cho bạn.", "The latest feedback from your instructor.")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {feedbackEntries.length === 0 ? (
+                <EmptyBlock 
+                  title={tr(language, "Chưa có phản hồi mới nào.", "No feedback available.")}
+                  description={tr(language, "Khi nhận được nhận xét từ giảng viên, bạn sẽ thấy chúng tại đây.", "When comments are available, you will see them here.")}
+                  icon={MessageSquareQuote}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {feedbackEntries.map((feedback: LecturerStudentReview) => (
+                    <div key={feedback.id} className="rounded-2xl border border-indigo-100/70 bg-indigo-50/30 p-4 hover:border-indigo-200 transition-colors">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="border-0 bg-indigo-100 text-indigo-700 font-bold">
+                            {tr(language, "Giảng viên", "Instructor")}
+                          </Badge>
+                          <span className="text-xs font-medium text-slate-400">{formatDate(feedback.timestamp.toISOString())}</span>
                         </div>
-                        <Badge className={cn("border", riskMeta[summary.riskLevel].className)}>
-                          {riskMeta[summary.riskLevel].label}
+                        <Badge className="border-0 bg-amber-500 text-white font-bold rounded-lg px-2 py-0.5 text-xs shadow-sm">
+                          {feedback.rating}/5 ⭐
                         </Badge>
                       </div>
-
-                      <div className="rounded-2xl border border-border bg-background/80 p-4">
-                        <div className="flex items-start gap-3">
-                          <ShieldAlert className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                          <div className="space-y-2 text-sm">
-                            <p className="font-medium">{tr(language, "Nhận định hiện tại", "Current Assessment")}</p>
-                            <p className="leading-6 text-muted-foreground">{summary.riskReason || tr(language, "Dữ liệu đóng góp của bạn đang ở mức ổn định.", "Your contribution data is currently at a stable level.")}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">
-                        <p>{tr(language, "Điểm đóng góp chỉ mang tính tham khảo. Quyết định cuối cùng thuộc về giảng viên.", "The contribution score is for reference only. The final decision belongs to the instructor.")}</p>
-                        <p className="mt-2">{tr(language, "Cờ rủi ro chỉ là cảnh báo để giảng viên xem xét, không phải hình thức kỷ luật tự động.", "The risk flag is only a warning for instructors to consider, not an automatic disciplinary measure.")}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-                <Card className="rounded-3xl border-0 shadow-card">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">{tr(language, "Phản hồi gần đây", "Recent Feedback")}</CardTitle>
-                    <CardDescription>{tr(language, "Phản hồi mới nhất từ giảng viên hoặc người phụ trách đánh giá dành riêng cho bạn.", "The latest feedback from your instructor or course coordinator, tailored specifically for you.")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {feedbackEntries.length === 0 ? (
-                      <EmptyBlock
-                        title={tr(language, "Chưa có phản hồi nào.", "No feedback available.")}
-                        description={tr(language, "Khi có nhận xét mới từ trưởng nhóm hoặc giảng viên, bạn sẽ thấy tại đây.", "When new comments are available from your team leader or instructor, you will see them here.")}
-                        icon={MessageSquareQuote}
-                      />
-                    ) : (
-                      <div className="space-y-3">
-                        {feedbackEntries.map((feedback: LecturerStudentReview) => (
-                          <div key={feedback.id} className="rounded-2xl border border-border bg-background/80 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <Badge className="border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100">
-                                  {tr(language, "Giảng viên", "Instructor")}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">{formatDate(feedback.timestamp.toISOString())}</span>
-                              </div>
-                              <Badge className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
-                                {feedback.rating}/5 sao
-                              </Badge>
-                            </div>
-                            <p className="mt-3 text-sm leading-6 text-foreground">
-                              {feedback.comment.trim() || "Chưa có nhận xét chi tiết."}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl border-0 shadow-card">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">{tr(language, "Thao tác nhanh", "Quick Actions")}</CardTitle>
-                    <CardDescription>{tr(language, "Đi tới đúng khu vực bạn cần mà không phải mở nhiều tab.", "Navigate to the exact area you need without opening multiple tabs.")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Button className="h-auto justify-start rounded-2xl px-4 py-4" onClick={() => navigate("/student/my-tasks")}>
-                        <div className="mr-3 rounded-xl bg-primary-foreground/10 p-2">
-                          <FolderOpen className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-medium">{tr(language, "Xem task của tôi", "View My Tasks")}</div>
-                          <div className="text-xs text-primary-foreground/80">{tr(language, "Theo dõi tiến độ và deadline", "Track progress and deadlines")}</div>
-                        </div>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start rounded-2xl px-4 py-4"
-                        onClick={() => navigate("/student/my-tasks")}
-                        disabled={summary.total === 0}
-                      >
-                        <div className="mr-3 rounded-xl bg-muted p-2 text-foreground">
-                          <FileUp className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-medium">{tr(language, "Nộp bằng chứng", "Submit Evidence")}</div>
-                          <div className="text-xs text-muted-foreground">{tr(language, "Chỉ áp dụng cho task được giao cho bạn", "Only applicable for tasks assigned to you")}</div>
-                        </div>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start rounded-2xl px-4 py-4"
-                        onClick={() => navigate("/student/work-logs")}
-                        disabled={!canWriteWorkLog}
-                      >
-                        <div className="mr-3 rounded-xl bg-muted p-2 text-foreground">
-                          <ClipboardPenLine className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-medium">{tr(language, "Viết work log", "Write Work Log")}</div>
-                          <div className="text-xs text-muted-foreground">{tr(language, "Lưu nhanh một ghi chú công việc quan trọng", "Quickly save important work notes")}</div>
-                        </div>
-                      </Button>
-
-                      <Button variant="outline" className="h-auto justify-start rounded-2xl px-4 py-4" onClick={() => navigate("/student/peer-review")}>
-                        <div className="mr-3 rounded-xl bg-muted p-2 text-foreground">
-                          <MessageSquareQuote className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-medium">{tr(language, "Đánh giá thành viên", "Peer Review")}</div>
-                          <div className="text-xs text-muted-foreground">{tr(language, "Mỗi đợt đánh giá chỉ được gửi một lần", "Each review period can only be submitted once")}</div>
-                        </div>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start rounded-2xl px-4 py-4 sm:col-span-2"
-                        onClick={() => navigate("/student/my-contribution")}
-                      >
-                        <div className="mr-3 rounded-xl bg-muted p-2 text-foreground">
-                          <Sparkles className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-medium">{tr(language, "Xem điểm đóng góp", "View My Contributions")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {tr(language, "Mở nhanh khu vực điểm tham khảo và cảnh báo rủi ro của riêng bạn", "Quickly access your reference points and risk warnings")}
-                          </div>
-                        </div>
-                      </Button>
+                      <p className="mt-3 text-sm leading-relaxed text-slate-700 font-medium">
+                        {feedback.comment.trim() || tr(language, "Chưa có nhận xét chi tiết.", "No detailed description.")}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      <Dialog open={workLogOpen} onOpenChange={open => {
-        setWorkLogOpen(open);
-        if (!open) {
-          setWorkLogError("");
-        }
-      }}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{tr(language, "Viết work log", "Write Work Log")}</DialogTitle>
-            <DialogDescription>
-              {tr(language, "Ghi lại phần việc bạn vừa làm để hỗ trợ theo dõi đóng góp và tạo nhật ký hoạt động minh bạch.", "Record the work you've just completed to support tracking contributions and creating transparent activity logs.")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="student-work-log">{tr(language, "Nội dung work log", "Work Log Content")}</Label>
-            <Textarea
-              id="student-work-log"
-              value={workLogText}
-              onChange={event => {
-                setWorkLogText(event.target.value);
-                if (workLogError) setWorkLogError("");
-              }}
-              placeholder={tr(language, "Ví dụ: Hôm nay tôi hoàn thành phần wireframe màn hình dashboard và cập nhật minh chứng trong task UI-12.", "Example: Today I completed the dashboard screen wireframe and updated the evidence in task UI-12.")}
-              className="min-h-[160px]"
-            />
-            {workLogError ? <p className="text-sm text-destructive">{workLogError}</p> : null}
-            <p className="text-xs text-muted-foreground">
-              {tr(language, "Work log này sẽ được ghi vào lịch sử hoạt động để phục vụ đối chiếu đóng góp khi cần.", "This work log will be recorded in the activity history to support contribution review when needed.")}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWorkLogOpen(false)}>
-              {tr(language, "Hủy", "Cancel")}
-            </Button>
-            <Button onClick={handleSubmitWorkLog}>{tr(language, "Lưu work log", "Save Work Log")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          {/* Quick Actions Card */}
+          <Card className="rounded-3xl border-0 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800">{tr(language, "Thao tác nhanh", "Quick Actions")}</CardTitle>
+              <CardDescription>{tr(language, "Đi tới đúng khu vực bạn cần mà không phải mở nhiều tab.", "Navigate to the exact area you need.")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                
+                {/* Action 1 */}
+                <Button className="h-auto justify-start rounded-2xl px-4 py-4 bg-gradient-to-br from-[#2166F3] to-[#1A54CC] text-white shadow-md shadow-blue-100 hover:opacity-95 transition-all group" onClick={() => navigate("/student/my-tasks")}>
+                  <div className="mr-3 rounded-xl bg-white/20 p-2.5 transition-transform group-hover:scale-110">
+                    <FolderOpen className="h-4 w-4 text-white"/>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">{tr(language, "Xem task của tôi", "View My Tasks")}</div>
+                    <div className="text-[11px] text-white/80 mt-0.5">{tr(language, "Theo dõi tiến độ và deadline", "Track progress and deadlines")}</div>
+                  </div>
+                </Button>
+
+                {/* Action 2 */}
+                <Button 
+                  className="h-auto justify-start rounded-2xl px-4 py-4 border border-sky-100 bg-sky-50/60 text-sky-700 hover:bg-sky-100/80 transition-all group" 
+                  onClick={() => navigate("/student/my-tasks")}
+                  disabled={summary.total === 0}
+                >
+                  <div className="mr-3 rounded-xl bg-sky-200/50 p-2.5 text-sky-700 transition-transform group-hover:scale-110">
+                    <FileUp className="h-4 w-4"/>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">{tr(language, "Nộp bằng chứng", "Submit Evidence")}</div>
+                    <div className="text-[11px] text-sky-600/90 mt-0.5">{tr(language, "Chỉ áp dụng cho task được giao", "For assigned tasks")}</div>
+                  </div>
+                </Button>
+
+                {/* Action 3 */}
+                <Button 
+                  className="h-auto justify-start rounded-2xl px-4 py-4 border border-amber-100 bg-amber-50/60 text-amber-800 hover:bg-amber-100/80 transition-all group" 
+                  onClick={() => setWorkLogOpen(true)} 
+                  disabled={!canWriteWorkLog}
+                >
+                  <div className="mr-3 rounded-xl bg-amber-200/50 p-2.5 text-amber-700 transition-transform group-hover:scale-110">
+                    <ClipboardPenLine className="h-4 w-4"/>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">{tr(language, "Viết work log", "Write Work Log")}</div>
+                    <div className="text-[11px] text-amber-700/90 mt-0.5">{tr(language, "Lưu nhanh ghi chú công việc", "Quickly save work notes")}</div>
+                  </div>
+                </Button>
+
+                {/* Action 4 */}
+                <Button className="h-auto justify-start rounded-2xl px-4 py-4 border border-emerald-100 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100/80 transition-all group" onClick={() => navigate("/student/peer-review")}>
+                  <div className="mr-3 rounded-xl bg-emerald-200/50 p-2.5 text-emerald-700 transition-transform group-hover:scale-110">
+                    <MessageSquareQuote className="h-4 w-4"/>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">{tr(language, "Đánh giá thành viên", "Peer Review")}</div>
+                    <div className="text-[11px] text-emerald-700/90 mt-0.5">{tr(language, "Đánh giá nội bộ nhóm định kỳ", "Periodic internal reviews")}</div>
+                  </div>
+                </Button>
+
+                {/* Action 5 */}
+                <Button className="h-auto justify-start rounded-2xl px-4 py-4 sm:col-span-2 border border-purple-100 bg-purple-50/60 text-purple-800 hover:bg-purple-100/80 transition-all group" onClick={() => navigate("/student/my-contribution")}>
+                  <div className="mr-3 rounded-xl bg-purple-200/50 p-2.5 text-purple-700 transition-transform group-hover:scale-110">
+                    <Sparkles className="h-4 w-4"/>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">{tr(language, "Xem điểm đóng góp", "View My Contributions")}</div>
+                    <div className="text-[11px] text-purple-700/90 mt-0.5">
+                      {tr(language, "Mở nhanh khu vực điểm tham khảo và cảnh báo rủi ro cá nhân", "Access reference points and risk warnings")}
+                    </div>
+                  </div>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    ) : null}
+  </div>
+
+  {/* Hộp thoại Dialog viết Work log */}
+  <Dialog 
+    open={workLogOpen}
+    onOpenChange={(open) => {
+      setWorkLogOpen(open);
+      if (!open) {
+        setWorkLogError("");
+      }
+    }}
+  >
+    <DialogContent className="sm:max-w-xl rounded-3xl border-0 bg-white shadow-2xl p-6">
+      <DialogHeader>
+        <DialogTitle className="text-xl font-bold text-slate-800">{tr(language, "Viết work log", "Write Work Log")}</DialogTitle>
+        <DialogDescription className="text-slate-500 text-xs sm:text-sm">
+          {tr(language, "Ghi lại phần việc bạn vừa làm để hỗ trợ theo dõi đóng góp và tạo nhật ký hoạt động minh bạch.", "Record the work you've just completed.")}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3 mt-2">
+        <Label htmlFor="student-work-log" className="text-xs font-bold text-slate-700 uppercase tracking-wider">{tr(language, "Nội dung work log", "Work Log Content")}</Label>
+        <Textarea 
+          id="student-work-log" 
+          value={workLogText}  
+          onChange={(event) => {
+            setWorkLogText(event.target.value);
+            if (workLogError) setWorkLogError("");
+          }}
+          placeholder={tr(language, "Ví dụ: Hôm nay tôi hoàn thành phần wireframe màn hình dashboard và cập nhật minh chứng trong task UI-12.", "Example: Today I completed the dashboard screen wireframe...")}
+          className="min-h-[140px] rounded-2xl border-slate-200 focus:border-blue-400 focus:ring-blue-400 text-sm p-4 transition-all"
+        />
+        {workLogError ? <p className="text-xs font-semibold text-rose-500">{workLogError}</p> : null}
+        <p className="text-[11px] text-slate-400 italic">
+          * {tr(language, "Work log này sẽ được ghi vào lịch sử hoạt động để phục vụ đối chiếu đóng góp khi cần.", "This work log will be recorded in the activity history.")}
+        </p>
+      </div>
+      <DialogFooter className="mt-6 gap-2 sm:gap-0">
+        <Button onClick={() => setWorkLogOpen(false)} variant="outline" className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 px-5 text-xs sm:text-sm">
+          {tr(language, "Hủy", "Cancel")}
+        </Button>
+        <Button className="rounded-xl bg-gradient-to-r from-[#2166F3] to-[#1A54CC] text-white hover:opacity-90 px-5 shadow-sm shadow-blue-100 text-xs sm:text-sm" onClick={handleSubmitWorkLog}>
+          {tr(language, "Lưu work log", "Save Work Log")}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</div>
   );
 };
 

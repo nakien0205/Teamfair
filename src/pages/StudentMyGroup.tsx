@@ -666,18 +666,18 @@ const StudentMyGroup = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.08),_transparent_42%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--card))_100%)]">
+      <div className="min-h-screen bg-slate-50/50 bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.05),_transparent_50%)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
           {connectionError || profileError ? (
-            <Card className="rounded-3xl border-0 shadow-card">
+            <Card className="rounded-3xl border border-amber-200 shadow-xl shadow-amber-500/5 overflow-hidden">
               <CardContent className="p-6">
-                <Alert className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-700">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Không thể tải đầy đủ dữ liệu nhóm</AlertTitle>
-                  <AlertDescription className="mt-2 flex flex-col gap-4 text-amber-900/80">
+                <Alert className="rounded-2xl border-amber-300 bg-amber-50 text-amber-950 [&>svg]:text-amber-700 shadow-sm">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertTitle className="font-bold text-amber-900">Không thể tải đầy đủ dữ liệu nhóm</AlertTitle>
+                  <AlertDescription className="mt-2 flex flex-col gap-4 text-amber-900/90">
                     <p>{profileError || "Đã có lỗi khi đồng bộ thông tin nhóm của bạn. Vui lòng thử tải lại."}</p>
                     <div>
-                      <Button variant="outline" className="border-amber-300 bg-white" onClick={() => void loadPersistedState()}>
+                      <Button variant="outline" className="border-amber-300 bg-white hover:bg-amber-100 text-amber-955 shadow-sm rounded-xl font-semibold" onClick={() => void loadPersistedState()}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Tải lại dữ liệu
                       </Button>
@@ -689,44 +689,45 @@ const StudentMyGroup = () => {
           ) : null}
 
           {emailInvites.length > 0 ? (
-            <Card className="rounded-3xl border-0 shadow-card">
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <Card className="rounded-3xl border border-indigo-200 bg-white shadow-md">
+              <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-indigo-100 pb-4">
                 <div>
-                  <CardTitle>{t(language, "Lời mời nhóm", "Group invites")}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-xl text-indigo-950 font-bold">{t(language, "Lời mời nhóm", "Group invites")}</CardTitle>
+                  <CardDescription className="text-indigo-900/70 mt-0.5">
                     {t(language, "Bạn có thể chấp nhận hoặc từ chối từng lời mời ngay tại đây.", "You can accept or reject each invite right here.")}
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => void loadEmailInvites()}>
+                <Button variant="ghost" size="sm" className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 rounded-xl px-3 font-semibold" onClick={() => void loadEmailInvites()}>
                   <RefreshCcw className={`mr-2 h-4 w-4 ${invitesLoading ? "animate-spin" : ""}`} />
                   {t(language, "Làm mới", "Refresh")}
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 pt-4">
                 {pendingEmailInvites.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+                  <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/30 p-6 text-sm text-indigo-900/70 text-center font-medium">
                     {t(language, "Không còn lời mời đang chờ.", "No pending invites left.")}
                   </div>
                 ) : (
                   pendingEmailInvites.map(invite => {
                     const inviteGroupName = groups.find(group => group.id === invite.group_id)?.name ?? t(language, "Nhóm chưa xác định", "Unknown group");
                     return (
-                      <div key={invite.id} className="rounded-2xl border border-border/60 bg-background p-4">
+                      <div key={invite.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="secondary">{inviteGroupName}</Badge>
-                              <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">{inviteStatusLabel(invite.status)}</Badge>
+                              <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 rounded-lg font-semibold">{inviteGroupName}</Badge>
+                              <Badge className="bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 rounded-lg font-semibold">{inviteStatusLabel(invite.status)}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground">{invite.note || t(language, "Không có ghi chú.", "No note provided.")}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {t(language, "Mã tham gia", "Join code")}: <span className="font-mono">{invite.invite_code}</span>
+                            <p className="text-sm text-slate-700 font-semibold">{invite.note || t(language, "Không có ghi chú.", "No note provided.")}</p>
+                            <p className="text-xs text-slate-600 bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200">
+                              {t(language, "Mã tham gia", "Join code")}: <span className="font-mono font-bold text-indigo-700 ml-1">{invite.invite_code}</span>
                             </p>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 self-end lg:self-start">
                             <Button
                               onClick={() => void handleRespondInvite(invite.id, "accepted")}
                               disabled={inviteActionLoading === invite.id}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm font-semibold"
                             >
                               <BadgeCheck className="mr-2 h-4 w-4" />
                               {t(language, "Chấp nhận", "Accept")}
@@ -735,6 +736,7 @@ const StudentMyGroup = () => {
                               variant="outline"
                               onClick={() => void handleRespondInvite(invite.id, "rejected")}
                               disabled={inviteActionLoading === invite.id}
+                              className="border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 rounded-xl font-semibold"
                             >
                               {t(language, "Từ chối", "Reject")}
                             </Button>
@@ -749,71 +751,60 @@ const StudentMyGroup = () => {
           ) : null}
 
           {!group ? (
-            <Card className="rounded-3xl border-0 shadow-card">
-              <CardContent className="p-6">
+            <Card className="rounded-3xl border border-dashed border-slate-300 bg-white shadow-sm">
+              <CardContent className="p-10 flex flex-col items-center justify-center">
                 <EmptyBlock
                   title="Bạn chưa được phân vào nhóm nào."
                   description="Khi được thêm vào dự án, thông tin nhóm và thành viên sẽ xuất hiện tại đây."
                   icon={Users}
                 />
-                <div className="mt-4 flex justify-center">
-                  <Button onClick={() => navigate("/projects")}>Đi tới quản lý dự án</Button>
+                <div className="mt-6 flex justify-center">
+                  <Button onClick={() => navigate("/projects")} className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl px-6 shadow-md shadow-primary/10">Đi tới quản lý dự án</Button>
                 </div>
               </CardContent>
             </Card>
           ) : (
             <>
-              <Card className="overflow-hidden rounded-[28px] border-0 shadow-card">
+              {/* KHU VỰC ĐÃ FIX LỖI HIỂN THỊ VÀ TĂNG TƯƠNG PHẢN MÀU SẮC */}
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
                 <CardContent className="p-0">
-                  <div className="border-b border-border/70 bg-card/80 px-6 py-5">
+                  <div className="bg-gradient-to-b from-slate-50/50 to-white px-6 py-6 border-b border-slate-150">
                     <div className="flex flex-col gap-5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="border border-primary/15 bg-primary/10 text-primary hover:bg-primary/10">
+                        <Badge className="border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-50 px-3 py-0.5 rounded-full font-bold">
                           Sinh viên
                         </Badge>
-                        <Badge className={cn("border", groupStatusMeta[groupProgress.status].className)}>
+                        <Badge className={cn("border px-3 py-0.5 rounded-full font-bold shadow-sm text-slate-900", groupStatusMeta[groupProgress.status].className)}>
                           {groupStatusMeta[groupProgress.status].label}
                         </Badge>
                       </div>
 
                       <div>
-                        <p className="text-sm text-muted-foreground">Nhóm của bạn</p>
-                        <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">{group.name}</h1>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Nhóm của bạn</p>
+                        <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">{group.name}</h1>
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Học phần</p>
-                          <p className="mt-2 text-sm font-medium">{courseName}</p>
-                        </div> */}
-                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Dự án</p>
-                          <p className="mt-2 text-sm font-medium">{group.name}</p>
-                        </div> */}
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Giảng viên</p>
-                          <p className="mt-2 text-sm font-medium">{profileLoading ? "Đang tải..." : lecturerName}</p>
+                        {/* Hộp Giảng Viên */}
+                        <div className="rounded-2xl border border-violet-200 border-l-4 border-l-violet-600 bg-violet-50/50 p-5 pl-6 transition-all hover:bg-violet-50 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-[0.05em] text-violet-700">GIẢNG VIÊN</p>
+                          <p className="mt-2 text-base font-extrabold text-slate-900">{profileLoading ? "Đang tải..." : lecturerName}</p>
                         </div>
-                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Nhóm trưởng</p>
-                          <p className="mt-2 text-sm font-medium">{leader?.name || "Chưa cập nhật"}</p>
-                        </div> */}
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Deadline dự án</p>
-                          <p className="mt-2 text-sm font-medium">{formatDate(groupDeadline)}</p>
+                        {/* Hộp Deadline Dự Án */}
+                        <div className="rounded-2xl border border-sky-200 border-l-4 border-l-sky-600 bg-sky-50/50 p-5 pl-6 transition-all hover:bg-sky-50 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-[0.05em] text-sky-700">DEADLINE DỰ ÁN</p>
+                          <p className="mt-2 text-base font-extrabold text-slate-900">{formatDate(groupDeadline)}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tiến độ nhóm</p>
-                          <p className="mt-2 text-sm font-medium">{groupProgress.progressPercent}% hoàn thành</p>
+                        {/* Hộp Tiến Độ Nhóm */}
+                        <div className="rounded-2xl border border-emerald-200 border-l-4 border-l-emerald-600 bg-emerald-50/50 p-5 pl-6 transition-all hover:bg-emerald-50 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-[0.05em] text-emerald-700">TIẾN ĐỘ NHÓM</p>
+                          <p className="mt-2 text-base font-extrabold text-slate-900">{groupProgress.progressPercent}% hoàn thành</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tổng thành viên</p>
-                          <p className="mt-2 text-sm font-medium">{group.members.length} người</p>
+                        {/* Hộp Tổng Thành Viên */}
+                        <div className="rounded-2xl border border-amber-200 border-l-4 border-l-amber-600 bg-amber-50/50 p-5 pl-6 transition-all hover:bg-amber-50 shadow-sm">
+                          <p className="text-xs font-bold uppercase tracking-[0.05em] text-amber-700">TỔNG THÀNH VIÊN</p>
+                          <p className="mt-2 text-base font-extrabold text-slate-900">{group.members.length} người</p>
                         </div>
-                        {/* <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Trạng thái nhóm</p>
-                          <p className="mt-2 text-sm font-medium">{groupStatusMeta[groupProgress.status].label}</p>
-                        </div> */}
                       </div>
                     </div>
                   </div>
@@ -821,84 +812,86 @@ const StudentMyGroup = () => {
               </Card>
 
               <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-                <Card className="rounded-3xl border-0 shadow-card">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Thành viên nhóm</CardTitle>
-                    <CardDescription>
-                      Chỉ hiển thị số lượng task tổng quát của từng thành viên, không hiển thị breakdown điểm đóng góp riêng tư.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {group.members.length === 0 ? (
-                      <EmptyBlock
-                        title="Chưa có thành viên nào trong nhóm."
-                        description="Khi nhóm được thêm thành viên, danh sách sẽ xuất hiện tại đây."
-                        icon={Users}
-                      />
-                    ) : (
-                      <div className="space-y-3">
-                        {group.members.map(member => (
-                          <MemberRow
-                            key={member.id || member.name}
-                            member={member}
-                            profile={member.id ? profilesById[member.id] : undefined}
-                            tasks={(member.id && memberTasksById[member.id]) || []}
-                            isCallerLeader={isCallerLeader}
-                            onKickClick={(m) => {
-                              setKickTarget(m);
-                              setIsKickDialogOpen(true);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
+                <Card className="rounded-3xl border border-slate-200 bg-white shadow-md flex flex-col justify-between">
+                  <div>
+                    <CardHeader className="pb-4 border-b border-slate-100">
+                      <CardTitle className="text-xl font-bold text-slate-900">Thành viên nhóm</CardTitle>
+                      <CardDescription className="text-slate-600 font-medium">
+                        Chỉ hiển thị số lượng task tổng quát của từng thành viên, không hiển thị breakdown điểm đóng góp riêng tư.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      {group.members.length === 0 ? (
+                        <EmptyBlock
+                          title="Chưa có thành viên nào trong nhóm."
+                          description="Khi nhóm được thêm thành viên, danh sách sẽ xuất hiện tại đây."
+                          icon={Users}
+                        />
+                      ) : (
+                        <div className="space-y-3">
+                          {group.members.map(member => (
+                            <MemberRow
+                              key={member.id || member.name}
+                              member={member}
+                              profile={member.id ? profilesById[member.id] : undefined}
+                              tasks={(member.id && memberTasksById[member.id]) || []}
+                              isCallerLeader={isCallerLeader}
+                              onKickClick={(m) => {
+                                setKickTarget(m);
+                                setIsKickDialogOpen(true);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </div>
                 </Card>
 
                 <div className="space-y-6">
-                  <Card className="rounded-3xl border-0 shadow-card">
+                  <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Tiến độ nhóm</CardTitle>
-                      <CardDescription>Tiến độ chung dựa trên tổng task đã được duyệt trong nhóm.</CardDescription>
+                      <CardTitle className="text-xl font-bold text-slate-900">Tiến độ nhóm</CardTitle>
+                      <CardDescription className="text-slate-600 font-medium">Tiến độ chung dựa trên tổng task đã được duyệt trong nhóm.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tổng task nhóm</p>
-                          <p className="mt-2 text-2xl font-semibold">{groupProgress.totalTasks}</p>
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm hover:bg-blue-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">Tổng task nhóm</p>
+                          <p className="mt-1 text-2xl font-black text-blue-950">{groupProgress.totalTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Đã hoàn thành</p>
-                          <p className="mt-2 text-2xl font-semibold">{groupProgress.completedTasks}</p>
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm hover:bg-emerald-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">Đã hoàn thành</p>
+                          <p className="mt-1 text-2xl font-black text-emerald-950">{groupProgress.completedTasks}</p>
                         </div>
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Đang chờ xử lý</p>
-                          <p className="mt-2 text-2xl font-semibold">{groupProgress.pendingTasks}</p>
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm hover:bg-amber-100/70 transition-colors">
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-amber-700">Đang chờ xử lý</p>
+                          <p className="mt-1 text-2xl font-black text-amber-955">{groupProgress.pendingTasks}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setOverdueDialogOpen(true)}
-                          className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left hover:border-rose-300 hover:bg-rose-50/50 transition-colors cursor-pointer w-full"
+                          className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left hover:border-rose-400 hover:bg-rose-100 shadow-sm transition-all cursor-pointer w-full group"
                         >
-                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Task trễ hạn</p>
-                          <p className="mt-2 text-2xl font-semibold">{groupProgress.overdueTasks}</p>
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-700">Task trễ hạn</p>
+                          <p className="mt-1 text-2xl font-black text-rose-950 group-hover:scale-[1.02] origin-left transition-transform">{groupProgress.overdueTasks}</p>
                         </button>
                       </div>
 
-                      <div className="rounded-2xl border border-border/70 bg-card p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div className="mb-3 flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium">Tỷ lệ hoàn thành nhóm</p>
-                          <Badge className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
+                          <p className="text-sm font-bold text-slate-800">Tỷ lệ hoàn thành nhóm</p>
+                          <Badge className="border border-indigo-300 bg-indigo-100 text-indigo-800 hover:bg-indigo-200 rounded-lg px-2.5 font-black shadow-sm">
                             {groupProgress.progressPercent}%
                           </Badge>
                         </div>
-                        <Progress value={groupProgress.progressPercent} className="h-3 bg-muted" />
+                        <Progress value={groupProgress.progressPercent} className="h-3 bg-slate-200 rounded-full overflow-hidden [&>div]:bg-indigo-600" />
                       </div>
 
-                      <Alert className="rounded-2xl border-border bg-background/80">
-                        <ShieldAlert className="h-4 w-4" />
-                        <AlertTitle>Giới hạn quyền xem</AlertTitle>
-                        <AlertDescription className="leading-6">
+                      <Alert className="rounded-2xl border border-slate-300 bg-slate-100 text-slate-800 shadow-sm">
+                        <ShieldAlert className="h-4 w-4 text-slate-600" />
+                        <AlertTitle className="font-bold text-slate-900">Giới hạn quyền xem</AlertTitle>
+                        <AlertDescription className="leading-6 text-slate-700 text-xs mt-0.5 font-medium">
                           Bạn chỉ có thể xem trạng thái tổng quát của thành viên. Điểm đóng góp chi tiết, khiếu nại hoặc giải trình riêng tư của người khác sẽ không hiển thị tại đây.
                         </AlertDescription>
                       </Alert>
@@ -906,25 +899,25 @@ const StudentMyGroup = () => {
                   </Card>
 
                   {isCallerLeader && (
-                    <Card className="rounded-3xl border-0 shadow-card bg-slate-900 border border-slate-800 text-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-xl text-rose-400 flex items-center gap-2">
-                          <Crown className="h-5 w-5 text-indigo-400" />
+                    <Card className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 border border-slate-800 text-slate-100 shadow-[0_10px_30px_-10px_rgba(99,102,241,0.25)]">
+                      <CardHeader className="pb-3 border-b border-slate-880/80">
+                        <CardTitle className="text-lg font-bold text-indigo-400 flex items-center gap-2">
+                          <Crown className="h-5 w-5 text-amber-400 fill-amber-400/20" />
                           Quản trị Trưởng nhóm
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col gap-3">
+                      <CardContent className="space-y-4 pt-4">
+                        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/[0.05] p-4 flex flex-col gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-rose-450">Từ chức Trưởng nhóm</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                            <p className="text-sm font-bold text-rose-400">Từ chức Trưởng nhóm</p>
+                            <p className="text-xs text-slate-300 mt-1 leading-relaxed font-medium">
                               Từ chức và nhượng lại quyền quản trị dự án hiện tại cho thành viên khác trong nhóm. Bạn sẽ trở thành thành viên thường.
                             </p>
                           </div>
                           <Button
                             type="button"
                             onClick={handleStartResign}
-                            className="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:border-rose-500 hover:text-white text-rose-400 font-bold text-xs rounded-xl px-4 py-2.5 h-auto transition-all cursor-pointer self-start"
+                            className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl px-4 py-2.5 h-auto transition-all cursor-pointer self-start shadow-md border border-rose-500"
                           >
                             Từ chức ngay
                           </Button>
@@ -933,40 +926,46 @@ const StudentMyGroup = () => {
                     </Card>
                   )}
 
-                  <Card className="rounded-3xl border-0 shadow-card">
+                  <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-xl">Tóm tắt trạng thái</CardTitle>
-                      <CardDescription>Ảnh chụp nhanh để bạn theo dõi sức khỏe chung của nhóm.</CardDescription>
+                      <CardTitle className="text-xl font-bold text-slate-900">Tóm tắt trạng thái</CardTitle>
+                      <CardDescription className="text-slate-600 font-medium">Ảnh chụp nhanh để bạn theo dõi sức khỏe chung của nhóm.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:bg-slate-100/70">
                         <div className="flex items-center gap-3">
-                          <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                          <div className="p-2 rounded-xl bg-emerald-100 border border-emerald-200 shadow-sm">
+                            <BadgeCheck className="h-5 w-5 text-emerald-700" />
+                          </div>
                           <div>
-                            <p className="text-sm font-medium">Task đã duyệt</p>
-                            <p className="text-sm text-muted-foreground">{groupProgress.completedTasks} task đã được leader ghi nhận.</p>
+                            <p className="text-sm font-bold text-slate-800">Task đã duyệt</p>
+                            <p className="text-xs text-slate-600 font-semibold mt-0.5">{groupProgress.completedTasks} task đã được leader ghi nhận và chốt tiến độ.</p>
                           </div>
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:bg-slate-100/70">
                         <div className="flex items-center gap-3">
-                          <TimerOff className="h-5 w-5 text-rose-600" />
+                          <div className="p-2 rounded-xl bg-rose-100 border border-rose-200 shadow-sm">
+                            <TimerOff className="h-5 w-5 text-rose-700" />
+                          </div>
                           <div>
-                            <p className="text-sm font-medium">Task trễ hạn</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm font-bold text-slate-800">Task trễ hạn</p>
+                            <p className="text-xs text-slate-600 font-semibold mt-0.5">
                               {groupProgress.overdueTasks > 0
-                                ? `Hiện có ${groupProgress.overdueTasks} task trễ hạn cần ưu tiên xử lý.`
-                                : "Nhóm hiện không có task trễ hạn."}
+                                ? `Hiện có ${groupProgress.overdueTasks} task quá hạn cần ưu tiên xử lý gấp.`
+                                : "Tuyệt vời! Nhóm hiện không có task nào bị trễ hạn."}
                             </p>
                           </div>
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:bg-slate-100/70">
                         <div className="flex items-center gap-3">
-                          <CalendarClock className="h-5 w-5 text-sky-600" />
+                          <div className="p-2 rounded-xl bg-sky-100 border border-sky-200 shadow-sm">
+                            <CalendarClock className="h-5 w-5 text-sky-700" />
+                          </div>
                           <div>
-                            <p className="text-sm font-medium">Deadline dự án</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm font-bold text-slate-800">Deadline dự án</p>
+                            <p className="text-xs text-slate-600 font-semibold mt-0.5">
                               {groupDeadline ? `Mốc deadline gần nhất của nhóm là ${formatDate(groupDeadline)}.` : "Nhóm chưa có mốc deadline tổng được ghi nhận."}
                             </p>
                           </div>
@@ -977,14 +976,14 @@ const StudentMyGroup = () => {
                 </div>
               </div>
 
-              <Card className="rounded-3xl border-0 shadow-card">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl">Dòng thời gian hoạt động nhóm</CardTitle>
-                  <CardDescription>
+              <Card className="rounded-3xl border border-slate-200 bg-white shadow-md">
+                <CardHeader className="pb-4 border-b border-slate-100">
+                  <CardTitle className="text-xl font-bold text-slate-900">Dòng thời gian hoạt động nhóm</CardTitle>
+                  <CardDescription className="text-slate-600 font-medium">
                     Ghi nhận các hoạt động gần đây như tạo task, nộp task, duyệt task, cập nhật deadline và phản hồi.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-5">
                   {timeline.length === 0 ? (
                     <EmptyBlock
                       title="Chưa có hoạt động nào."
@@ -992,20 +991,20 @@ const StudentMyGroup = () => {
                       icon={CalendarClock}
                     />
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 relative before:absolute before:inset-y-0 before:left-4 before:w-0.5 before:bg-slate-200 pl-2">
                       {timeline.map((entry, index) => {
                         const meta = activityKindMeta(entry.description);
                         return (
-                          <div key={`${entry.timestamp.getTime()}-${index}`} className="rounded-2xl border border-border bg-background/80 p-4">
+                          <div key={`${entry.timestamp.getTime()}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-all relative">
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge className={cn("border", meta.badgeClassName)}>{meta.label}</Badge>
-                                  <span className="text-sm text-muted-foreground">{formatDateTime(entry.timestamp)}</span>
+                                  <Badge className={cn("border rounded-lg px-2.5 font-bold shadow-sm text-xs text-slate-900", meta.badgeClassName)}>{meta.label}</Badge>
+                                  <span className="text-xs font-bold text-slate-500">{formatDateTime(entry.timestamp)}</span>
                                 </div>
-                                <p className="text-sm leading-6">{entry.description}</p>
+                                <p className="text-sm leading-6 font-semibold text-slate-800">{entry.description}</p>
                               </div>
-                              <div className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                              <div className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-1 text-[11px] font-black text-slate-500 tracking-wider uppercase self-start md:self-auto shadow-sm">
                                 Audit log
                               </div>
                             </div>
@@ -1023,44 +1022,44 @@ const StudentMyGroup = () => {
 
       {/* Kick Member Dialog */}
       <Dialog open={isKickDialogOpen} onOpenChange={setIsKickDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+        <DialogContent className="sm:max-w-[420px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999]">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold tracking-tight text-rose-400 flex items-center gap-2">
-              <UserMinus className="h-5 w-5 text-rose-450" />
+              <UserMinus className="h-5 w-5 text-rose-400" />
               Xóa thành viên khỏi nhóm
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm mt-1">
-              Hành động này không thể hoàn tác. Thành viên sẽ bị xóa khỏi dự án.
+            <DialogDescription className="text-slate-400 text-sm mt-1 font-medium">
+              Hành động này không thể hoàn tác. Thành viên sẽ bị xóa khỏi dự án ngay lập tức.
             </DialogDescription>
           </DialogHeader>
 
           {kickTarget && (
             <div className="py-4 space-y-3">
-              <p className="text-sm">
-                Bạn có chắc chắn muốn xóa thành viên <strong className="text-white">{kickTarget.name}</strong> khỏi nhóm không?
+              <p className="text-sm text-slate-300 font-medium">
+                Bạn có chắc chắn muốn xóa thành viên <strong className="text-white font-bold">{kickTarget.name}</strong> khỏi nhóm không?
               </p>
-              <div className="p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-xs text-slate-400 space-y-2">
-                <p className="font-semibold text-rose-400">Lưu ý:</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  <li>Tất cả task đang được giao cho thành viên này trong nhóm sẽ được chuyển sang trạng thái chưa giao (unassigned).</li>
-                  <li>Thành viên này sẽ không còn quyền truy cập vào không gian làm việc của nhóm.</li>
+              <div className="p-3.5 bg-slate-950 border border-slate-850 rounded-2xl text-xs space-y-2 leading-relaxed shadow-inner">
+                <p className="font-bold text-rose-400 uppercase tracking-wider">Lưu ý cực kỳ quan trọng:</p>
+                <ul className="list-disc pl-4 space-y-1 text-slate-300 font-medium">
+                  <li>Tất cả task đang được giao cho thành viên này trong nhóm sẽ được chuyển sang trạng thái <span className="text-amber-400 font-bold">chưa giao (unassigned)</span>.</li>
+                  <li>Thành viên này sẽ mất hoàn toàn quyền truy cập vào không gian làm việc của nhóm.</li>
                 </ul>
               </div>
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 border-t border-slate-800/80 pt-4 mt-2">
             <Button
               variant="ghost"
               onClick={() => setIsKickDialogOpen(false)}
-              className="bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl"
+              className="bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl px-4 font-semibold"
             >
               Hủy
             </Button>
             <Button
               disabled={kickLoading}
               onClick={handleKickMember}
-              className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold transition-colors"
+              className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 transition-all border border-rose-500 px-5"
             >
               {kickLoading ? "Đang xử lý..." : "Xác nhận xóa"}
             </Button>
@@ -1070,7 +1069,7 @@ const StudentMyGroup = () => {
 
       {/* Resign Leadership Dialog */}
       <Dialog open={resignStep !== "none"} onOpenChange={(open) => { if (!open) setResignStep("none"); }}>
-        <DialogContent className="sm:max-w-[460px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999] animate-in zoom-in-95 duration-200">
+        <DialogContent className="sm:max-w-[460px] bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 shadow-2xl z-[9999]">
           {resignStep === "verify" && (
             <>
               <DialogHeader>
@@ -1078,20 +1077,20 @@ const StudentMyGroup = () => {
                   <ShieldAlert className="h-5 w-5 text-rose-400" />
                   Xác nhận Từ chức Trưởng nhóm
                 </DialogTitle>
-                <DialogDescription className="text-slate-400 text-sm mt-1">
-                  Hành động này yêu cầu xác nhận bằng văn bản để tránh nhầm lẫn.
+                <DialogDescription className="text-slate-400 text-sm mt-1 font-medium">
+                  Hành động này yêu cầu xác nhận bằng văn bản để tránh các thao tác nhầm lẫn.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
-                <p className="text-sm leading-relaxed text-slate-300">
-                  Bằng việc từ chức, bạn sẽ nhượng lại toàn bộ quyền kiểm soát dự án cho một thành viên khác.
+                <p className="text-sm leading-relaxed text-slate-300 font-medium">
+                  Bằng việc từ chức, bạn sẽ nhượng lại toàn bộ quyền kiểm soát dự án cho một thành viên khác. Hành động này không thể đảo ngược.
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                     Nhập cụm từ bên dưới để xác nhận:
                   </Label>
-                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl px-4 py-2.5 text-center font-mono text-sm font-bold text-rose-400 select-none tracking-wider">
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center font-mono text-sm font-bold text-rose-400 select-none tracking-widest shadow-inner">
                     I resign my row
                   </div>
                   <Input
@@ -1099,23 +1098,23 @@ const StudentMyGroup = () => {
                     value={resignText}
                     onChange={(e) => setResignText(e.target.value)}
                     placeholder="Nhập cụm từ xác nhận tại đây..."
-                    className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 rounded-xl focus-visible:ring-indigo-500 py-5"
+                    className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-700 rounded-xl focus-visible:ring-indigo-500 focus-visible:border-indigo-500 py-5 shadow-inner font-semibold"
                   />
                 </div>
               </div>
 
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="gap-2 sm:gap-0 border-t border-slate-800/80 pt-4">
                 <Button
                   variant="ghost"
                   onClick={() => setResignStep("none")}
-                  className="hover:bg-slate-800 text-slate-300 rounded-xl"
+                  className="hover:bg-slate-800 text-slate-300 rounded-xl px-4 font-semibold"
                 >
                   Hủy
                 </Button>
                 <Button
                   onClick={handleVerifyResign}
                   disabled={resignText !== "I resign my row"}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold disabled:opacity-50 transition-colors"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold disabled:opacity-30 disabled:pointer-events-none shadow-lg shadow-indigo-600/20 transition-all px-5"
                 >
                   Tiếp tục
                 </Button>
@@ -1127,11 +1126,11 @@ const StudentMyGroup = () => {
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-indigo-400" />
+                  <Crown className="h-5 w-5 text-indigo-400 fill-indigo-400/10" />
                   Chọn Người Kế Nhiệm
                 </DialogTitle>
-                <DialogDescription className="text-slate-400 text-sm mt-1">
-                  Chỉ định thành viên sẽ tiếp quản vai trò Trưởng nhóm.
+                <DialogDescription className="text-slate-400 text-sm mt-1 font-medium">
+                  Chỉ định thành viên sẽ tiếp quản vai trò Trưởng nhóm điều hành dự án.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1143,10 +1142,10 @@ const StudentMyGroup = () => {
                   <select
                     value={successorId}
                     onChange={(e) => setSuccessorId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-xl py-3 px-4 text-sm font-semibold focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:bg-slate-900 transition-colors outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl py-3 px-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:bg-slate-900 transition-all outline-none shadow-inner"
                   >
                     {otherMembers.map((m) => (
-                      <option key={m.id} value={m.id}>
+                      <option key={m.id} value={m.id} className="bg-slate-950 text-slate-200 py-2">
                         {m.name} ({profilesById[m.id!]?.email || m.id})
                       </option>
                     ))}
@@ -1154,18 +1153,18 @@ const StudentMyGroup = () => {
                 </div>
               </div>
 
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="gap-2 sm:gap-0 border-t border-slate-800/80 pt-4">
                 <Button
                   variant="ghost"
                   onClick={() => setResignStep("verify")}
-                  className="hover:bg-slate-800 text-slate-300 rounded-xl"
+                  className="hover:bg-slate-800 text-slate-300 rounded-xl px-4 font-semibold"
                 >
                   Quay lại
                 </Button>
                 <Button
                   onClick={handleResignLeader}
                   disabled={resignLoading || !successorId}
-                  className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold transition-colors"
+                  className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 transition-all px-5 border border-rose-500"
                 >
                   {resignLoading ? "Đang xử lý..." : "Xác nhận & Bàn giao"}
                 </Button>
@@ -1177,36 +1176,36 @@ const StudentMyGroup = () => {
 
       {/* Overdue Tasks Dialog */}
       <Dialog open={overdueDialogOpen} onOpenChange={setOverdueDialogOpen}>
-        <DialogContent className="sm:max-w-[560px] rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+        <DialogContent className="sm:max-w-[560px] rounded-3xl border border-slate-200 bg-white shadow-2xl p-6">
+          <DialogHeader className="border-b border-slate-100 pb-3">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-900">
               <TimerOff className="h-5 w-5 text-rose-500" />
-              Task trễ hạn
+              Danh sách Task trễ hạn
             </DialogTitle>
-            <DialogDescription>
-              Danh sách các task đã quá hạn và chưa hoàn thành.
+            <DialogDescription className="text-slate-600 font-medium">
+              Các đầu việc đã quá mốc thời gian quy định nhưng chưa được hoàn thành.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pt-3 pr-1">
             {overdueTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Không có task trễ hạn.</p>
+              <p className="text-sm text-muted-foreground text-center py-10 font-bold">Tuyệt vời! Không có task nào bị trễ hạn.</p>
             ) : (
               overdueTasks.map(task => (
-                <div key={task.id} className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-sm break-words">{task.name}</p>
-                    <Badge className="border-rose-200 bg-rose-100 text-rose-700 shrink-0">
-                      {task.daysOverdue} ngày
+                <div key={task.id} className="rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100/70 p-4 space-y-2.5 shadow-sm transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-extrabold text-sm text-slate-900 break-words leading-relaxed">{task.name}</p>
+                    <Badge className="border border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-100 font-black shrink-0 rounded-lg shadow-sm">
+                      {task.daysOverdue} ngày quá hạn
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" />
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
+                    <span className="inline-flex items-center gap-1.5 text-slate-700 bg-slate-150 border border-slate-200 px-2 py-0.5 rounded-md">
+                      <Users className="h-3.5 w-3.5 text-slate-500" />
                       {task.assigneeName}
                     </span>
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarClock className="h-3 w-3" />
-                      {formatDate(task.deadline)}
+                    <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md">
+                      <CalendarClock className="h-3.5 w-3.5 text-rose-500" />
+                      Hạn: {formatDate(task.deadline)}
                     </span>
                   </div>
                 </div>
