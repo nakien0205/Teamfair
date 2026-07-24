@@ -1,0 +1,14 @@
+{
+  "phase": "phase-03",
+  "contract_signatures": {
+    "task_id_format": "canonical lowercase hyphenated UUID",
+    "event_id_format": "tf + lowercase task UUID with hyphens removed (34 chars)",
+    "operation_lease_purpose": "task_event_write",
+    "required_scope": "https://www.googleapis.com/auth/calendar.events",
+    "private_markers": {
+      "teamfair_source": "task",
+      "teamfair_task_id": "<uuid>",
+      "teamfair_schema": "v1"
+    }
+  }
+}

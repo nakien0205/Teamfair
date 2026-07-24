@@ -16,6 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getAccessibleProjectEntries } from '@/lib/projectAccess';
 import { LecturerDashboardSkeleton } from '@/components/skeletons';
+import { checkUserGoogleCalendarPermission, requestGoogleCalendarPermission } from '@/lib/googleCalendarConnection';
+import { GOOGLE_CALENDAR_UI_ENABLED } from '@/lib/featureFlags';
 
 const LecturerDashboard = () => {
   const { groups, currentGroupIndex, setCurrentGroupIndex, updateLecturerScore, addTask, deleteTask, approveTask, dataLoading } = useTeam();
@@ -34,10 +36,14 @@ const LecturerDashboard = () => {
     name: '',
     description: '',
     assignedTo: '',
+    assigneeId: '',
     deadline: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    priority: '' as '' | 'Low' | 'Medium' | 'High',
     contributionPercent: 10
   });
+  const [assigneeHasCalendar, setAssigneeHasCalendar] = useState<boolean | null>(null);
+  const [checkingCalendar, setCheckingCalendar] = useState(false);
+  const [sendingCalendarReq, setSendingCalendarReq] = useState(false);
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -46,7 +52,7 @@ const LecturerDashboard = () => {
     }
   }, [profile, authLoading, navigate]);
 
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     if (!newTask.name || !newTask.assignedTo) {
       toast({
         title: tr(language, 'Lỗi', 'Error'),
@@ -55,20 +61,32 @@ const LecturerDashboard = () => {
       });
       return;
     }
-    addTask(newTask);
-    setNewTask({
-      name: '',
-      description: '',
-      assignedTo: '',
-      deadline: '',
-      priority: 'Medium',
-      contributionPercent: 10
-    });
-    setModalOpen(false);
-    toast({
-      title: tr(language, 'Task đã tạo', 'Task created'),
-      description: tr(language, `"${newTask.name}" đã được tạo thành công`, `"${newTask.name}" created successfully`)
-    });
+    try {
+      const submittedPriority = newTask.priority || undefined;
+      const submittedAssigneeId = newTask.assigneeId || undefined;
+      await addTask({ ...newTask, assigneeId: submittedAssigneeId, priority: submittedPriority });
+      setNewTask({
+        name: '',
+        description: '',
+        assignedTo: '',
+        assigneeId: '',
+        deadline: '',
+        priority: '',
+        contributionPercent: 10
+      });
+      setModalOpen(false);
+      toast({
+        title: tr(language, 'Task đã tạo', 'Task created'),
+        description: tr(language, `"${newTask.name}" đã được tạo thành công`, `"${newTask.name}" created successfully`)
+      });
+    } catch (err) {
+      console.error("Task creation failed:", err);
+      toast({
+        title: tr(language, 'Lỗi', 'Error'),
+        description: tr(language, 'Tạo task thất bại', 'Failed to create task'),
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleDeleteTask = (taskId: string, name: string) => {
@@ -315,14 +333,11 @@ const LecturerDashboard = () => {
                 const suggested = (baseScore * m.contributionPercent / 100).toFixed(1);
                 const isUnsaved = unsaved.has(m.name);
                 return (
-                  <tr key={m.name} className={`border-b border-slate-300 last:border-0 transition-colors hover:bg-slate-50/80 ${isUnsaved ? 'bg-amber-50/80 hover:bg-amber-100/70 relative' : ''}`}>
-                    <td className="px-5 py-3 font-semibold text-slate-900">
-                      {isUnsaved && <span className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />}
-                      {m.name}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{m.role}</td>
-                    <td className="px-5 py-3 text-center text-slate-800 font-medium">{m.completedTasks}</td>
-                    <td className="px-5 py-3">
+                  <tr key={m.id || m.name} className={`border-b border-border last:border-0 transition-colors ${isUnsaved ? 'bg-warning/10' : ''}`}>
+                    <td className="px-4 py-3 font-medium">{m.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{m.role}</td>
+                    <td className="px-4 py-3 text-center">{m.completedTasks}</td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-center">
                         <Progress value={m.contributionPercent} className="h-2 w-16 bg-slate-200 [&>div]:bg-indigo-600 rounded-full" />
                         <span className="text-xs w-8 text-right font-bold text-slate-700">{m.contributionPercent}%</span>
@@ -378,14 +393,74 @@ const LecturerDashboard = () => {
                   <Textarea className="rounded-lg border-slate-300" value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} placeholder="Nhập mô tả" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-slate-700 font-medium">{tr(language, 'Giao cho', 'Assign to')}</Label>
-                  <Select value={newTask.assignedTo} onValueChange={v => setNewTask(p => ({ ...p, assignedTo: v }))}>
-                    <SelectTrigger className="rounded-lg border-slate-300"><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Pick a member')} /></SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                      {group.members.map(m => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                  <Label>{tr(language, 'Giao cho', 'Assign to')}</Label>
+                  <Select
+                    value={newTask.assigneeId || newTask.assignedTo}
+                    onValueChange={async v => {
+                      const member = group.members.find(m => (m.id || m.name) === v);
+                      const memberId = member?.id || '';
+                      setNewTask(p => ({ ...p, assignedTo: member?.name || v, assigneeId: memberId }));
+                      if (GOOGLE_CALENDAR_UI_ENABLED && memberId) {
+                        setCheckingCalendar(true);
+                        const hasPerm = await checkUserGoogleCalendarPermission(memberId);
+                        setAssigneeHasCalendar(hasPerm);
+                        setCheckingCalendar(false);
+                      } else {
+                        setAssigneeHasCalendar(null);
+                        setCheckingCalendar(false);
+                      }
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn thành viên', 'Pick a member')} /></SelectTrigger>
+                    <SelectContent>
+                      {group.members.map(m => <SelectItem key={m.id || m.name} value={m.id || m.name}>{m.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+                {GOOGLE_CALENDAR_UI_ENABLED && newTask.assigneeId && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                    {checkingCalendar ? (
+                      <p className="text-slate-500 italic">{tr(language, "Đang kiểm tra quyền Google Calendar...", "Checking Google Calendar permission...")}</p>
+                    ) : assigneeHasCalendar === true ? (
+                      <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>{tr(language, "Thành viên đã cấp quyền ghi Google Calendar. Hạn chót sẽ tự động đồng bộ.", "Member has granted Google Calendar write permission. Deadline will sync automatically.")}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-slate-600">
+                          {tr(language, "Thành viên chưa kết nối Google Calendar. Gửi yêu cầu để họ kết nối và nhận đồng bộ hạn chót.", "Member has not connected Google Calendar. Send a request asking them to authorize.")}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={sendingCalendarReq}
+                          className="w-full text-xs font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          onClick={async () => {
+                            setSendingCalendarReq(true);
+                            const res = await requestGoogleCalendarPermission(newTask.assigneeId, group?.name || '', profile?.full_name || 'Giảng viên');
+                            setSendingCalendarReq(false);
+                            if (res.success) {
+                              toast({
+                                title: tr(language, "Đã gửi yêu cầu", "Request Sent"),
+                                description: tr(language, "Email yêu cầu quyền Google Calendar đã được gửi đến thành viên.", "Google Calendar write permission request email sent to member.")
+                              });
+                            } else {
+                              toast({
+                                title: tr(language, "Lỗi", "Error"),
+                                description: res.message,
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          {sendingCalendarReq ? tr(language, "Đang gửi...", "Sending...") : tr(language, "Gửi yêu cầu quyền Google Calendar", "Request Google Calendar Write Permission")}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-slate-700 font-medium">{tr(language, 'Deadline', 'Deadline')}</Label>
@@ -394,8 +469,8 @@ const LecturerDashboard = () => {
                   <div className="space-y-1">
                     <Label className="text-slate-700 font-medium">{tr(language, 'Ưu tiên', 'Priority')}</Label>
                     <Select value={newTask.priority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setNewTask(p => ({ ...p, priority: v }))}>
-                      <SelectTrigger className="rounded-lg border-slate-300"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-lg">
+                      <SelectTrigger><SelectValue placeholder={tr(language, 'Chọn mức độ ưu tiên', 'Choose Priority')} /></SelectTrigger>
+                      <SelectContent>
                         <SelectItem value="Low">{tr(language, 'Thấp', 'Low')}</SelectItem>
                         <SelectItem value="Medium">{tr(language, 'Trung bình', 'Medium')}</SelectItem>
                         <SelectItem value="High">{tr(language, 'Cao', 'High')}</SelectItem>

@@ -6,7 +6,7 @@ export type Entitlements = {
   isActive: boolean;
 };
 
-export const PRO_GROUP_PRICE_VND = 69_000;
+export const PRO_GROUP_PRICE_VND = 79_000;
 export const PRO_MAX_PRICE_VND = 129_000;
 
 export const FREE_ENTITLEMENTS: Entitlements = {

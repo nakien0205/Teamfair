@@ -41,6 +41,7 @@ import { PendingInvitesList } from "@/pages/PendingInvitesList";
 type RiskLevel = "normal" | "attention" | "high";
 
 type SummaryCard = {
+  key: string;
   label: string;
   value: string;
   hint: string;
@@ -181,6 +182,8 @@ const StudentOverview = () => {
   const [workLogOpen, setWorkLogOpen] = useState(false);
   const [workLogText, setWorkLogText] = useState("");
   const [workLogError, setWorkLogError] = useState("");
+  const overdueCoachmarkKey = `teamfair_overdue_tasks_hint_seen_${user?.id ?? (currentUserName.trim().toLowerCase() || "anonymous")}`;
+  const [showOverdueCoachmark, setShowOverdueCoachmark] = useState(false);
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -266,18 +269,21 @@ const StudentOverview = () => {
 
     const cards: SummaryCard[] = [
       {
+        key: "total",
         label: tr(language, "Tổng task được giao", "Total Assigned Tasks"),
         value: String(total),
         hint: total === 0 ? tr(language, "Chưa có task", "No tasks") : tr(language, "Task thuộc phạm vi của bạn", "Tasks within your scope"),
         icon: FolderOpen,
       },
       {
+        key: "in-progress",
         label: tr(language, "Task đang làm", "Tasks In Progress"),
         value: String(inProgress),
         hint: tr(language, "Đang cập nhật tiến độ", "Updating progress"),
         icon: Clock3,
       },
       {
+        key: "waiting-review",
         label: tr(language, "Task chờ duyệt", "Tasks Waiting for Review"),
         value: String(waitingReview),
         hint: tr(language, "Đã nộp, chờ trưởng nhóm duyệt", "Submitted, waiting for team leader approval"),
@@ -285,6 +291,7 @@ const StudentOverview = () => {
         tone: "warning",
       },
       {
+        key: "approved",
         label: tr(language, "Task đã được duyệt", "Approved Tasks"),
         value: String(approved),
         hint: tr(language, "Đã được ghi nhận đóng góp", "Contribution recognized"),
@@ -292,6 +299,7 @@ const StudentOverview = () => {
         tone: "success",
       },
       {
+        key: "overdue",
         label: tr(language, "Task trễ hạn", "Overdue Tasks"),
         value: String(overdue),
         hint: overdue > 0 ? tr(language, "Cần xử lý ưu tiên", "Need priority handling") : tr(language, "Không có task trễ hạn", "No overdue tasks"),
@@ -299,6 +307,7 @@ const StudentOverview = () => {
         tone: overdue > 0 ? "destructive" : "default",
       },
       {
+        key: "contribution",
         label: tr(language, "Contribution Score tham khảo", "Reference Contribution Score"),
         value: `${contributionScore}/100`,
         hint: tr(language, "Chỉ dùng để tham khảo nội bộ", "For internal reference only"),
@@ -320,6 +329,31 @@ const StudentOverview = () => {
       completionPercent: total === 0 ? 0 : Math.round((approved / total) * 100),
     };
   }, [feedbackEntries, myTasks, language]);
+
+  useEffect(() => {
+    if (!user?.id && !currentUserName.trim()) return;
+    if (summary.overdue === 0) return;
+
+    try {
+      setShowOverdueCoachmark(localStorage.getItem(overdueCoachmarkKey) !== "true");
+    } catch {
+      setShowOverdueCoachmark(true);
+    }
+  }, [currentUserName, overdueCoachmarkKey, summary.overdue, user?.id]);
+
+  const dismissOverdueCoachmark = () => {
+    setShowOverdueCoachmark(false);
+    try {
+      localStorage.setItem(overdueCoachmarkKey, "true");
+    } catch {
+      // Keep dismissed for current render if storage is unavailable.
+    }
+  };
+
+  const openOverdueTasks = () => {
+    dismissOverdueCoachmark();
+    navigate("/student/my-tasks?status=overdue");
+  };
 
   const canWriteWorkLog = Boolean(group);
 
@@ -405,120 +439,128 @@ const StudentOverview = () => {
       </Card>
     ) : null}
 
-    {!dataLoading && !connectionError && group ? (
-      <>
-        {/* Banner Chào Mừng */}
-        <Card className="overflow-hidden rounded-[24px] border-0 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.02)] transition-all duration-300">
-          <CardContent className="p-0">
-            <div className="px-6 py-6 bg-gradient-to-r from-blue-50/40 via-indigo-50/10 to-white">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="border-0 bg-blue-100 text-blue-700 font-bold hover:bg-blue-200 px-3 py-1 rounded-lg text-xs tracking-wide transition-colors">
-                      {tr(language, "Thành viên", "User")}
-                    </Badge>
-                    <Badge className="border-slate-200 bg-slate-50 text-slate-600 font-semibold px-2.5 py-0.5 rounded-lg text-[11px]" variant="outline">
-                      {group.name}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-amber-500 uppercase tracking-widest">
-                      {tr(language, "Chào mừng quay lại", "Welcome back")}
-                    </p>
-                    <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-800 md:text-4xl flex items-center gap-2.5">
-                      {currentUserName}
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-block rounded-full h-3 w-3 bg-emerald-500" title="Active" />
-                      </span>
-                    </h1>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-          
-        {/* Khu Vực Hàng Ô Tóm Tắt (Đã sửa bộ lọc màu thông minh, nịnh mắt) */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {summary.cards.map(card => {
-            const Icon = card.icon;
-            const labelLower = card.label ? card.label.toLowerCase() : "";
-            
-            // Cấu hình mặc định
-            let cardBg = "bg-white";
-            let badgeBg = "bg-slate-500 text-white shadow-xs";
-            let borderColor = "border-slate-100 hover:border-slate-200";
-            let iconColor = "text-white";
+          {!dataLoading && !connectionError && group ? (
+            <>
+              <Card className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <CardContent className="p-0">
+                  <div className="bg-slate-50/80 px-6 py-6 border-b border-slate-200">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-4">
+                        {/* Khu vực Badge */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="border-0 bg-indigo-50 text-indigo-600 font-bold hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs tracking-wide">
+                            {tr(language, "Thành viên", "User")}
+                          </Badge>
+                          <Badge variant="outline" className="border-slate-200 bg-slate-50/70 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg text-[11px]">
+                            {group.name}
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-amber-600 uppercase tracking-widest">
+                            {tr(language, "Chào mừng quay lại", "Welcome back")}
+                          </p>
+                          <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-slate-800 md:text-5xl flex items-center gap-2.5">
+                            {currentUserName}
+                            <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active" />
+                          </h1>
+                        </div>
+                        {/* <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                          "{tr(language, "Theo dõi task được giao, deadline sắp tới, điểm đóng góp tham khảo và phản hồi gần đây trong một màn hình đơn giản, dễ theo dõi.", "Track assigned tasks, upcoming deadlines, reference contribution points, and recent feedback in a simple, easy-to-follow screen.")}"
+                        </p> */}
+                      </div>
 
-            // 1. Kiểm tra Ô TRỄ HẠN -> Màu Đỏ Hồng Nhẹ (Rose Pastel)
-            if (card.tone === "danger" || card.tone === "error" || labelLower.includes("trễ hạn")) {
-              cardBg = "bg-gradient-to-br from-rose-50/90 via-rose-50/30 to-white";
-              badgeBg = "bg-rose-500 text-white shadow-xs shadow-rose-100";
-              borderColor = "border-rose-200/80 hover:border-rose-300";
-              iconColor = "text-white";
-            }
-            // 2. Kiểm tra Ô ĐÃ DUYỆT -> Màu Xanh Lá Nhẹ (Emerald Pastel)
-            else if (card.tone === "success" || labelLower.includes("đã được duyệt") || labelLower.includes("hoàn thành")) {
-              cardBg = "bg-gradient-to-br from-emerald-50/90 via-emerald-50/30 to-white";
-              badgeBg = "bg-emerald-500 text-white shadow-xs shadow-emerald-100";
-              borderColor = "border-emerald-200/80 hover:border-emerald-300";
-              iconColor = "text-white";
-            }
-            // 3. Kiểm tra Ô CHỜ DUYỆT -> Màu Vàng Cam Nhẹ (Amber/Orange Pastel)
-            else if (card.tone === "warning" || labelLower.includes("chờ duyệt")) {
-              cardBg = "bg-gradient-to-br from-amber-50/90 via-amber-50/30 to-white";
-              badgeBg = "bg-amber-500 text-white shadow-xs shadow-amber-100";
-              borderColor = "border-amber-200/80 hover:border-amber-300";
-              iconColor = "text-white";
-            }
-            // 4. Kiểm tra Ô ĐANG LÀM -> Màu Xanh Biển Nhẹ (Sky Pastel)
-            else if (card.tone === "info" || labelLower.includes("đang làm")) {
-              cardBg = "bg-gradient-to-br from-sky-50/90 via-sky-50/30 to-white";
-              badgeBg = "bg-sky-500 text-white shadow-xs shadow-sky-100";
-              borderColor = "border-sky-200/80 hover:border-sky-300";
-              iconColor = "text-white";
-            }
-            // 5. Kiểm tra Ô TỔNG TASK ĐƯỢC GIAO -> Màu Xanh Indigo Hiên Đại
-            else if (card.tone === "primary" || labelLower.includes("được giao") || labelLower.includes("tổng task")) {
-              cardBg = "bg-gradient-to-br from-blue-50/90 via-blue-50/30 to-white";
-              badgeBg = "bg-blue-500 text-white shadow-xs shadow-blue-100";
-              borderColor = "border-blue-200/80 hover:border-blue-300";
-              iconColor = "text-white";
-            }
-            // 6. Kiểm tra Ô ĐIỂM ĐÓNG GÓP -> Màu Tím Mơ Mộng (Purple Pastel)
-            else if (labelLower.includes("contribution") || labelLower.includes("đóng góp") || labelLower.includes("score")) {
-              cardBg = "bg-gradient-to-br from-purple-50/90 via-purple-50/30 to-white";
-              badgeBg = "bg-purple-500 text-white shadow-xs shadow-purple-100";
-              borderColor = "border-purple-200/80 hover:border-purple-300";
-              iconColor = "text-white";
-            }
-            
-            return (
-              <Card 
-                className={cn(
-                  "rounded-3xl border transition-all duration-300 hover:scale-[1.01] hover:shadow-md", 
-                  cardBg,
-                  borderColor
-                )} 
-                key={card.label}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{card.label}</p>
-                      <p className="text-3xl font-black tracking-tight text-slate-800">{card.value}</p>
-                      <p className="text-xs text-slate-500 font-medium">{card.hint}</p>
-                    </div>
-                    <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300", badgeBg)}>
-                      <Icon className={cn("h-5 w-5", iconColor)}/>
+                      {/* <div className="grid min-w-[280px] gap-3 rounded-[24px] border border-border/70 bg-background/80 p-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Nhóm / dự án", "Group / Project")}</p>
+                          <p className="mt-1 text-sm font-medium">{group.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Task đang theo dõi", "Tasks Being Tracked")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language,`${summary.total} task cá nhân`, `${summary.total} personal tasks`)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Mức rủi ro hiện tại", "Current Risk Level")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language, `${riskMeta[summary.riskLevel].label}`, `${riskMeta[summary.riskLevel].label}`)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{tr(language, "Lưu ý", "Note")}</p>
+                          <p className="mt-1 text-sm font-medium">{tr(language, "Chỉ hiển thị dữ liệu của bạn", "Only displaying your data")}</p>
+                        </div>
+                      </div> */}
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+                
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {summary.cards.map(card => {
+                  const Icon = card.icon;
+                  const isOverdueCard = card.key === "overdue";
+                  const cardContent = (
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">{card.label}</p>
+                          <p className="text-3xl font-semibold tracking-tight">{card.value}</p>
+                          <p className="text-sm text-muted-foreground">{card.hint}</p>
+                        </div>
+                        <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", summaryToneClass(card.tone))}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      </div>
+                      {isOverdueCard ? (
+                        <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-rose-700">
+                          <span>{tr(language, "Xem task trễ hạn", "View overdue tasks")}</span>
+                          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  );
+
+                  return (
+                    <div key={card.key} className="relative">
+                      {isOverdueCard ? (
+                        <Card
+                          role="button"
+                          tabIndex={0}
+                          onClick={openOverdueTasks}
+                          onKeyDown={event => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openOverdueTasks();
+                            }
+                          }}
+                          aria-describedby={showOverdueCoachmark ? "overdue-task-coachmark" : undefined}
+                          className={cn(
+                            "group w-full rounded-3xl border border-rose-200/80 bg-white text-left shadow-card outline-none transition-all duration-200",
+                            "hover:-translate-y-0.5 hover:shadow-card focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                            "hover:border-rose-300 focus-visible:border-rose-400",
+                            summary.overdue > 0 && showOverdueCoachmark && "motion-safe:animate-overdue-nudge",
+                          )}
+                        >
+                          {cardContent}
+                        </Card>
+                      ) : (
+                        <Card className="rounded-3xl border-0 shadow-card">
+                          {cardContent}
+                        </Card>
+                      )}
+
+                      {isOverdueCard && showOverdueCoachmark && summary.overdue > 0 ? (
+                        <div
+                          id="overdue-task-coachmark"
+                          role="status"
+                          className="absolute -top-3 right-4 z-10 max-w-[230px] rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-900 shadow-lg"
+                        >
+                          <span className="font-semibold">{tr(language, "Mẹo:", "Tip:")}</span>{" "}
+                          {tr(language, "Bấm vào đây để xem và xử lý task trễ hạn.", "Click here to view and handle overdue tasks.")}
+                          <span className="absolute -bottom-1.5 right-8 h-3 w-3 rotate-45 border-b border-r border-rose-200 bg-rose-50" aria-hidden="true" />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
 
         {/* Khối Thông Tin Chi Tiết: Deadline & Tiến Độ */}
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">

@@ -4,7 +4,7 @@ import { enforceRateLimit } from "../_shared/ratelimit.ts";
 import { ApiError, internalError, jsonError, jsonOk } from "../_shared/responses.ts";
 
 const PLANS = {
-  pro_group: { amount: 69_000 },
+  pro_group: { amount: 79_000 },
   pro_max: { amount: 129_000 },
 } as const;
 
@@ -40,6 +40,9 @@ Deno.serve(async (req) => {
       throw new ApiError("bad_request", "Dữ liệu gửi lên không hợp lệ.");
     }
     const plan = parsePlan((body as Record<string, unknown>).planId);
+    const bankId = requiredPaymentEnv("PAYMENT_BANK_ID");
+    const accountNumber = requiredPaymentEnv("PAYMENT_ACCOUNT_NO");
+    const accountName = requiredPaymentEnv("PAYMENT_ACCOUNT_NAME");
     const orderReference = newOrderReference();
     const admin = getSupabaseAdmin();
     const { data: order, error } = await admin
@@ -54,9 +57,6 @@ Deno.serve(async (req) => {
       .single();
     if (error || !order) throw error ?? new Error("Could not create payment order.");
 
-    const bankId = requiredPaymentEnv("PAYMENT_BANK_ID");
-    const accountNumber = requiredPaymentEnv("PAYMENT_ACCOUNT_NO");
-    const accountName = requiredPaymentEnv("PAYMENT_ACCOUNT_NAME");
     const qrUrl = `https://api.vietqr.io/${encodeURIComponent(bankId)}/${encodeURIComponent(accountNumber)}/${order.amount_vnd}/${encodeURIComponent(order.order_reference)}/qr_only.png?accountName=${encodeURIComponent(accountName)}`;
 
     return jsonOk(req, {
@@ -66,7 +66,14 @@ Deno.serve(async (req) => {
       qrUrl,
     }, 201);
   } catch (error) {
-    if (error instanceof ApiError) return jsonError(req, error);
+    if (error instanceof ApiError) {
+      console.error("billing-api rejected", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
+      });
+      return jsonError(req, error);
+    }
     console.error("billing-api failed", { error: error instanceof Error ? error.message : "unknown" });
     return internalError(req);
   }

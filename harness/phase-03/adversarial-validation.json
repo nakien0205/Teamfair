@@ -1,0 +1,17 @@
+{
+  "phase": "phase-03",
+  "scenarios_checked": [
+    {
+      "name": "Non-Teamfair event patch prevention",
+      "result": "PASS — marker mismatch dead-letters with ownership_conflict"
+    },
+    {
+      "name": "Opt-out worker freeze",
+      "result": "PASS — worker preflight pauses execution without attempt consumption"
+    },
+    {
+      "name": "Deterministic ID duplicate insertion 409",
+      "result": "PASS — 409 fetches existing event and patches if owned"
+    }
+  ]
+}

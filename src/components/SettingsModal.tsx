@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { useTeam } from "@/context/TeamContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useShareModalStore } from "@/hooks/useShareModalStore";
+import { GoogleCalendarConnectionCard } from "@/components/GoogleCalendarConnectionCard";
+import { useEntitlements } from "@/context/EntitlementContext";
+import { GOOGLE_CALENDAR_UI_ENABLED } from "@/lib/featureFlags";
 
 interface SettingsModalProps {
   open: boolean;
@@ -18,11 +21,22 @@ interface SettingsModalProps {
   defaultToMember?: boolean;
 }
 
+const GoogleCalendarSettingsSection = () => {
+  const { plan } = useEntitlements();
+
+  return (
+    <div className="pt-2 border-t border-slate-800">
+      <GoogleCalendarConnectionCard userPlan={plan} />
+    </div>
+  );
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange, defaultToMember = false }) => {
   const { profile, updateProfileName } = useAuth();
   const { language } = useLanguage();
   const { groups, currentGroupIndex, members, loadPersistedState, deleteProject } = useTeam();
   const openShareModal = useShareModalStore((state) => state.openShareModal);
+
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -301,6 +315,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange
                     </div>
                   )}
                 </div>
+
+                {GOOGLE_CALENDAR_UI_ENABLED && (
+                  <GoogleCalendarSettingsSection />
+                )}
 
                 {/* Member Management & Resign (Only for active Project Leader) */}
                 {isCallerLeader && (

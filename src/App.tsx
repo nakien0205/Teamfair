@@ -2,7 +2,38 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+
+function PasswordRecoveryListener() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const checkRecoveryHash = () => {
+      const hash = window.location.hash;
+      if (hash.includes("type=recovery") && location.pathname !== "/reset-password") {
+        navigate(`/reset-password${hash}`, { replace: true });
+      }
+    };
+
+    checkRecoveryHash();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" && location.pathname !== "/reset-password") {
+        navigate("/reset-password", { replace: true });
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, [navigate, location.pathname]);
+
+  return null;
+}
+
 import { TeamProvider } from "@/context/TeamContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -92,12 +123,12 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+                  <PasswordRecoveryListener />
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-
                     <Route path="/dashboard-student" element={<Navigate to="/student/dashboard" replace />} />
 
                     {/* Student Workspace Routes wrapped in StudentLayout */}

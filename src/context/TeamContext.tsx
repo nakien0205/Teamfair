@@ -192,7 +192,7 @@ interface TeamContextType {
   tasks: Task[];
   members: MemberStat[];
   activityLog: ActivityLogEntry[];
-  addTask: (task: Omit<Task, 'id' | 'status' | 'approved'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'status' | 'approved'>) => Promise<Task>;
   deleteTask: (id: string) => void;
   updateTaskStatus: (id: string, status: Task['status'], actor: string) => void;
   approveTask: (id: string) => void;
@@ -736,22 +736,44 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ...g, members: newMembers };
   };
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'approved'>) => {
-    const id = Date.now().toString();
+  const addTask = useCallback(async (task: Omit<Task, 'id' | 'status' | 'approved'>): Promise<Task> => {
     const currentGroup = groups[currentGroupIndex];
-    updateGroup(currentGroupIndex, g => ({
-      ...g,
-      tasks: [...g.tasks, { ...task, id, status: 'Todo', approved: false }],
-      activityLog: [{ timestamp: new Date(), description: `Task "${task.name}" được tạo và giao cho ${task.assignedTo}` }, ...g.activityLog],
-    }));
-    if (currentGroup) {
+    const targetGroupId = currentGroup?.id;
+    let createdTask: Task;
+
+    if (currentGroup && canPersist) {
+      createdTask = await insertTask(currentGroup, task);
+    } else {
+      const id = crypto.randomUUID();
+      createdTask = { ...task, id, status: 'Todo', approved: false };
+    }
+
+    if (targetGroupId) {
+      const targetIndex = groups.findIndex(g => g.id === targetGroupId);
+      if (targetIndex !== -1) {
+        updateGroup(targetIndex, g => {
+          const existingIdx = g.tasks.findIndex(t => t.id === createdTask.id);
+          const newTasks = existingIdx !== -1
+            ? g.tasks.map((t, idx) => (idx === existingIdx ? createdTask : t))
+            : [...g.tasks, createdTask];
+          return {
+            ...g,
+            tasks: newTasks,
+            activityLog: [
+              { timestamp: new Date(), description: `Task "${task.name}" được tạo và giao cho ${task.assignedTo}` },
+              ...g.activityLog,
+            ],
+          };
+        });
+      }
       trackEvent("task_created", {
-        group_id: currentGroup.id,
+        group_id: targetGroupId,
         status: "Todo",
       });
     }
-    if (currentGroup) persist(() => insertTask(currentGroup, task));
-  }, [currentGroupIndex, groups, persist, updateGroup]);
+
+    return createdTask;
+  }, [canPersist, currentGroupIndex, groups, updateGroup]);
 
   const deleteTask = useCallback((id: string) => {
     const currentGroup = groups[currentGroupIndex];

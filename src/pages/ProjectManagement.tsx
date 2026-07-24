@@ -20,6 +20,10 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { supabase } from "@/lib/supabaseClient";
 import { getAccessibleProjectGroups } from "@/lib/projectAccess";
 import { Task } from "@/context/TeamContext";
+import { isTaskVisibleToViewer } from "@/lib/taskVisibility";
+import { fetchGoogleCalendarOverlay, type GoogleOverlayEvent, type GoogleOverlayStatus } from "@/lib/googleCalendarOverlay";
+import { GoogleCalendarOverlay } from "@/components/GoogleCalendarOverlay";
+import { GOOGLE_CALENDAR_UI_ENABLED } from "@/lib/featureFlags";
 
 export function isExactProjectNameConfirmation(typedName: string, projectName: string | undefined): boolean {
   return Boolean(projectName) && typedName === projectName;
@@ -65,6 +69,42 @@ const ProjectManagement: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
   const [selectedTaskInfo, setSelectedTaskInfo] = useState<{ groupName: string; groupColor: string; task: Task } | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
+
+  // Google Calendar Overlay state
+  const [overlayStatus, setOverlayStatus] = useState<GoogleOverlayStatus>("ready");
+  const [overlayEvents, setOverlayEvents] = useState<GoogleOverlayEvent[]>([]);
+  const [overlayRefreshedAt, setOverlayRefreshedAt] = useState<string | null>(null);
+  const [overlayLoading, setOverlayLoading] = useState<boolean>(false);
+
+  const loadOverlayData = async (reason: "open" | "navigate" | "manual" = "open") => {
+    const firstDay = new Date(Date.UTC(currentYear, currentMonth, 1));
+    const firstDayOfWeek = firstDay.getUTCDay();
+    const rangeStartDate = new Date(Date.UTC(currentYear, currentMonth, 1 - firstDayOfWeek));
+    const rangeEndDate = new Date(rangeStartDate.getTime() + 42 * 24 * 60 * 60 * 1000);
+
+    const rangeStart = rangeStartDate.toISOString().split("T")[0];
+    const rangeEndExclusive = rangeEndDate.toISOString().split("T")[0];
+
+    setOverlayLoading(true);
+    try {
+      const res = await fetchGoogleCalendarOverlay(supabase, { rangeStart, rangeEndExclusive, reason });
+      setOverlayStatus(res.status);
+      setOverlayEvents(res.events);
+      setOverlayRefreshedAt(res.metadata.refreshedAt);
+    } catch (err) {
+      console.error("Error fetching Google Calendar overlay:", err);
+      setOverlayStatus("retryable_error");
+    } finally {
+      setOverlayLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (GOOGLE_CALENDAR_UI_ENABLED && activeTab === "Global Calendar") {
+      void loadOverlayData("open");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentYear, currentMonth]);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -479,7 +519,12 @@ const ProjectManagement: React.FC = () => {
       // 'myGroups' là mảng chứa các group đã lọc quyền truy cập ở file của bạn
       myGroups.forEach((g) => {
         if (g.tasks) {
-          g.tasks.forEach((t) => {
+          g.tasks
+            .filter((task) => isTaskVisibleToViewer(task, {
+              id: user?.id,
+              name: profile?.full_name || currentUserName,
+            }))
+            .forEach((t) => {
             const taskDate = t.deadline.includes("T") ? t.deadline.split("T")[0] : t.deadline;
             if (taskDate === dateStr) {
               deadlinedTasks.push({
@@ -488,7 +533,7 @@ const ProjectManagement: React.FC = () => {
                 task: t,
               });
             }
-          });
+            });
         }
       });
 
@@ -1695,6 +1740,16 @@ const ProjectManagement: React.FC = () => {
                     {renderCalendarCells()}
                   </div>
                 </div>
+
+                {GOOGLE_CALENDAR_UI_ENABLED && (
+                  <GoogleCalendarOverlay
+                    status={overlayStatus}
+                    events={overlayEvents}
+                    refreshedAt={overlayRefreshedAt}
+                    isLoading={overlayLoading}
+                    onRefresh={() => void loadOverlayData("manual")}
+                  />
+                )}
               </div>
             ) : activeTab === "Notification" ? (
               <div className="space-y-6 animate-in fade-in duration-300">

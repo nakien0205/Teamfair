@@ -1,6 +1,6 @@
 # Teamfair - All Context
 
-Last updated: 2026-06-17
+Last updated: 2026-07-22
 
 This file is the root context entrypoint for the repo.
 
@@ -41,6 +41,13 @@ For most substantial tasks:
 | `uxui/` | `process/context/uxui/all-uxui.md` | UI component library, design tokens, styling approach, durable design conventions |
 | `database/` | `process/context/database/all-database.md` | Supabase Postgres schema, migration workflow, RLS rules, and onboarding RPCs |
 | `auth/` | `process/context/auth/all-auth.md` | Supabase session client, AuthContext, role mapping, role-based onboarding |
+
+## Current Features
+
+- `lecturer_workspace`
+- `project_management`
+- `student_workspace`
+- `_feature-template` is a template, not a current feature.
 
 ## Task Routing Table
 
@@ -138,6 +145,8 @@ Teamfair/
   - **Backend:** Layered/N-Tier (frontend client calling PostgreSQL via Supabase SDK + Dockerized python service running an independent AI agent server communicating via APIs).
   - **Database Security:** Strict Row-Level Security (RLS) policies on all tables under Supabase, with onboarding guarded by database triggers/RPCs.
 - **Import aliases:** `@/` maps to `src/` directory.
+- **Global Calendar task visibility:** Filter rendered tasks for every role with the same rule. Use the stable assignee ID first and terminally: when a task has an assignee ID, never fall back to name matching. Only legacy tasks without an assignee ID may use a nonblank, trimmed, case-normalized assignee-name fallback. This rule controls UI visibility, not database authorization.
+- **Task priority:** Priority is optional. Blank stays absent through forms, persistence, UI, payloads, and email. Explicit `Low`, `Medium`, or `High` values pass through unchanged.
 
 ## Environment and Configuration
 

@@ -99,7 +99,7 @@ const StudentLayout = () => {
       items.push(
         { key: "leader-tasks", label: tr(language, "Tạo task", "Create Task"), icon: <FolderOpen className="h-4 w-4" />, section: "leader" },
         // { key: "leader-submissions", label: tr(language, "Duyệt submission", "Review Submissions"), icon: <CheckCircle className="h-4 w-4" />, section: "leader" },
-        // { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
+        { key: "leader-evaluations", label: tr(language, "Đánh giá thành viên", "Member Evaluations"), icon: <MessageSquareQuote className="h-4 w-4" />, section: "leader" },
         { key: "share-project", label: tr(language, "Chia sẻ dự án", "Share Project"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
         // { key: "invite-member", label: tr(language, "Mời thành viên", "Invite member"), icon: <Share2 className="h-4 w-4" />, section: "leader" },
 
