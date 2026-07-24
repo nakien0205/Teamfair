@@ -530,7 +530,7 @@ const Landing = () => {
     {
       icon: WalletCards,
       name: 'Pro Group',
-      price: '69.000đ',
+      price: '79.000đ',
        suffix: tr(language, '/ người / tháng', '/ user / month'),
        desc: tr(language, 'Chỉ tài khoản đã thanh toán nhận quyền Pro; thành viên khác vẫn dùng Free.', 'Only the paid account receives Pro access; other members remain Free.'),
       cta: tr(language, 'Chọn Pro Group', 'Choose Pro Group'),

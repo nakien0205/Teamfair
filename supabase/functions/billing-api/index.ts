@@ -4,7 +4,7 @@ import { enforceRateLimit } from "../_shared/ratelimit.ts";
 import { ApiError, internalError, jsonError, jsonOk } from "../_shared/responses.ts";
 
 const PLANS = {
-  pro_group: { amount: 69_000 },
+  pro_group: { amount: 79_000 },
   pro_max: { amount: 129_000 },
 } as const;
 
