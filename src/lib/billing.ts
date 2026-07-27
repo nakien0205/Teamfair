@@ -9,6 +9,12 @@ export type Entitlements = {
 export const PRO_GROUP_PRICE_VND = 79_000;
 export const PRO_MAX_PRICE_VND = 129_000;
 
+const PLAN_RANK: Record<BillingPlan, number> = {
+  free: 0,
+  pro_group: 1,
+  pro_max: 2,
+};
+
 export const FREE_ENTITLEMENTS: Entitlements = {
   plan: "free",
   expiresAt: null,
@@ -25,6 +31,18 @@ export function hasProGroupFeatures(plan: BillingPlan): boolean {
 
 export function hasProMaxFeatures(plan: BillingPlan): boolean {
   return plan === "pro_max";
+}
+
+export function isPlanDowngrade(currentPlan: BillingPlan, requestedPlan: BillingPlan): boolean {
+  return PLAN_RANK[requestedPlan] < PLAN_RANK[currentPlan];
+}
+
+export function getPlanPurchaseState(
+  currentPlan: BillingPlan,
+  requestedPlan: BillingPlan,
+): "available" | "current" | "included" {
+  if (currentPlan === requestedPlan) return "current";
+  return isPlanDowngrade(currentPlan, requestedPlan) ? "included" : "available";
 }
 
 export function normalizeEntitlements(value: unknown): Entitlements {

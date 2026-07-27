@@ -3,8 +3,10 @@ import {
   FREE_ENTITLEMENTS,
   PRO_GROUP_PRICE_VND,
   PRO_MAX_PRICE_VND,
+  getPlanPurchaseState,
   hasProGroupFeatures,
   hasProMaxFeatures,
+  isPlanDowngrade,
   normalizeEntitlements,
 } from "@/lib/billing";
 
@@ -30,5 +32,16 @@ describe("billing entitlement contract", () => {
     expect(normalizeEntitlements(null)).toEqual(FREE_ENTITLEMENTS);
     expect(normalizeEntitlements({ plan_id: "pro_group", is_active: false })).toEqual(FREE_ENTITLEMENTS);
     expect(normalizeEntitlements({ plan_id: "untrusted", is_active: true })).toEqual(FREE_ENTITLEMENTS);
+  });
+
+  it("marks lower tiers as included instead of purchasable", () => {
+    expect(isPlanDowngrade("pro_max", "pro_group")).toBe(true);
+    expect(isPlanDowngrade("pro_group", "free")).toBe(true);
+    expect(isPlanDowngrade("pro_group", "pro_max")).toBe(false);
+    expect(isPlanDowngrade("pro_max", "pro_max")).toBe(false);
+
+    expect(getPlanPurchaseState("pro_max", "pro_group")).toBe("included");
+    expect(getPlanPurchaseState("pro_group", "pro_group")).toBe("current");
+    expect(getPlanPurchaseState("pro_group", "pro_max")).toBe("available");
   });
 });

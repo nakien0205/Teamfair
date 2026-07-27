@@ -6,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Check, Star, X } from "lucide-react";
 import Swal from "sweetalert2";
 import * as Sentry from "@sentry/react";
-import { PRO_GROUP_PRICE_VND, PRO_MAX_PRICE_VND, type BillingPlan } from "@/lib/billing";
+import {
+  PRO_GROUP_PRICE_VND,
+  PRO_MAX_PRICE_VND,
+  getPlanPurchaseState,
+  isPlanDowngrade,
+  type BillingPlan,
+} from "@/lib/billing";
 import { useAuth } from "@/context/AuthContext";
 import { useEntitlements } from "@/context/EntitlementContext";
 import { useLanguage, type Language } from "@/context/LanguageContext";
@@ -35,8 +41,11 @@ const COPY = {
     freeCycle: "mãi miễn phí",
     popular: "Phổ biến nhất",
     current: "Đang sử dụng",
+    included: "Đã bao gồm trong gói",
     useFree: "Sử dụng miễn phí",
     payNow: "Thanh toán ngay",
+    planLoading: "Đang tải gói…",
+    planUnavailable: "Không tải được gói",
     paymentError: "Không thể tạo đơn thanh toán. Vui lòng thử lại sau.",
     paymentSuccess: "Thanh toán thành công!",
     activated: (plan: string) => `Gói ${plan} đã được kích hoạt trong 30 ngày.`,
@@ -54,8 +63,11 @@ const COPY = {
     freeCycle: "forever free",
     popular: "Most popular",
     current: "Current plan",
+    included: "Included in your plan",
     useFree: "Use for free",
     payNow: "Pay now",
+    planLoading: "Loading plan…",
+    planUnavailable: "Plan unavailable",
     paymentError: "Unable to create payment order. Please try again later.",
     paymentSuccess: "Payment successful!",
     activated: (plan: string) => `${plan} has been activated for 30 days.`,
@@ -146,7 +158,12 @@ export default function Checkout() {
   const [showQrModal, setShowQrModal] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { plan: activePlan, refreshEntitlements } = useEntitlements();
+  const {
+    plan: activePlan,
+    loading: entitlementsLoading,
+    error: entitlementsError,
+    refreshEntitlements,
+  } = useEntitlements();
   const { language } = useLanguage();
   const copy = COPY[language];
 
@@ -180,6 +197,13 @@ export default function Checkout() {
   }, [copy, currentOrder, language, navigate, refreshEntitlements]);
 
   const handlePayment = async (plan: Plan) => {
+    if (
+      entitlementsLoading
+      || entitlementsError
+      || isPlanDowngrade(activePlan, plan.id)
+    ) {
+      return;
+    }
     if (plan.id === "free") {
       navigate(user ? "/student/dashboard" : "/login");
       return;
@@ -227,7 +251,14 @@ export default function Checkout() {
 
         <div className="mb-12 grid gap-8 md:grid-cols-3">
           {PLANS.map((plan) => {
-            const isCurrent = activePlan === plan.id;
+            const purchaseState = getPlanPurchaseState(activePlan, plan.id);
+            const isCurrent = purchaseState === "current";
+            const isIncluded = purchaseState === "included";
+            const purchaseDisabled = loadingPlan !== null
+              || entitlementsLoading
+              || entitlementsError
+              || isCurrent
+              || isIncluded;
             return (
               <div key={plan.id} className={`relative transition-transform duration-300 ${plan.popular ? "md:scale-105" : ""}`}>
                 {plan.popular && <div className="absolute -top-4 left-1/2 z-10 -translate-x-1/2"><span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1 text-sm font-semibold text-white"><Star className="h-4 w-4 fill-current" />{copy.popular}</span></div>}
@@ -238,8 +269,20 @@ export default function Checkout() {
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col">
                     <ul className="mb-6 flex-1 space-y-3">{plan.features.map((feature) => <li key={feature[language]} className="flex gap-3 text-sm"><Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" /><span className="text-gray-700">{feature[language]}</span></li>)}</ul>
-                    <Button onClick={() => void handlePayment(plan)} disabled={loadingPlan !== null || isCurrent} className={`w-full ${plan.popular ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" : ""}`} size="lg">
-                      {loadingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isCurrent ? copy.current : plan.id === "free" ? copy.useFree : copy.payNow}
+                    <Button onClick={() => void handlePayment(plan)} disabled={purchaseDisabled} className={`w-full ${plan.popular ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" : ""}`} size="lg">
+                      {loadingPlan === plan.id
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : entitlementsLoading
+                          ? copy.planLoading
+                          : entitlementsError
+                            ? copy.planUnavailable
+                            : isCurrent
+                              ? copy.current
+                              : isIncluded
+                                ? copy.included
+                                : plan.id === "free"
+                                  ? copy.useFree
+                                  : copy.payNow}
                     </Button>
                   </CardContent>
                 </Card>

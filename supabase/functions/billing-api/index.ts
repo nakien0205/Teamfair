@@ -41,6 +41,15 @@ Deno.serve(async (req) => {
       throw new ApiError("bad_request", "Dữ liệu gửi lên không hợp lệ.");
     }
     const plan = parsePlan((body as Record<string, unknown>).planId);
+    const admin = getSupabaseAdmin();
+    const { data: currentPlan, error: currentPlanError } = await admin.rpc("billing_plan_for_user", {
+      p_user_id: user.id,
+    });
+    if (currentPlanError) throw currentPlanError;
+    if (currentPlan === "pro_max" && plan === "pro_group") {
+      throw new ApiError("conflict", "Pro Group đã được bao gồm trong gói Pro Max hiện tại.");
+    }
+
     const bankId = requiredPaymentEnv("PAYMENT_BANK_ID");
     const accountNumber = requiredPaymentEnv("PAYMENT_ACCOUNT_NO");
     const accountName = requiredPaymentEnv("PAYMENT_ACCOUNT_NAME");
@@ -53,7 +62,6 @@ Deno.serve(async (req) => {
       transferReference: orderReference,
       accountName,
     });
-    const admin = getSupabaseAdmin();
     const { data: order, error } = await admin
       .from("orders")
       .insert({

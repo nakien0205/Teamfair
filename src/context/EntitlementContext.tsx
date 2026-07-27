@@ -5,22 +5,31 @@ import { FREE_ENTITLEMENTS, normalizeEntitlements, type Entitlements } from "@/l
 
 type EntitlementContextValue = Entitlements & {
   loading: boolean;
+  error: boolean;
   refreshEntitlements: () => Promise<void>;
 };
 
 const EntitlementContext = createContext<EntitlementContextValue | null>(null);
 
 export function EntitlementProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [entitlements, setEntitlements] = useState<Entitlements>(FREE_ENTITLEMENTS);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const refreshEntitlements = useCallback(async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
     if (!isSupabaseConfigured || !user?.id) {
       setEntitlements(FREE_ENTITLEMENTS);
+      setError(false);
+      setLoading(false);
       return;
     }
     setLoading(true);
+    setError(false);
     try {
       const { data, error } = await supabase.rpc("get_my_entitlements");
       if (error) throw error;
@@ -29,16 +38,20 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.warn("Could not load billing entitlements:", error);
       setEntitlements(FREE_ENTITLEMENTS);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     void refreshEntitlements();
   }, [refreshEntitlements]);
 
-  const value = useMemo(() => ({ ...entitlements, loading, refreshEntitlements }), [entitlements, loading, refreshEntitlements]);
+  const value = useMemo(
+    () => ({ ...entitlements, loading, error, refreshEntitlements }),
+    [entitlements, error, loading, refreshEntitlements],
+  );
   return <EntitlementContext.Provider value={value}>{children}</EntitlementContext.Provider>;
 }
 
