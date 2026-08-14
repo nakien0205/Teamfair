@@ -246,6 +246,11 @@ supabase/*
 !supabase/migrations/**
 !supabase/functions/
 !supabase/functions/**
+!supabase/tests/
+supabase/tests/*
+!supabase/tests/database/
+supabase/tests/database/*
+!supabase/tests/database/entitlement_sku_tier_normalization.test.sql
 
 note_to_self.txt
 .vercel

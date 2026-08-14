@@ -28,6 +28,19 @@ describe("Phase 05 Billing Authority & Local Calendar Tier Proof", () => {
     expect(hasProMaxFeatures("pro_max")).toBe(true);
   });
 
+  it("should keep canonical plan labels and Pro feature gates working after normalization", () => {
+    const proGroup = normalizeEntitlements({ plan_id: "student_1m", is_active: true });
+    const proMax = normalizeEntitlements({ plan_id: "lecturer_6m", is_active: true });
+
+    expect(proGroup.plan).toBe("pro_group");
+    expect(hasProGroupFeatures(proGroup.plan)).toBe(true);
+    expect(hasProMaxFeatures(proGroup.plan)).toBe(false);
+
+    expect(proMax.plan).toBe("pro_max");
+    expect(hasProGroupFeatures(proMax.plan)).toBe(true);
+    expect(hasProMaxFeatures(proMax.plan)).toBe(true);
+  });
+
   it("AC4 / AC5: free creator does not alter assignee entitlement evaluation", () => {
     const creatorTier = "free";
     const assigneeTier = "pro_group";
